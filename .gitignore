@@ -1,0 +1,27 @@
+# ── Copyrighted game files ────────────────────────────────────────────
+# Do NOT add ADF disk images or game files — they are commercial software.
+# The tool expects PlayerManagerITA.adf to be placed next to the script
+# by the user; it is not distributed here.
+*.adf
+*.zip
+*.msi
+*.exe
+PMSaveDiskTool_v1.2/
+
+# ── macOS ─────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+
+# ── Python ────────────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+
+# ── Claude Code local settings ────────────────────────────────────────
+.claude/
+
+# ── Superpowers brainstorm sessions ───────────────────────────────────
+.superpowers/
