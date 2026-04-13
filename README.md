@@ -107,7 +107,7 @@ Developed for **MiSTer FPGA** (Minimig core) workflow, where there is no runtime
 ## Credits
 
 - **Player Manager Save Disk Tool v1.2 (Experimental)** — [UltimateBinary](https://ultimatebinary.blogspot.com) (Windows reference implementation, 2010)
-- **Player Manager** — Anco Software, 1990. Designed by **Dino Dini**, whose work on Player Manager and Kick Off defined a golden era of football games on the Amiga. Thank you, Dino — these games are still being played and loved more than thirty years later.
+- **Player Manager** — Anco Software, 1990. Designed by **[Dino Dini](https://github.com/dndn1011)**, whose work on Player Manager and Kick Off defined a golden era of football games on the Amiga. Thank you, Dino — these games are still being played and loved more than thirty years later.
 - **DEFAJAM decompressor** — reverse-engineered from the ITA game disk; original packer by DEFAJAM
 
 ---

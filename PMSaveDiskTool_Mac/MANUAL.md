@@ -47,17 +47,17 @@ python3 PMSaveDiskTool.py
 ├──────────────────┬──────────────────────────────────────────┤
 │ Save Slots       │  Team Info                               │
 │ ─────────────    │  ─────────────────────────────────────── │
-│ START.sav        │  Team Name  [____________]  Division [▼] │
-│ WIN.sav          │  Team Value [      ]  Budget Tier [    ] │
-│ TURRICAN.sav     │  [Apply Changes]  [Become Manager]       │
+│ save1.sav        │  Team Name  [____________]  Division [▼] │
+│ save2.sav        │  Team Value [      ]  Budget Tier [    ] │
+│ save3.sav        │  [Apply Changes]  [Become Manager]       │
 │ ...              │                                          │
 │                  │  League Stats                            │
 │ Teams            │  Points [  ]  Goals [  ]  Rank A [  ]   │
 │ ─────────────    │  Rank B [  ]  Flag1 [  ]  Flag2 [  ]    │
 │ #  Name    Div   │                                          │
-│  0 MUNICH    2   │  Player IDs (up to 25 roster slots)      │
-│  1 DORTMUND  1   │  P00 [  ] P01 [  ] P02 [  ] P03 [  ]   │
-│  2 ...       1   │  ...                                     │
+│  0 INTER     1   │  Player IDs (up to 25 roster slots)      │
+│  1 JUVENTUS  1   │  P00 [  ] P01 [  ] P02 [  ] P03 [  ]   │
+│  2 ROMA      1   │  ...                                     │
 │                  │                                          │
 │                  │  Raw Record Hex (100 bytes)              │
 │                  │  +000  00 15 00 21 ...                   │
@@ -87,7 +87,7 @@ The **Save Slots** panel lists all `.sav` files and the `start.dat` template:
 
 | File | Description |
 |------|-------------|
-| `START.sav`, `WIN.sav`, … | Named save slots (game progress) |
+| `save1.sav`, `save2.sav`, … | Named save slots (game progress) |
 | `start.dat [template]` | Factory defaults — the starting point for a new game |
 
 Click a slot to load it. The **Teams** list on the left populates with all 44 teams.
@@ -278,8 +278,8 @@ The results show three sections:
 Lists every player ID whose team assignment changed between Save A and Save B. Player IDs are globally unique across all 44 teams, so any ID that appears in a different team's roster has transferred.
 
 ```
-ID  473:  1. FC KOLN                → BAYERN MUNCHEN
-ID  637:  BAYERN MUNCHEN            → (unassigned)
+ID  473:  INTER                     → JUVENTUS
+ID  637:  JUVENTUS                  → (unassigned)
 ```
 
 **Division Changes**
@@ -287,8 +287,8 @@ ID  637:  BAYERN MUNCHEN            → (unassigned)
 Lists teams whose division number changed, with a promoted/relegated label.
 
 ```
-HAMBURGER SV        Div 2 → Div 1  (promoted)
-DYNAMO DRESDEN      Div 1 → Div 2  (relegated)
+INTER               Div 2 → Div 1  (promoted)
+ROMA                Div 1 → Div 2  (relegated)
 ```
 
 **Team Value Changes**
@@ -296,8 +296,8 @@ DYNAMO DRESDEN      Div 1 → Div 2  (relegated)
 Lists all teams whose financial balance changed, sorted by largest absolute change.
 
 ```
-1. FC KOLN          +4357 → +5100  (Δ +743)
-DYNAMO DRESDEN        -48 →   -12  (Δ  +36)
+JUVENTUS            +4357 → +5100  (Δ +743)
+ROMA                  -48 →   -12  (Δ  +36)
 ```
 
 ---
@@ -472,8 +472,8 @@ When editing player IDs, enter just the numeric ID or the full `ID Name` string 
 The **Compare Saves** transfer report shows player surnames alongside IDs:
 
 ```
-ID  473 (Zinetti):  1. FC KOLN                → BAYERN MUNCHEN
-ID  637 (Nava):     BAYERN MUNCHEN            → (unassigned)
+ID  473 (Zinetti):  INTER                     → JUVENTUS
+ID  637 (Nava):     JUVENTUS                  → (unassigned)
 ```
 
 ### Patch Composer Auto-Load
