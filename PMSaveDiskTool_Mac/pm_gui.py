@@ -199,11 +199,17 @@ class PMSaveDiskToolApp:
             try:
                 self.game_disk = GameDisk(game_path)
                 n = len(self.game_disk.player_names)
+                self._gd_status.config(
+                    text=f"Game disk: {os.path.basename(game_path)} ({n} names)",
+                    fg=_THEME['positive'])
                 self.status_var.set(
-                    f"Game disk loaded: {os.path.basename(game_path)} — "
+                    f"Game disk loaded: {os.path.basename(game_path)} \u2014 "
                     f"{n} player names extracted")
             except Exception as e:
+                self._gd_status.config(text=f"Game disk error", fg=_THEME['negative'])
                 self.status_var.set(f"Game disk error: {e}")
+        else:
+            self._gd_status.config(text="No game disk found", fg=_THEME['text_dim'])
 
     # ── Menu ──
 
@@ -241,77 +247,241 @@ class PMSaveDiskToolApp:
         self.root.bind_all(f'<{_MOD}-o>', lambda e: self.open_adf())
         self.root.bind_all(f'<{_MOD}-s>', lambda e: self.save_adf())
 
+        # Tab shortcuts (Cmd+1-4)
+        for i in range(4):
+            self.root.bind_all(
+                f'<{_MOD}-Key-{i + 1}>',
+                lambda e, idx=i: self._nb.select(idx) if hasattr(self, '_nb') else None)
+
     # ── Layout ──
 
     def _build_ui(self):
-        # Top: filename
-        top = ttk.Frame(self.root)
-        top.pack(fill=tk.X, padx=8, pady=(8, 0))
+        T = _THEME
 
-        ttk.Button(top, text="Open ADF", command=self.open_adf).pack(side=tk.LEFT)
-        ttk.Button(top, text="Save", command=self.save_adf).pack(side=tk.LEFT, padx=(4, 0))
+        # ── Title bar ──
+        title_bar = tk.Frame(self.root, bg=T['bg_chrome'], height=32)
+        title_bar.pack(fill=tk.X)
+        title_bar.pack_propagate(False)
+
+        tk.Label(title_bar, text="PM", font=(_MONO, 14, 'bold'),
+                 bg=T['bg_chrome'], fg=T['accent']).pack(side=tk.LEFT, padx=(10, 4))
+        tk.Label(title_bar, text="Save Disk Tool", font=(_MONO, 11),
+                 bg=T['bg_chrome'], fg=T['text_muted']).pack(side=tk.LEFT)
+
+        self._gd_status = tk.Label(title_bar, text="", font=T['font_small'],
+                                   bg=T['bg_chrome'], fg=T['text_dim'])
+        self._gd_status.pack(side=tk.RIGHT, padx=10)
+
+        # ── Toolbar ──
+        toolbar = tk.Frame(self.root, bg=T['bg_toolbar'], height=36)
+        toolbar.pack(fill=tk.X)
+        toolbar.pack_propagate(False)
+
+        ttk.Button(toolbar, text="Open ADF", style='Primary.TButton',
+                   command=self.open_adf).pack(side=tk.LEFT, padx=(8, 4), pady=4)
+        ttk.Button(toolbar, text="Save", command=self.save_adf).pack(
+            side=tk.LEFT, padx=2, pady=4)
+        ttk.Button(toolbar, text="Save As\u2026", command=self.save_adf_as).pack(
+            side=tk.LEFT, padx=2, pady=4)
+
         self.filename_var = tk.StringVar(value="No file loaded")
-        ttk.Label(top, textvariable=self.filename_var, foreground="gray").pack(
+        tk.Label(toolbar, textvariable=self.filename_var, font=T['font_small'],
+                 bg=T['bg_toolbar'], fg=T['text_muted']).pack(
             side=tk.LEFT, padx=(12, 0))
 
-        # Main PanedWindow: left = saves/teams, right = details
-        pw = ttk.PanedWindow(self.root, orient=tk.HORIZONTAL)
-        pw.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
+        # ── Body ──
+        body = ttk.Frame(self.root)
+        body.pack(fill=tk.BOTH, expand=True)
 
-        # Left panel: saves + teams
-        left = ttk.Frame(pw, width=280)
-        pw.add(left, weight=1)
+        # -- Sidebar (fixed 250px) --
+        sidebar = tk.Frame(body, bg=T['bg_elevated'], width=250)
+        sidebar.pack(side=tk.LEFT, fill=tk.Y)
+        sidebar.pack_propagate(False)
 
-        # Save slots
-        saves_frame = ttk.LabelFrame(left, text="Save Slots")
-        saves_frame.pack(fill=tk.X, padx=4, pady=4)
-        self.saves_listbox = tk.Listbox(saves_frame, height=5, exportselection=False)
-        self.saves_listbox.pack(fill=tk.X, padx=4, pady=4)
+        # Save Slots section
+        tk.Label(sidebar, text="SAVE SLOTS", font=T['font_section'],
+                 bg=T['bg_elevated'], fg=T['accent']).pack(
+            anchor='w', padx=8, pady=(8, 2))
+
+        self.saves_listbox = tk.Listbox(sidebar, height=5, exportselection=False,
+                                        font=T['font_small'],
+                                        bg=T['bg_deep'], fg=T['text_bright'],
+                                        selectbackground=T['accent'],
+                                        selectforeground=T['bg_chrome'],
+                                        highlightthickness=0, borderwidth=0,
+                                        relief='flat')
+        self.saves_listbox.pack(fill=tk.X, padx=8, pady=(0, 4))
         self.saves_listbox.bind('<<ListboxSelect>>', self.on_save_select)
 
-        # Teams
-        teams_frame = ttk.LabelFrame(left, text="Teams")
-        teams_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        # Teams section
+        self._teams_label = tk.Label(sidebar, text="TEAMS", font=T['font_section'],
+                                     bg=T['bg_elevated'], fg=T['accent2'])
+        self._teams_label.pack(anchor='w', padx=8, pady=(8, 2))
 
-        cols = ("idx", "name", "div")
-        self.teams_tree = ttk.Treeview(teams_frame, columns=cols, show='headings', height=15)
-        self.teams_tree.heading("idx", text="#")
-        self.teams_tree.heading("name", text="Team Name")
-        self.teams_tree.heading("div", text="Div")
-        self.teams_tree.column("idx", width=30, anchor='center')
-        self.teams_tree.column("name", width=180)
-        self.teams_tree.column("div", width=40, anchor='center')
-        self.teams_tree.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        # Filter entry
+        self._filter_var = tk.StringVar()
+        self._filter_var.trace_add('write', lambda *_a: self._filter_teams())
+        filter_entry = tk.Entry(sidebar, textvariable=self._filter_var,
+                                font=T['font_small'],
+                                bg=T['bg_deep'], fg=T['text_bright'],
+                                insertbackground=T['text_bright'],
+                                highlightthickness=0, borderwidth=1,
+                                relief='flat')
+        filter_entry.pack(fill=tk.X, padx=8, pady=(0, 4))
+
+        # Division-grouped teams tree
+        teams_container = tk.Frame(sidebar, bg=T['bg_elevated'])
+        teams_container.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+
+        self.teams_tree = ttk.Treeview(teams_container, columns=("name",),
+                                       show='tree', selectmode='browse')
+        self.teams_tree.heading('#0', text='')
+        self.teams_tree.column('#0', width=40, stretch=False)
+        self.teams_tree.column('name', width=200, stretch=True)
+        self.teams_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        teams_sb = ttk.Scrollbar(teams_container, orient='vertical',
+                                 command=self.teams_tree.yview)
+        self.teams_tree.configure(yscrollcommand=teams_sb.set)
+        teams_sb.pack(side=tk.RIGHT, fill=tk.Y)
+
         self.teams_tree.bind('<<TreeviewSelect>>', self.on_team_select)
 
-        scrollbar = ttk.Scrollbar(teams_frame, orient='vertical',
-                                  command=self.teams_tree.yview)
-        self.teams_tree.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        # Division group nodes
+        self._div_nodes = {}
+        for d in range(4):
+            node = self.teams_tree.insert('', 'end', text=f"Division {d + 1}",
+                                          values=('',), open=True,
+                                          tags=('divheader',))
+            self._div_nodes[d] = node
 
-        # Right panel: team details
-        right = ttk.Frame(pw, width=640)
-        pw.add(right, weight=3)
+        self.teams_tree.tag_configure('divheader',
+                                      background=T['bg_surface'],
+                                      foreground=T['accent2'],
+                                      font=T['font_section'])
+        self.teams_tree.tag_configure('teamrow',
+                                      foreground=T['text'])
+        self.teams_tree.tag_configure('teamrow_odd',
+                                      background=T['bg_elevated'],
+                                      foreground=T['text'])
 
-        # Right panel is scrollable
-        right_canvas = tk.Canvas(right)
-        right_scroll = ttk.Scrollbar(right, orient='vertical', command=right_canvas.yview)
-        right_inner = ttk.Frame(right_canvas)
+        # -- Right panel --
+        right = tk.Frame(body, bg=T['bg_deep'])
+        right.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        right_inner.bind('<Configure>',
-                         lambda e: right_canvas.configure(scrollregion=right_canvas.bbox('all')))
-        right_canvas.create_window((0, 0), window=right_inner, anchor='nw')
-        right_canvas.configure(yscrollcommand=right_scroll.set)
+        # Team header bar (hidden initially)
+        self._team_hdr_frame = tk.Frame(right, bg=T['bg_chrome'], height=44)
+        self._team_hdr_lbl = tk.Label(self._team_hdr_frame, text="",
+                                      font=T['font_header'],
+                                      bg=T['bg_chrome'], fg=T['text_bright'])
+        self._team_hdr_lbl.pack(side=tk.LEFT, padx=12)
+        self._team_hdr_div = tk.Label(self._team_hdr_frame, text="",
+                                      font=T['font_small'],
+                                      bg=T['bg_chrome'], fg=T['accent2'])
+        self._team_hdr_div.pack(side=tk.LEFT, padx=4)
 
-        right_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        right_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        ttk.Button(self._team_hdr_frame, text="Apply Changes",
+                   style='Primary.TButton',
+                   command=self.apply_team_changes).pack(
+            side=tk.RIGHT, padx=(4, 12), pady=6)
+        ttk.Button(self._team_hdr_frame, text="Become Manager",
+                   command=self.become_manager).pack(
+            side=tk.RIGHT, padx=4, pady=6)
 
-        # Team info section
-        info_frame = ttk.LabelFrame(right_inner, text="Team Info")
-        info_frame.pack(fill=tk.X, padx=4, pady=4)
+        # Empty state (shown initially)
+        self._empty_frame = tk.Frame(right, bg=T['bg_deep'])
+        self._empty_frame.pack(fill=tk.BOTH, expand=True)
+        tk.Label(self._empty_frame, text="Open an ADF and select a team",
+                 font=(_MONO, 13), bg=T['bg_deep'], fg=T['text_dim']).pack(
+            expand=True)
 
-        info_grid = ttk.Frame(info_frame)
-        info_grid.pack(fill=tk.X, padx=8, pady=8)
+        # Notebook (hidden initially)
+        self._nb = ttk.Notebook(right)
+
+        # Build tabs
+        roster_frame = ttk.Frame(self._nb)
+        info_frame = ttk.Frame(self._nb)
+        stats_frame = ttk.Frame(self._nb)
+        hex_frame = ttk.Frame(self._nb)
+
+        self._build_roster_tab(roster_frame)
+        self._build_team_info_tab(info_frame)
+        self._build_stats_tab(stats_frame)
+        self._build_hex_tab(hex_frame)
+
+        self._nb.add(roster_frame, text=f" {_MOD_DISP}1 Roster ")
+        self._nb.add(info_frame,   text=f" {_MOD_DISP}2 Team Info ")
+        self._nb.add(stats_frame,  text=f" {_MOD_DISP}3 Stats ")
+        self._nb.add(hex_frame,    text=f" {_MOD_DISP}4 Hex Dump ")
+
+        self._tab_names = ['Roster', 'Team Info', 'Stats', 'Hex Dump']
+        self._nb.bind('<<NotebookTabChanged>>', self._on_tab_changed)
+
+        # ── Status bar ──
+        status_bar = tk.Frame(self.root, bg=T['bg_chrome'], height=24)
+        status_bar.pack(fill=tk.X, side=tk.BOTTOM)
+        status_bar.pack_propagate(False)
+
+        self.status_var = tk.StringVar(value="Ready \u2014 Open an ADF to begin")
+        tk.Label(status_bar, textvariable=self.status_var, font=T['font_small'],
+                 bg=T['bg_chrome'], fg=T['text_muted'], anchor='w').pack(
+            side=tk.LEFT, padx=8, fill=tk.X, expand=True)
+
+        self.nav_var = tk.StringVar(value="")
+        tk.Label(status_bar, textvariable=self.nav_var, font=T['font_small'],
+                 bg=T['bg_chrome'], fg=T['text_dim'], anchor='e').pack(
+            side=tk.RIGHT, padx=8)
+
+    # ── Tab builders ──
+
+    def _build_roster_tab(self, parent):
+        T = _THEME
+
+        # Action bar
+        action = tk.Frame(parent, bg=T['bg_deep'])
+        action.pack(fill=tk.X, padx=8, pady=(8, 4))
+
+        ttk.Button(action, text="Edit ID", command=self._set_player_id_btn).pack(
+            side=tk.LEFT, padx=(0, 4))
+        ttk.Button(action, text="Remove", command=self._remove_player_btn).pack(
+            side=tk.LEFT, padx=4)
+
+        self._roster_count = tk.Label(action, text="0/25", font=T['font_small'],
+                                      bg=T['bg_deep'], fg=T['text_muted'])
+        self._roster_count.pack(side=tk.RIGHT, padx=8)
+
+        # Roster treeview
+        cols = ("slot", "id", "name")
+        tree_frame = ttk.Frame(parent)
+        tree_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
+
+        self.roster_tree = ttk.Treeview(tree_frame, columns=cols, show='headings',
+                                        height=20)
+        self.roster_tree.heading("slot", text="Slot")
+        self.roster_tree.heading("id", text="ID")
+        self.roster_tree.heading("name", text="Player Name")
+        self.roster_tree.column("slot", width=50, anchor='center')
+        self.roster_tree.column("id", width=70, anchor='center')
+        self.roster_tree.column("name", width=200, anchor='w')
+
+        rsb = ttk.Scrollbar(tree_frame, orient='vertical',
+                            command=self.roster_tree.yview)
+        self.roster_tree.configure(yscrollcommand=rsb.set)
+        rsb.pack(side=tk.RIGHT, fill=tk.Y)
+        self.roster_tree.pack(fill=tk.BOTH, expand=True)
+
+        self.roster_tree.tag_configure('oddrow', background=T['bg_elevated'])
+        self.roster_tree.tag_configure('evenrow', background=T['bg_deep'])
+        self.roster_tree.tag_configure('empty', foreground=T['text_dim'])
+        self.roster_tree.bind('<Double-1>', self._start_inline_edit)
+
+        self._player_ids = [0xFFFF] * MAX_PLAYER_SLOTS
+        self._inline_entry = None
+
+    def _build_team_info_tab(self, parent):
+        T = _THEME
+        grid = ttk.Frame(parent)
+        grid.pack(fill=tk.X, padx=16, pady=16)
 
         self.team_name_var = tk.StringVar()
         self.division_var = tk.StringVar()
@@ -319,75 +489,226 @@ class PMSaveDiskToolApp:
         self.word64_var = tk.StringVar()
 
         row = 0
-        ttk.Label(info_grid, text="Team Name:").grid(row=row, column=0, sticky='e', padx=4, pady=2)
-        ttk.Entry(info_grid, textvariable=self.team_name_var, width=24).grid(
+        ttk.Label(grid, text="Team Name:").grid(row=row, column=0, sticky='e', padx=4, pady=4)
+        ttk.Entry(grid, textvariable=self.team_name_var, width=24).grid(
             row=row, column=1, sticky='w', padx=4)
 
-        ttk.Label(info_grid, text="Division:").grid(row=row, column=2, sticky='e', padx=4)
-        div_combo = ttk.Combobox(info_grid, textvariable=self.division_var, width=12,
+        ttk.Label(grid, text="Division:").grid(row=row, column=2, sticky='e', padx=8)
+        div_combo = ttk.Combobox(grid, textvariable=self.division_var, width=12,
                                  values=["0 (Div 1)", "1 (Div 2)", "2 (Div 3)", "3 (Div 4)"])
         div_combo.grid(row=row, column=3, sticky='w', padx=4)
 
         row += 1
-        ttk.Label(info_grid, text="Team Value:").grid(row=row, column=0, sticky='e', padx=4, pady=2)
-        ttk.Entry(info_grid, textvariable=self.word62_var, width=8).grid(
+        ttk.Label(grid, text="Team Value:").grid(row=row, column=0, sticky='e', padx=4, pady=4)
+        ttk.Entry(grid, textvariable=self.word62_var, width=8).grid(
             row=row, column=1, sticky='w', padx=4)
-        ttk.Label(info_grid, text="Budget Tier:").grid(row=row, column=2, sticky='e', padx=4)
-        ttk.Entry(info_grid, textvariable=self.word64_var, width=8).grid(
+        ttk.Label(grid, text="Budget Tier:").grid(row=row, column=2, sticky='e', padx=8)
+        ttk.Entry(grid, textvariable=self.word64_var, width=8).grid(
             row=row, column=3, sticky='w', padx=4)
 
-        row += 1
-        ttk.Button(info_grid, text="Apply Changes", command=self.apply_team_changes).grid(
-            row=row, column=0, columnspan=2, pady=8)
-        ttk.Button(info_grid, text="Become Manager of This Team",
-                   command=self.become_manager).grid(row=row, column=2, columnspan=2, pady=8)
-
-        # League stats section
-        stats_frame = ttk.LabelFrame(right_inner, text="League Stats")
-        stats_frame.pack(fill=tk.X, padx=4, pady=4)
-
-        stats_grid = ttk.Frame(stats_frame)
-        stats_grid.pack(fill=tk.X, padx=8, pady=8)
+    def _build_stats_tab(self, parent):
+        grid = ttk.Frame(parent)
+        grid.pack(fill=tk.X, padx=16, pady=16)
 
         self.stat_vars = []
         stat_labels = TeamRecord.STAT_LABELS
         for i, label in enumerate(stat_labels):
-            ttk.Label(stats_grid, text=f"{label}:").grid(
-                row=i // 3, column=(i % 3) * 2, sticky='e', padx=4, pady=2)
+            ttk.Label(grid, text=f"{label}:").grid(
+                row=i // 3, column=(i % 3) * 2, sticky='e', padx=4, pady=4)
             var = tk.StringVar()
             self.stat_vars.append(var)
-            ttk.Entry(stats_grid, textvariable=var, width=8).grid(
+            ttk.Entry(grid, textvariable=var, width=8).grid(
                 row=i // 3, column=(i % 3) * 2 + 1, sticky='w', padx=4)
 
-        # Player IDs section (25 slots)
-        pv_frame = ttk.LabelFrame(right_inner, text="Player IDs (up to 25 roster slots, FFFF = empty)")
-        pv_frame.pack(fill=tk.X, padx=4, pady=4)
+    def _build_hex_tab(self, parent):
+        T = _THEME
+        self.hex_text = tk.Text(parent, height=8, font=(_MONO, 11), state='disabled',
+                                wrap='none', bg=T['bg_chrome'], fg='#00FF88',
+                                insertbackground=T['text_bright'],
+                                highlightthickness=0, borderwidth=0)
+        self.hex_text.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
 
-        pv_grid = ttk.Frame(pv_frame)
-        pv_grid.pack(fill=tk.X, padx=8, pady=8)
+    # ── Sidebar helpers ──
 
-        self.pv_vars = []
-        for i in range(MAX_PLAYER_SLOTS):
-            r, c = divmod(i, 5)
-            ttk.Label(pv_grid, text=f"P{i:02d}:").grid(row=r, column=c * 2, sticky='e', padx=2, pady=1)
-            var = tk.StringVar()
-            self.pv_vars.append(var)
-            ttk.Entry(pv_grid, textvariable=var, width=14).grid(
-                row=r, column=c * 2 + 1, sticky='w', padx=2)
+    def _filter_teams(self):
+        """Filter teams tree by the text in the filter entry."""
+        query = self._filter_var.get().strip().lower()
+        if not self.current_save:
+            return
 
-        # Hex dump section
-        hex_frame = ttk.LabelFrame(right_inner, text="Raw Record Hex (100 bytes)")
-        hex_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        # Re-populate tree with matching teams
+        for node in self._div_nodes.values():
+            for child in self.teams_tree.get_children(node):
+                self.teams_tree.delete(child)
 
-        self.hex_text = tk.Text(hex_frame, height=8, font=(_MONO, 11), state='disabled',
-                                wrap='none', bg='#1e1e1e', fg='#d4d4d4',
-                                insertbackground='white')
-        self.hex_text.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        counts = {d: 0 for d in range(4)}
+        for team in self.current_save.teams:
+            name = team.name if team.name else f"(record {team.index})"
+            if query and query not in name.lower():
+                continue
+            d = team.division if team.division is not None else 0
+            if d < 0 or d > 3:
+                d = 0
+            tag = 'teamrow' if counts[d] % 2 == 0 else 'teamrow_odd'
+            self.teams_tree.insert(self._div_nodes[d], 'end',
+                                   iid=f"team_{team.index}",
+                                   text=f"{team.index:2d}",
+                                   values=(name,), tags=(tag,))
+            counts[d] += 1
 
-        # Status bar
-        self.status_var = tk.StringVar(value="Ready — Open an ADF to begin")
-        ttk.Label(self.root, textvariable=self.status_var, relief='sunken',
-                  anchor='w').pack(fill=tk.X, side=tk.BOTTOM, padx=2, pady=2)
+    def _show_team_header(self, team):
+        """Show team header bar and notebook, hide empty state."""
+        T = _THEME
+        name = team.name if team.name else f"(record {team.index})"
+        div = team.division
+        div_str = f"Division {div + 1}" if div is not None else f"Div ?"
+
+        self._team_hdr_lbl.config(text=name)
+        self._team_hdr_div.config(text=div_str)
+
+        self._empty_frame.pack_forget()
+        self._team_hdr_frame.pack(fill=tk.X)
+        self._team_hdr_frame.pack_propagate(False)
+        self._nb.pack(fill=tk.BOTH, expand=True)
+
+        self.nav_var.set(f"{name} > Roster")
+
+    def _on_tab_changed(self, event=None):
+        """Update nav breadcrumb when tab changes."""
+        if not self.current_team:
+            return
+        try:
+            idx = self._nb.index(self._nb.select())
+            tab_name = self._tab_names[idx]
+        except (tk.TclError, IndexError):
+            return
+        name = self.current_team.name if self.current_team.name else f"(record {self.current_team.index})"
+        self.nav_var.set(f"{name} > {tab_name}")
+
+    # ── Inline roster editing ──
+
+    def _start_inline_edit(self, event=None):
+        """Begin inline editing of the ID column on the selected roster row."""
+        sel = self.roster_tree.selection()
+        if not sel:
+            return
+        item = sel[0]
+
+        # Identify the ID column
+        col_id = self.roster_tree.identify_column(event.x) if event else '#2'
+        if col_id != '#2':
+            return
+
+        bbox = self.roster_tree.bbox(item, column='id')
+        if not bbox:
+            return
+
+        x, y, w, h = bbox
+        T = _THEME
+
+        self._cancel_inline_edit()
+
+        entry = tk.Entry(self.roster_tree, font=T['font'],
+                         bg=T['bg_elevated'], fg=T['text_bright'],
+                         insertbackground=T['text_bright'],
+                         highlightthickness=1,
+                         highlightcolor=T['accent'],
+                         borderwidth=0)
+        current_val = self.roster_tree.set(item, 'id')
+        entry.insert(0, current_val)
+        entry.select_range(0, tk.END)
+        entry.place(x=x, y=y, width=w, height=h)
+        entry.focus_set()
+
+        entry.bind('<Return>', lambda e: self._confirm_inline_edit(item, entry))
+        entry.bind('<Escape>', lambda e: self._cancel_inline_edit())
+        entry.bind('<FocusOut>', lambda e: self._cancel_inline_edit())
+
+        self._inline_entry = entry
+
+    def _confirm_inline_edit(self, item, entry):
+        """Apply inline edit — update player ID."""
+        val_str = entry.get().strip().upper()
+        entry.destroy()
+        self._inline_entry = None
+
+        try:
+            slot_str = self.roster_tree.set(item, 'slot')
+            slot = int(slot_str)
+        except (ValueError, KeyError):
+            return
+
+        try:
+            if val_str == 'FFFF' or val_str == '0XFFFF':
+                pid = 0xFFFF
+            elif val_str.startswith('0X'):
+                pid = int(val_str, 16)
+            else:
+                pid = int(val_str)
+        except ValueError:
+            return
+
+        self._player_ids[slot] = pid
+
+        # Update display
+        if pid == 0xFFFF:
+            self.roster_tree.set(item, 'id', 'FFFF')
+            self.roster_tree.set(item, 'name', '\u2014')
+            self.roster_tree.item(item, tags=('empty',))
+        else:
+            self.roster_tree.set(item, 'id', str(pid))
+            name = player_name_str(self.game_disk, pid)
+            self.roster_tree.set(item, 'name', name)
+            tag = 'oddrow' if slot % 2 else 'evenrow'
+            self.roster_tree.item(item, tags=(tag,))
+
+        self._update_roster_count()
+
+    def _cancel_inline_edit(self):
+        """Cancel any active inline edit."""
+        if self._inline_entry:
+            self._inline_entry.destroy()
+            self._inline_entry = None
+
+    def _set_player_id_btn(self):
+        """Trigger inline edit on the currently selected roster row."""
+        sel = self.roster_tree.selection()
+        if not sel:
+            return
+
+        item = sel[0]
+        bbox = self.roster_tree.bbox(item, column='id')
+        if not bbox:
+            return
+
+        # Create a fake event-like trigger
+        class _FakeEvent:
+            pass
+        evt = _FakeEvent()
+        evt.x = bbox[0] + 1
+        self._start_inline_edit(evt)
+
+    def _remove_player_btn(self):
+        """Set the selected roster slot to FFFF (empty)."""
+        sel = self.roster_tree.selection()
+        if not sel:
+            return
+        item = sel[0]
+        try:
+            slot = int(self.roster_tree.set(item, 'slot'))
+        except (ValueError, KeyError):
+            return
+
+        self._player_ids[slot] = 0xFFFF
+        self.roster_tree.set(item, 'id', 'FFFF')
+        self.roster_tree.set(item, 'name', '\u2014')
+        self.roster_tree.item(item, tags=('empty',))
+        self._update_roster_count()
+
+    def _update_roster_count(self):
+        """Update the N/25 roster count label."""
+        n = sum(1 for pid in self._player_ids if pid != 0xFFFF)
+        self._roster_count.config(text=f"{n}/{MAX_PLAYER_SLOTS}")
 
     # ── File operations ──
 
@@ -494,24 +815,51 @@ class PMSaveDiskToolApp:
             messagebox.showerror("Error", f"Could not parse save:\n{e}")
             return
 
-        # Populate teams tree
-        self.teams_tree.delete(*self.teams_tree.get_children())
+        # Clear filter
+        self._filter_var.set("")
+
+        # Populate division-grouped teams tree
+        for node in self._div_nodes.values():
+            for child in self.teams_tree.get_children(node):
+                self.teams_tree.delete(child)
+
+        counts = {d: 0 for d in range(4)}
         for team in self.current_save.teams:
-            div = team.division
-            div_str = str(div) if div is not None else "?"
             name = team.name if team.name else f"(record {team.index})"
-            self.teams_tree.insert('', 'end', values=(team.index, name, div_str))
+            d = team.division if team.division is not None else 0
+            if d < 0 or d > 3:
+                d = 0
+            tag = 'teamrow' if counts[d] % 2 == 0 else 'teamrow_odd'
+            self.teams_tree.insert(self._div_nodes[d], 'end',
+                                   iid=f"team_{team.index}",
+                                   text=f"{team.index:2d}",
+                                   values=(name,), tags=(tag,))
+            counts[d] += 1
+
+        total = len(self.current_save.teams)
+        self._teams_label.config(text=f"TEAMS ({total})")
 
         self.status_var.set(
-            f"Save: {entry.name} — {len(self.current_save.teams)} teams, "
+            f"Save: {entry.name} \u2014 {total} teams, "
             f"{entry.size_bytes} bytes")
 
     def on_team_select(self, event):
         sel = self.teams_tree.selection()
         if not sel or not self.current_save:
             return
-        values = self.teams_tree.item(sel[0], 'values')
-        idx = int(values[0])
+
+        item_id = sel[0]
+        # Ignore division header clicks
+        if item_id in self._div_nodes.values():
+            return
+
+        # Extract team index from iid "team_N"
+        if not item_id.startswith("team_"):
+            return
+        try:
+            idx = int(item_id.split("_", 1)[1])
+        except (ValueError, IndexError):
+            return
 
         team = None
         for t in self.current_save.teams:
@@ -522,6 +870,7 @@ class PMSaveDiskToolApp:
             return
 
         self.current_team = team
+        self._show_team_header(team)
         self._display_team(team)
 
     def _display_team(self, team):
@@ -537,15 +886,23 @@ class PMSaveDiskToolApp:
         for i, var in enumerate(self.stat_vars):
             var.set(str(team.league_stats[i]))
 
-        for i, var in enumerate(self.pv_vars):
+        # Populate roster tree
+        self.roster_tree.delete(*self.roster_tree.get_children())
+        self._player_ids = list(team.player_values)
+        for i in range(MAX_PLAYER_SLOTS):
             v = team.player_values[i]
             if v == 0xFFFF:
-                var.set("FFFF")
-            elif self.game_disk:
-                name = self.game_disk.player_name(v)
-                var.set(f"{v} {name}" if name else str(v))
+                self.roster_tree.insert('', 'end',
+                                        values=(i, 'FFFF', '\u2014'),
+                                        tags=('empty',))
             else:
-                var.set(str(v))
+                name = player_name_str(self.game_disk, v)
+                tag = 'oddrow' if i % 2 else 'evenrow'
+                self.roster_tree.insert('', 'end',
+                                        values=(i, str(v), name),
+                                        tags=(tag,))
+
+        self._update_roster_count()
 
         # Hex dump
         self.hex_text.config(state='normal')
@@ -555,7 +912,7 @@ class PMSaveDiskToolApp:
         for i in range(0, len(team.raw), 16):
             chunk = team.raw[i:i + 16]
             hex_str = ' '.join(f'{b:02X}' for b in chunk)
-            asc_str = ''.join(chr(b) if 32 <= b < 127 else '·' for b in chunk)
+            asc_str = ''.join(chr(b) if 32 <= b < 127 else '\u00b7' for b in chunk)
             hex_lines.append(f"+{i:03d}  {hex_str:<48s}  {asc_str}")
 
         self.hex_text.insert('1.0', '\n'.join(hex_lines))
@@ -604,28 +961,21 @@ class PMSaveDiskToolApp:
             except ValueError:
                 pass
 
-        # Player values (field may contain "123 Surname" — take first token)
-        for i, var in enumerate(self.pv_vars):
-            try:
-                val = var.get().strip().split()[0].upper()
-                if val == 'FFFF':
-                    team.player_values[i] = 0xFFFF
-                else:
-                    team.player_values[i] = int(val, 16) if val.startswith('0X') else int(val)
-            except (ValueError, IndexError):
-                pass
+        # Player values from roster
+        for i in range(MAX_PLAYER_SLOTS):
+            team.player_values[i] = self._player_ids[i]
 
         # Write back
         self.current_save.write_back()
         self._display_team(team)
 
-        # Refresh tree
-        for item in self.teams_tree.get_children():
-            vals = self.teams_tree.item(item, 'values')
-            if int(vals[0]) == team.index:
-                self.teams_tree.item(item, values=(team.index, team.name, str(team.word_66)))
-                break
+        # Refresh sidebar tree
+        item_id = f"team_{team.index}"
+        if self.teams_tree.exists(item_id):
+            name = team.name if team.name else f"(record {team.index})"
+            self.teams_tree.item(item_id, values=(name,))
 
+        self._show_team_header(team)
         self.status_var.set(f"Applied changes to {team.name}")
 
     def become_manager(self):
