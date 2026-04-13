@@ -167,6 +167,10 @@ def _make_scrolled_tree(parent, columns, headings, widths, anchors=None,
     vsb.pack(side=tk.RIGHT, fill=tk.Y)
     tree.pack(fill=tk.BOTH, expand=True)
     tree._pid_map = {}
+    # Alternating row colors for dark theme
+    T = _THEME
+    tree.tag_configure('oddrow',  background=T['bg_elevated'])
+    tree.tag_configure('evenrow', background=T['bg_deep'])
     if on_double_click:
         tree.bind('<Double-1>', on_double_click)
     return tree
