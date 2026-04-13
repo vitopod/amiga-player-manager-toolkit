@@ -43,6 +43,14 @@ MAX_TEAMS = 44             # Max teams in a save file
 MAX_PLAYER_SLOTS = 25      # Words at bytes 12-61 (50 bytes / 2)
 LIGA_NAME_ENTRY_SIZE = 20  # LigaName.nam: 44 × 20-byte entries
 LIGA_NAME_TEAMS = 44
+PLAYER_RECORD_SIZE = 42    # Each player attribute record is 42 bytes
+PLAYER_DB_HEADER_SIZE = 2  # 2-byte BE header before player records
+
+POSITION_NAMES = {0: "?", 1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
+SKILL_NAMES = [
+    "Stamina", "Resilience", "Pace", "Agility", "Aggression",
+    "Flair", "Passing", "Shooting", "Tackling", "Keeping",
+]
 
 
 # ─── ADF Layer ───────────────────────────────────────────────────────
@@ -281,6 +289,155 @@ class SaveFile:
             off = team.index * TEAM_RECORD_SIZE
             self.data[off:off + TEAM_RECORD_SIZE] = packed
         self.adf.write_bytes(self.entry.byte_offset, bytes(self.data))
+
+
+# ─── Player Record ──────────────────────────────────────────────────
+
+class PlayerRecord:
+    """One player's 42-byte attribute record from the save disk database.
+
+    The game stores the full player database (42 bytes × ~1037 players)
+    on the save disk immediately after each .sav file.  Attributes are
+    procedurally generated at runtime, then persisted so they survive
+    load/save cycles.
+    """
+
+    __slots__ = (
+        'player_id', 'raw',
+        'rng_seed', 'age', 'position', 'division', 'team_index',
+        'height', 'weight',
+        'stamina', 'resilience', 'pace', 'agility', 'aggression',
+        'flair', 'passing', 'shooting', 'tackling', 'keeping',
+        'injury_weeks', 'disciplinary', 'morale', 'value',
+        'transfer_weeks', 'mystery',
+        'injuries_this_year', 'injuries_last_year',
+        'dsp_pts_this_year', 'dsp_pts_last_year',
+        'goals_this_year', 'goals_last_year',
+        'matches_this_year', 'matches_last_year',
+        'div1_years', 'div2_years', 'div3_years', 'div4_years',
+        'int_years', 'contract_years', 'last_byte',
+    )
+
+    def __init__(self, raw_42, player_id):
+        self.player_id = player_id
+        self.raw = bytes(raw_42)
+        r = raw_42
+        self.rng_seed       = struct.unpack_from('>I', r, 0)[0]
+        self.age            = r[4]
+        self.position       = r[5]
+        self.division       = r[6]
+        self.team_index     = r[7]
+        self.height         = r[8]
+        self.weight         = r[9]
+        # 10 skills at offsets 0x0A–0x13
+        self.stamina        = r[0x0A]
+        self.resilience     = r[0x0B]
+        self.pace           = r[0x0C]
+        self.agility        = r[0x0D]
+        self.aggression     = r[0x0E]
+        self.flair          = r[0x0F]
+        self.passing        = r[0x10]
+        self.shooting       = r[0x11]
+        self.tackling       = r[0x12]
+        self.keeping        = r[0x13]
+        # Status
+        self.injury_weeks   = r[0x15]
+        self.disciplinary   = r[0x16]
+        self.morale         = r[0x17]
+        self.value          = r[0x18]
+        self.transfer_weeks = r[0x19]
+        self.mystery        = r[0x1A]
+        # Career stats
+        self.injuries_this_year = r[0x1B]
+        self.injuries_last_year = r[0x1C]
+        self.dsp_pts_this_year  = r[0x1D]
+        self.dsp_pts_last_year  = r[0x1E]
+        self.goals_this_year    = r[0x1F]
+        self.goals_last_year    = r[0x20]
+        self.matches_this_year  = r[0x21]
+        self.matches_last_year  = r[0x22]
+        self.div1_years     = r[0x23]
+        self.div2_years     = r[0x24]
+        self.div3_years     = r[0x25]
+        self.div4_years     = r[0x26]
+        self.int_years      = r[0x27]
+        self.contract_years = r[0x28]
+        self.last_byte      = r[0x29]
+
+    @property
+    def position_name(self):
+        return POSITION_NAMES.get(self.position, "?")
+
+    @property
+    def skills(self):
+        """Return list of 10 skill values in canonical order."""
+        return [
+            self.stamina, self.resilience, self.pace, self.agility,
+            self.aggression, self.flair, self.passing, self.shooting,
+            self.tackling, self.keeping,
+        ]
+
+    @property
+    def skill_avg(self):
+        """Average of all 10 skills."""
+        s = self.skills
+        return sum(s) / len(s)
+
+    def role_skill_avg(self):
+        """Average of position-relevant skills.
+        GK: Keeping, Agility, Resilience
+        DEF: Tackling, Stamina, Aggression, Pace
+        MID: Passing, Flair, Stamina, Agility
+        FWD: Shooting, Pace, Flair, Agility
+        """
+        if self.position == 1:  # GK
+            vals = [self.keeping, self.agility, self.resilience]
+        elif self.position == 2:  # DEF
+            vals = [self.tackling, self.stamina, self.aggression, self.pace]
+        elif self.position == 3:  # MID
+            vals = [self.passing, self.flair, self.stamina, self.agility]
+        elif self.position == 4:  # FWD
+            vals = [self.shooting, self.pace, self.flair, self.agility]
+        else:
+            vals = self.skills
+        return sum(vals) / len(vals) if vals else 0
+
+    @property
+    def total_career_years(self):
+        return self.div1_years + self.div2_years + self.div3_years + self.div4_years
+
+    def __repr__(self):
+        return (f"PlayerRecord(id={self.player_id}, age={self.age}, "
+                f"pos={self.position_name}, skills_avg={self.skill_avg:.0f})")
+
+
+def parse_player_db(adf, dir_entry):
+    """Parse the player attribute database that follows a .sav file on disk.
+
+    Returns a dict mapping player_id → PlayerRecord, or empty dict if
+    the database is not found or unreadable.
+    """
+    db_offset = dir_entry.byte_offset + dir_entry.size_bytes
+    # Check there's enough room for at least the 2-byte header + one record
+    if db_offset + PLAYER_DB_HEADER_SIZE + PLAYER_RECORD_SIZE > ADF_SIZE:
+        return {}
+    header_raw = adf.read_bytes(db_offset, PLAYER_DB_HEADER_SIZE)
+    _header_word = struct.unpack_from('>H', header_raw, 0)[0]
+    records_start = db_offset + PLAYER_DB_HEADER_SIZE
+    # Read as many 42-byte records as fit before hitting the ADF boundary
+    available = ADF_SIZE - records_start
+    max_players = available // PLAYER_RECORD_SIZE
+    # Sanity cap — the game has ~1037 players
+    max_players = min(max_players, 1100)
+    players = {}
+    for pid in range(max_players):
+        off = records_start + pid * PLAYER_RECORD_SIZE
+        raw = adf.read_bytes(off, PLAYER_RECORD_SIZE)
+        # Skip completely zeroed records (unused slots)
+        if all(b == 0 for b in raw):
+            continue
+        players[pid] = PlayerRecord(raw, pid)
+    return players
 
 
 # ─── Game Disk / Patch Composer ──────────────────────────────────────
@@ -1513,6 +1670,7 @@ class PMSaveDiskToolApp:
         tools_menu.add_separator()
         tools_menu.add_command(label="League Tables…", command=self.show_league_tables)
         tools_menu.add_command(label="Compare Saves…", command=self.show_compare_saves)
+        tools_menu.add_command(label="Championship Highlights…", command=self.show_highlights)
         tools_menu.add_separator()
         tools_menu.add_command(label="Tactics Viewer…", command=self.show_tactics_viewer)
         tools_menu.add_command(label="Disassembler…", command=self.show_disassembler)
@@ -1999,6 +2157,14 @@ class PMSaveDiskToolApp:
             return
         CompareSavesDialog(self.root, self.adf, self.dir_entries,
                            game_disk=self.game_disk)
+
+    def show_highlights(self):
+        if not self.current_save:
+            messagebox.showinfo("Info", "Select a save slot first.")
+            return
+        ChampionshipHighlightsWindow(
+            self.root, self.current_save, self.adf,
+            game_disk=self.game_disk, liga_names=self.liga_names)
 
     def show_disk_info(self):
         if not self.adf:
@@ -2921,6 +3087,365 @@ class TacticsViewerWindow(tk.Toplevel):
 
     def _on_release(self, event):
         self._drag_player = None
+
+
+# ─── Championship Highlights ────────────────────────────────────────
+
+class ChampionshipHighlightsWindow(tk.Toplevel):
+    """Player attribute browser and championship highlights for a save slot.
+
+    Tabs:
+    - Best By Position: top 10 players for each role (GK/DEF/MID/FWD)
+    - Top Scorers / Most Matches
+    - Young Talents (age 16-22)
+    - Market Values (highest value players)
+    - Squad Analyst (per-team view with renew/sack hints)
+    """
+
+    _TOP_N = 15
+
+    def __init__(self, parent, save, adf, game_disk=None, liga_names=None):
+        super().__init__(parent)
+        self.title(f"Championship Highlights — {save.entry.name}")
+        self.geometry("1020x700")
+        self.resizable(True, True)
+        self._save = save
+        self._adf = adf
+        self._game_disk = game_disk
+        self._liga = liga_names or []
+        self._players = parse_player_db(adf, save.entry)
+        self._build_ui()
+
+    def _player_name(self, pid):
+        if self._game_disk:
+            return self._game_disk.player_name(pid)
+        return f"#{pid}"
+
+    def _team_name(self, team_idx):
+        if team_idx == 0xFF:
+            return "Free Agent"
+        if 0 <= team_idx < len(self._liga):
+            return self._liga[team_idx]
+        return f"Team {team_idx}"
+
+    def _build_ui(self):
+        if not self._players:
+            ttk.Label(self, text="No player database found for this save slot.",
+                      font=("", 13)).pack(pady=40)
+            return
+
+        ttk.Label(self,
+                  text=f"{self._save.entry.name} — {len(self._players)} players",
+                  font=("", 12, "bold")).pack(pady=6)
+
+        nb = ttk.Notebook(self)
+        nb.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
+
+        # Tab 1: Best by Position
+        tab_pos = ttk.Frame(nb)
+        nb.add(tab_pos, text="Best By Position")
+        self._build_position_tab(tab_pos)
+
+        # Tab 2: Top Scorers / Matches
+        tab_stats = ttk.Frame(nb)
+        nb.add(tab_stats, text="Top Scorers")
+        self._build_scorers_tab(tab_stats)
+
+        # Tab 3: Young Talents
+        tab_young = ttk.Frame(nb)
+        nb.add(tab_young, text="Young Talents")
+        self._build_young_tab(tab_young)
+
+        # Tab 4: Market Values
+        tab_value = ttk.Frame(nb)
+        nb.add(tab_value, text="Market Values")
+        self._build_value_tab(tab_value)
+
+        # Tab 5: Squad Analyst
+        tab_squad = ttk.Frame(nb)
+        nb.add(tab_squad, text="Squad Analyst")
+        self._build_squad_tab(tab_squad)
+
+    # ── Common Treeview builder ──
+
+    def _make_tree(self, parent, columns, headings, widths, anchors=None):
+        frame = ttk.Frame(parent)
+        frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        tree = ttk.Treeview(frame, columns=columns, show='headings')
+        for col, hd, w in zip(columns, headings, widths):
+            tree.heading(col, text=hd)
+            anc = 'center'
+            if anchors and col in anchors:
+                anc = anchors[col]
+            tree.column(col, width=w, anchor=anc)
+        vsb = ttk.Scrollbar(frame, orient='vertical', command=tree.yview)
+        tree.configure(yscrollcommand=vsb.set)
+        vsb.pack(side=tk.RIGHT, fill=tk.Y)
+        tree.pack(fill=tk.BOTH, expand=True)
+        return tree
+
+    # ── Tab: Best by Position ──
+
+    def _build_position_tab(self, parent):
+        pos_nb = ttk.Notebook(parent)
+        pos_nb.pack(fill=tk.BOTH, expand=True)
+        for pos_code, pos_label in [(1, "Goalkeepers"), (2, "Defenders"),
+                                     (3, "Midfielders"), (4, "Forwards")]:
+            tab = ttk.Frame(pos_nb)
+            pos_nb.add(tab, text=pos_label)
+            self._build_pos_subtab(tab, pos_code)
+
+    def _build_pos_subtab(self, parent, pos_code):
+        players = [p for p in self._players.values() if p.position == pos_code]
+        players.sort(key=lambda p: -p.role_skill_avg())
+        players = players[:self._TOP_N]
+
+        cols = ("rank", "name", "age", "team", "role_avg", "overall",
+                "sk1", "sk2", "sk3", "sk4", "goals", "matches")
+        # Pick position-relevant skill headers
+        if pos_code == 1:
+            sk_heads = ["Keep", "Agi", "Res"]
+            sk_attrs = ["keeping", "agility", "resilience"]
+        elif pos_code == 2:
+            sk_heads = ["Tck", "Sta", "Agg", "Pac"]
+            sk_attrs = ["tackling", "stamina", "aggression", "pace"]
+        elif pos_code == 3:
+            sk_heads = ["Pas", "Fla", "Sta", "Agi"]
+            sk_attrs = ["passing", "flair", "stamina", "agility"]
+        else:
+            sk_heads = ["Sht", "Pac", "Fla", "Agi"]
+            sk_attrs = ["shooting", "pace", "flair", "agility"]
+
+        headings = ["#", "Name", "Age", "Team", "Role", "Avg"] + sk_heads + ["Gls", "Mat"]
+        widths = [30, 140, 40, 140, 50, 50] + [45] * len(sk_heads) + [40, 40]
+        tree = self._make_tree(parent, cols[:6 + len(sk_heads) + 2],
+                               headings, widths,
+                               anchors={"name": "w", "team": "w"})
+
+        for rank, p in enumerate(players, 1):
+            sk_vals = [str(getattr(p, a)) for a in sk_attrs]
+            # Pad to 4 if fewer skills
+            while len(sk_vals) < 4:
+                sk_vals.append("")
+            tree.insert('', 'end', values=(
+                rank,
+                self._player_name(p.player_id),
+                p.age,
+                self._team_name(p.team_index),
+                f"{p.role_skill_avg():.0f}",
+                f"{p.skill_avg:.0f}",
+                *sk_vals[:len(sk_attrs)],
+                p.goals_this_year,
+                p.matches_this_year,
+            ))
+
+    # ── Tab: Top Scorers ──
+
+    def _build_scorers_tab(self, parent):
+        scorer_nb = ttk.Notebook(parent)
+        scorer_nb.pack(fill=tk.BOTH, expand=True)
+
+        # Sub-tab: Goals this year
+        tab_g = ttk.Frame(scorer_nb)
+        scorer_nb.add(tab_g, text="Goals This Year")
+        self._build_stat_list(tab_g, "goals_this_year", "Goals")
+
+        # Sub-tab: Goals last year
+        tab_gl = ttk.Frame(scorer_nb)
+        scorer_nb.add(tab_gl, text="Goals Last Year")
+        self._build_stat_list(tab_gl, "goals_last_year", "Goals")
+
+        # Sub-tab: Matches this year
+        tab_m = ttk.Frame(scorer_nb)
+        scorer_nb.add(tab_m, text="Matches This Year")
+        self._build_stat_list(tab_m, "matches_this_year", "Matches")
+
+        # Sub-tab: Display points
+        tab_d = ttk.Frame(scorer_nb)
+        scorer_nb.add(tab_d, text="Display Pts This Year")
+        self._build_stat_list(tab_d, "dsp_pts_this_year", "DspPts")
+
+    def _build_stat_list(self, parent, attr, label):
+        players = sorted(self._players.values(),
+                         key=lambda p: -getattr(p, attr))
+        players = [p for p in players if getattr(p, attr) > 0][:self._TOP_N]
+        cols = ("rank", "name", "pos", "age", "team", "stat", "avg")
+        headings = ["#", "Name", "Pos", "Age", "Team", label, "Skill Avg"]
+        widths = [30, 140, 50, 40, 140, 60, 60]
+        tree = self._make_tree(parent, cols, headings, widths,
+                               anchors={"name": "w", "team": "w"})
+        for rank, p in enumerate(players, 1):
+            tree.insert('', 'end', values=(
+                rank,
+                self._player_name(p.player_id),
+                p.position_name,
+                p.age,
+                self._team_name(p.team_index),
+                getattr(p, attr),
+                f"{p.skill_avg:.0f}",
+            ))
+
+    # ── Tab: Young Talents ──
+
+    def _build_young_tab(self, parent):
+        young = [p for p in self._players.values() if 16 <= p.age <= 22]
+        young.sort(key=lambda p: -p.role_skill_avg())
+        young = young[:30]
+
+        cols = ("rank", "name", "pos", "age", "team", "role_avg", "overall",
+                "goals", "matches", "contract")
+        headings = ["#", "Name", "Pos", "Age", "Team", "Role", "Avg",
+                    "Gls", "Mat", "Contract"]
+        widths = [30, 140, 50, 40, 140, 50, 50, 40, 40, 60]
+        tree = self._make_tree(parent, cols, headings, widths,
+                               anchors={"name": "w", "team": "w"})
+        for rank, p in enumerate(young, 1):
+            tree.insert('', 'end', values=(
+                rank,
+                self._player_name(p.player_id),
+                p.position_name,
+                p.age,
+                self._team_name(p.team_index),
+                f"{p.role_skill_avg():.0f}",
+                f"{p.skill_avg:.0f}",
+                p.goals_this_year,
+                p.matches_this_year,
+                p.contract_years,
+            ))
+
+    # ── Tab: Market Values ──
+
+    def _build_value_tab(self, parent):
+        valued = sorted(self._players.values(), key=lambda p: -p.value)
+        valued = [p for p in valued if p.value > 0][:30]
+
+        cols = ("rank", "name", "pos", "age", "team", "value", "role_avg",
+                "overall", "goals", "matches")
+        headings = ["#", "Name", "Pos", "Age", "Team", "Value", "Role",
+                    "Avg", "Gls", "Mat"]
+        widths = [30, 140, 50, 40, 140, 50, 50, 50, 40, 40]
+        tree = self._make_tree(parent, cols, headings, widths,
+                               anchors={"name": "w", "team": "w"})
+        for rank, p in enumerate(valued, 1):
+            tree.insert('', 'end', values=(
+                rank,
+                self._player_name(p.player_id),
+                p.position_name,
+                p.age,
+                self._team_name(p.team_index),
+                p.value,
+                f"{p.role_skill_avg():.0f}",
+                f"{p.skill_avg:.0f}",
+                p.goals_this_year,
+                p.matches_this_year,
+            ))
+
+    # ── Tab: Squad Analyst ──
+
+    def _build_squad_tab(self, parent):
+        top = ttk.Frame(parent)
+        top.pack(fill=tk.X, padx=4, pady=4)
+        ttk.Label(top, text="Team:").pack(side=tk.LEFT)
+        self._squad_var = tk.StringVar()
+        team_names = []
+        self._squad_team_map = {}  # display_name → team_index
+        for team in self._save.teams:
+            if team.num_players > 0:
+                disp = team.name or f"(team {team.index})"
+                team_names.append(disp)
+                self._squad_team_map[disp] = team.index
+        combo = ttk.Combobox(top, textvariable=self._squad_var,
+                             values=team_names, state='readonly', width=30)
+        combo.pack(side=tk.LEFT, padx=8)
+        combo.bind('<<ComboboxSelected>>', self._on_squad_selected)
+
+        # Summary label
+        self._squad_summary = ttk.Label(parent, text="", font=("", 11))
+        self._squad_summary.pack(fill=tk.X, padx=8)
+
+        # Player list
+        cols = ("name", "pos", "age", "role_avg", "overall",
+                "goals", "matches", "inj", "contract", "hint")
+        headings = ["Name", "Pos", "Age", "Role", "Avg",
+                    "Gls", "Mat", "Inj", "Contract", "Hint"]
+        widths = [140, 50, 40, 50, 50, 40, 40, 35, 60, 120]
+        self._squad_tree = self._make_tree(parent, cols, headings, widths,
+                                           anchors={"name": "w", "hint": "w"})
+        self._squad_tree.tag_configure('renew', background='#d8f5d8')
+        self._squad_tree.tag_configure('sack', background='#f5d8d8')
+        self._squad_tree.tag_configure('watch', background='#f5f0d8')
+
+        if team_names:
+            combo.current(0)
+            self._on_squad_selected()
+
+    def _on_squad_selected(self, event=None):
+        disp = self._squad_var.get()
+        team_idx = self._squad_team_map.get(disp)
+        if team_idx is None:
+            return
+        team = self._save.teams[team_idx]
+
+        # Collect roster player records
+        roster = []
+        for i in range(MAX_PLAYER_SLOTS):
+            pid = struct.unpack_from('>H', team.raw, 12 + i * 2)[0]
+            if pid != 0xFFFF and pid in self._players:
+                roster.append(self._players[pid])
+
+        # Summary
+        if roster:
+            avg_age = sum(p.age for p in roster) / len(roster)
+            avg_skill = sum(p.skill_avg for p in roster) / len(roster)
+            total_goals = sum(p.goals_this_year for p in roster)
+            self._squad_summary.config(
+                text=f"{len(roster)} players | Avg age: {avg_age:.1f} | "
+                     f"Avg skill: {avg_skill:.0f} | Team goals: {total_goals}")
+        else:
+            self._squad_summary.config(text="No player data available")
+
+        # Sort by position then role skill
+        roster.sort(key=lambda p: (p.position, -p.role_skill_avg()))
+
+        tree = self._squad_tree
+        tree.delete(*tree.get_children())
+        for p in roster:
+            hint, tag = self._squad_hint(p)
+            tree.insert('', 'end', tags=(tag,), values=(
+                self._player_name(p.player_id),
+                p.position_name,
+                p.age,
+                f"{p.role_skill_avg():.0f}",
+                f"{p.skill_avg:.0f}",
+                p.goals_this_year,
+                p.matches_this_year,
+                p.injury_weeks if p.injury_weeks else "",
+                p.contract_years,
+                hint,
+            ))
+
+    def _squad_hint(self, p):
+        """Return (hint_text, tag) for renew/sack/watch recommendations."""
+        role_avg = p.role_skill_avg()
+        # Young + high potential → renew
+        if p.age <= 22 and role_avg >= 100:
+            return "Young talent", "renew"
+        # Star player with expiring contract → renew urgently
+        if role_avg >= 130 and p.contract_years <= 1:
+            return "Renew contract!", "renew"
+        # Old + declining → consider selling
+        if p.age >= 30 and role_avg < 100:
+            return "Past peak", "sack"
+        # Injury-prone
+        if p.injuries_this_year + p.injuries_last_year >= 4:
+            return "Injury prone", "watch"
+        # Low skill for position
+        if role_avg < 70:
+            return "Below average", "sack"
+        # Good performer
+        if role_avg >= 130:
+            return "Star player", "renew"
+        return "", ""
 
 
 # ─── Disassembler Window ────────────────────────────────────────────

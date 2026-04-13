@@ -200,6 +200,42 @@ Disk offset = `start_field × 32`.
 | `*.tac` | 928–980 | Tactics files (see Tactics format below) |
 | `data.disk` | 10 | ASCII string `"data.disk\0"` |
 
+### Player database (42 bytes × ~1037 players)
+
+The game stores a full player attribute database on the save disk immediately after each `.sav` file. Attributes are procedurally generated at runtime by the RNG function at $050E8, then persisted so they survive load/save cycles.
+
+**Location**: For a file table entry `e`, the player DB starts at `e.byte_offset + e.size_bytes`. First 2 bytes are a BE word header (values 1–4 observed), then 42-byte records indexed by player ID.
+
+**42-byte record layout** (all single bytes unless noted):
+
+| Offset | Field | Notes |
+|--------|-------|-------|
+| +00–03 | RNG Seed | 4-byte BE longword |
+| +04 | Age | Starts at 16, increments each season |
+| +05 | Position | 0=unset, 1=GK, 2=DEF, 3=MID, 4=FWD |
+| +06 | Division | 0–3 |
+| +07 | Team index | 0xFF = free agent |
+| +08 | Height (cm) | Range ~150–250 |
+| +09 | Weight (kg) | Range ~40–100 |
+| +0A–13 | Skills | Stamina, Resilience, Pace, Agility, Aggression, Flair, Passing, Shooting, Tackling, Keeping (0–200 each) |
+| +14 | Reserved | Always 0 |
+| +15 | Injury weeks | |
+| +16 | Disciplinary | Bit-packed: high 6 + low 2 |
+| +17 | Morale | Bit-packed: high 6 + low 2 |
+| +18 | Value | 0–255, likely market value |
+| +19 | Transfer weeks | |
+| +1A | Mystery | Bit-packed: bits 0–5 and 6–7 |
+| +1B–1C | Injuries this/last year | |
+| +1D–1E | Display points this/last year | |
+| +1F–20 | Goals this/last year | |
+| +21–22 | Matches this/last year | |
+| +23–26 | Division years | Div1, Div2, Div3, Div4 |
+| +27 | International years | |
+| +28 | Contract years | |
+| +29 | Last byte | Partially correlates with position |
+
+**Windows tool confirmation**: Reverse-engineered from UltimateBinary's PE32 executable — `IMUL reg, reg, 0x2A` (42) matches the 68000 `MULU #42` at $050E8.
+
 ### Tactics file format (.tac)
 
 928 bytes base (some templates 980 bytes with 52-byte icon appended):
