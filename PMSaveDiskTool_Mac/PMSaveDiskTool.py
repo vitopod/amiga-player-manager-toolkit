@@ -410,6 +410,50 @@ class PlayerRecord:
         return (f"PlayerRecord(id={self.player_id}, age={self.age}, "
                 f"pos={self.position_name}, skills_avg={self.skill_avg:.0f})")
 
+    def pack(self):
+        """Serialize this record back to 42 bytes."""
+        buf = bytearray(42)
+        struct.pack_into('>I', buf, 0, self.rng_seed)
+        buf[4]    = self.age
+        buf[5]    = self.position
+        buf[6]    = self.division
+        buf[7]    = self.team_index
+        buf[8]    = self.height
+        buf[9]    = self.weight
+        buf[0x0A] = self.stamina
+        buf[0x0B] = self.resilience
+        buf[0x0C] = self.pace
+        buf[0x0D] = self.agility
+        buf[0x0E] = self.aggression
+        buf[0x0F] = self.flair
+        buf[0x10] = self.passing
+        buf[0x11] = self.shooting
+        buf[0x12] = self.tackling
+        buf[0x13] = self.keeping
+        buf[0x14] = 0  # Reserved
+        buf[0x15] = self.injury_weeks
+        buf[0x16] = self.disciplinary
+        buf[0x17] = self.morale
+        buf[0x18] = self.value
+        buf[0x19] = self.transfer_weeks
+        buf[0x1A] = self.mystery
+        buf[0x1B] = self.injuries_this_year
+        buf[0x1C] = self.injuries_last_year
+        buf[0x1D] = self.dsp_pts_this_year
+        buf[0x1E] = self.dsp_pts_last_year
+        buf[0x1F] = self.goals_this_year
+        buf[0x20] = self.goals_last_year
+        buf[0x21] = self.matches_this_year
+        buf[0x22] = self.matches_last_year
+        buf[0x23] = self.div1_years
+        buf[0x24] = self.div2_years
+        buf[0x25] = self.div3_years
+        buf[0x26] = self.div4_years
+        buf[0x27] = self.int_years
+        buf[0x28] = self.contract_years
+        buf[0x29] = self.last_byte
+        return bytes(buf)
+
 
 def parse_player_db(adf, dir_entry):
     """Parse the player attribute database that follows a .sav file on disk.
