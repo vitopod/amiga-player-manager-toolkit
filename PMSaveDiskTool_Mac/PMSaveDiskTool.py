@@ -20,6 +20,15 @@ import dataclasses
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
 
+# ─── Platform ────────────────────────────────────────────────────────
+
+_IS_MAC   = sys.platform == 'darwin'
+_IS_WIN   = sys.platform == 'win32'
+_MOD      = 'Command' if _IS_MAC else 'Control'   # keyboard modifier key
+_MOD_DISP = '⌘' if _IS_MAC else 'Ctrl+'          # display label
+# Monospace font: Menlo on macOS, Consolas on Windows, fallback elsewhere
+_MONO = 'Menlo' if _IS_MAC else ('Consolas' if _IS_WIN else 'Monospace')
+
 # ─── Constants ───────────────────────────────────────────────────────
 
 ADF_SIZE = 901120          # 1760 sectors × 512 bytes
@@ -1456,7 +1465,7 @@ class Disasm68k:
 class PMSaveDiskToolApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("PM Save Disk Tool — Mac Edition")
+        self.root.title("PM Save Disk Tool")
         self.root.geometry("1060x800")
 
         self.adf = None
@@ -1487,13 +1496,13 @@ class PMSaveDiskToolApp:
         menubar = tk.Menu(self.root)
 
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="Open ADF…", command=self.open_adf, accelerator="Cmd+O")
-        file_menu.add_command(label="Save ADF", command=self.save_adf, accelerator="Cmd+S")
-        file_menu.add_command(label="Save ADF As…", command=self.save_adf_as, accelerator="Cmd+Shift+S")
+        file_menu.add_command(label="Open ADF…", command=self.open_adf, accelerator=f"{_MOD_DISP}O")
+        file_menu.add_command(label="Save ADF", command=self.save_adf, accelerator=f"{_MOD_DISP}S")
+        file_menu.add_command(label="Save ADF As…", command=self.save_adf_as, accelerator=f"{_MOD_DISP}Shift+S")
         file_menu.add_separator()
         file_menu.add_command(label="Export Save as Binary…", command=self.export_save)
         file_menu.add_separator()
-        file_menu.add_command(label="Quit", command=self.root.quit, accelerator="Cmd+Q")
+        file_menu.add_command(label="Quit", command=self.root.quit, accelerator=f"{_MOD_DISP}Q")
         menubar.add_cascade(label="File", menu=file_menu)
 
         tools_menu = tk.Menu(menubar, tearoff=0)
@@ -1512,8 +1521,8 @@ class PMSaveDiskToolApp:
         self.root.config(menu=menubar)
 
         # Key bindings
-        self.root.bind_all('<Command-o>', lambda e: self.open_adf())
-        self.root.bind_all('<Command-s>', lambda e: self.save_adf())
+        self.root.bind_all(f'<{_MOD}-o>', lambda e: self.open_adf())
+        self.root.bind_all(f'<{_MOD}-s>', lambda e: self.save_adf())
 
     # ── Layout ──
 
@@ -1653,7 +1662,7 @@ class PMSaveDiskToolApp:
         hex_frame = ttk.LabelFrame(right_inner, text="Raw Record Hex (100 bytes)")
         hex_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
 
-        self.hex_text = tk.Text(hex_frame, height=8, font=("Menlo", 11), state='disabled',
+        self.hex_text = tk.Text(hex_frame, height=8, font=(_MONO, 11), state='disabled',
                                 wrap='none', bg='#1e1e1e', fg='#d4d4d4',
                                 insertbackground='white')
         self.hex_text.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
@@ -1942,7 +1951,7 @@ class PMSaveDiskToolApp:
         count_var = tk.StringVar(value="2")
         ttk.Entry(ctrl, textvariable=count_var, width=4).pack(side=tk.LEFT, padx=4)
 
-        text = tk.Text(win, font=("Menlo", 11), wrap='none',
+        text = tk.Text(win, font=(_MONO, 11), wrap='none',
                        bg='#1e1e1e', fg='#d4d4d4')
         text.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
 
@@ -2021,7 +2030,7 @@ class PMSaveDiskToolApp:
         win = tk.Toplevel(self.root)
         win.title("Disk Info")
         win.geometry("500x600")
-        text = tk.Text(win, font=("Menlo", 11), wrap='word')
+        text = tk.Text(win, font=(_MONO, 11), wrap='word')
         text.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
         text.insert('1.0', '\n'.join(info))
         text.config(state='disabled')
@@ -2353,7 +2362,7 @@ class PatchComposerWindow(tk.Toplevel):
         win = tk.Toplevel(self)
         win.title("ASM Preview — Block 1137 Callback")
         win.geometry("720x560")
-        txt = tk.Text(win, font=("Menlo", 11), wrap='none',
+        txt = tk.Text(win, font=(_MONO, 11), wrap='none',
                       bg='#1e1e1e', fg='#d4d4d4')
         vsb = ttk.Scrollbar(win, orient='vertical', command=txt.yview)
         txt.configure(yscrollcommand=vsb.set)
@@ -2567,7 +2576,7 @@ class CompareSavesDialog(tk.Toplevel):
         res = ttk.LabelFrame(self, text="Comparison Results")
         res.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
 
-        self._txt = tk.Text(res, font=("Menlo", 11), wrap='none',
+        self._txt = tk.Text(res, font=(_MONO, 11), wrap='none',
                             bg='#1e1e1e', fg='#d4d4d4', state='disabled')
         vsb = ttk.Scrollbar(res, orient='vertical', command=self._txt.yview)
         hsb = ttk.Scrollbar(res, orient='horizontal', command=self._txt.xview)
@@ -2778,7 +2787,7 @@ class TacticsViewerWindow(tk.Toplevel):
             tk.Canvas(leg, width=12, height=12, bg=self._PLAYER_COLORS[i],
                       highlightthickness=1, highlightbackground='white'
                       ).pack(side=tk.LEFT, padx=1)
-            ttk.Label(leg, text=f"P{i}", font=('Menlo', 9)).pack(side=tk.LEFT, padx=(0, 4))
+            ttk.Label(leg, text=f"P{i}", font=(_MONO, 9)).pack(side=tk.LEFT, padx=(0, 4))
 
         # Status
         self._status = tk.StringVar(value="Select a .tac file and click Load")
@@ -2868,9 +2877,9 @@ class TacticsViewerWindow(tk.Toplevel):
 
         # Goal labels
         c.create_text(cw / 2, ch - m + 12, text="OWN GOAL", fill='white',
-                      font=('Menlo', 9))
+                      font=(_MONO, 9))
         c.create_text(cw / 2, m - 12, text="OPPONENT", fill='white',
-                      font=('Menlo', 9))
+                      font=(_MONO, 9))
 
         if not self._tac:
             return
@@ -2886,7 +2895,7 @@ class TacticsViewerWindow(tk.Toplevel):
             c.create_oval(cx - r, cy - r, cx + r, cy + r,
                           fill=color, outline='white', width=2, tags=f'p{p}')
             c.create_text(cx, cy, text=str(p), fill='white',
-                          font=('Menlo', 9, 'bold'), tags=f'p{p}')
+                          font=(_MONO, 9, 'bold'), tags=f'p{p}')
 
     def _on_click(self, event):
         if not self._tac:
@@ -2942,7 +2951,7 @@ class DisassemblerWindow(tk.Toplevel):
         ttk.Label(nav, text="Address:").pack(side=tk.LEFT, padx=4)
         self._addr_var = tk.StringVar(value="$000000")
         addr_entry = ttk.Entry(nav, textvariable=self._addr_var, width=10,
-                               font=('Menlo', 12))
+                               font=(_MONO, 12))
         addr_entry.pack(side=tk.LEFT, padx=4)
         addr_entry.bind('<Return>', lambda e: self._go_to_addr())
 
@@ -2982,21 +2991,21 @@ class DisassemblerWindow(tk.Toplevel):
         ttk.Label(sg, text="Find references to:").grid(row=0, column=0, sticky='e', padx=4)
         self._xref_var = tk.StringVar()
         ttk.Entry(sg, textvariable=self._xref_var, width=10,
-                  font=('Menlo', 11)).grid(row=0, column=1, padx=4)
+                  font=(_MONO, 11)).grid(row=0, column=1, padx=4)
         ttk.Button(sg, text="X-Ref", command=self._do_xref).grid(
             row=0, column=2, padx=4)
 
         ttk.Label(sg, text="Search word:").grid(row=0, column=3, sticky='e', padx=(12, 4))
         self._sword_var = tk.StringVar()
         ttk.Entry(sg, textvariable=self._sword_var, width=10,
-                  font=('Menlo', 11)).grid(row=0, column=4, padx=4)
+                  font=(_MONO, 11)).grid(row=0, column=4, padx=4)
         ttk.Button(sg, text="Find", command=self._do_word_search).grid(
             row=0, column=5, padx=4)
 
         ttk.Label(sg, text="MULU/DIVU #imm:").grid(row=1, column=0, sticky='e', padx=4, pady=4)
         self._mulimm_var = tk.StringVar()
         ttk.Entry(sg, textvariable=self._mulimm_var, width=10,
-                  font=('Menlo', 11)).grid(row=1, column=1, padx=4, pady=4)
+                  font=(_MONO, 11)).grid(row=1, column=1, padx=4, pady=4)
         ttk.Button(sg, text="Find MUL/DIV", command=self._find_muldiv).grid(
             row=1, column=2, padx=4, pady=4)
 
@@ -3004,7 +3013,7 @@ class DisassemblerWindow(tk.Toplevel):
         main = ttk.Frame(self)
         main.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
 
-        self._text = tk.Text(main, font=("Menlo", 11), wrap='none',
+        self._text = tk.Text(main, font=(_MONO, 11), wrap='none',
                              bg='#1e1e1e', fg='#d4d4d4', insertbackground='white',
                              state='disabled')
         vsb = ttk.Scrollbar(main, orient='vertical', command=self._text.yview)
@@ -3248,17 +3257,16 @@ class DisassemblerWindow(tk.Toplevel):
 def main():
     root = tk.Tk()
 
-    # macOS styling
-    try:
-        root.tk.call('tk', 'scaling', 2.0)
-    except tk.TclError:
-        pass
+    # Retina / HiDPI scaling on macOS
+    if _IS_MAC:
+        try:
+            root.tk.call('tk', 'scaling', 2.0)
+        except tk.TclError:
+            pass
 
+    # Theme: prefer clam (works on all platforms); aqua is macOS-only
     style = ttk.Style()
-    available_themes = style.theme_names()
-    if 'aqua' in available_themes:
-        style.theme_use('aqua')
-    elif 'clam' in available_themes:
+    if 'clam' in style.theme_names():
         style.theme_use('clam')
 
     app = PMSaveDiskToolApp(root)

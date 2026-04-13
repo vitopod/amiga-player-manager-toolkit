@@ -24,8 +24,8 @@ Originally based on **Player Manager Save Disk Tool v1.2 (Experimental)** by [Ul
 
 | | |
 |-|-|
-| **macOS** | 10.13 or later |
-| **Python** | 3.8+ with tkinter. Use `/usr/local/bin/python3.11` from [python.org](https://www.python.org/downloads/) — the system Python and pyenv Pythons typically lack tkinter. |
+| **OS** | macOS 10.13+, Windows 10+, or Linux |
+| **Python** | 3.8+ with tkinter. On macOS use `/usr/local/bin/python3.11` from [python.org](https://www.python.org/downloads/) — the system Python and pyenv Pythons typically lack tkinter. On Windows, Python from python.org includes tkinter by default. |
 | **Save disk ADF** | A Player Manager **save/data disk** image (901,120 bytes, FFS). |
 | **Game disk ADF** *(optional)* | The game disk ADF placed next to the script (or its parent folder) enables player name lookup, the disassembler, and auto-populates the Patch Composer. |
 
@@ -45,11 +45,17 @@ Originally based on **Player Manager Save Disk Tool v1.2 (Experimental)** by [Ul
 
 ## Running
 
+**macOS:**
 ```bash
 /usr/local/bin/python3.11 PMSaveDiskTool_Mac/PMSaveDiskTool.py
 ```
 
-No dependencies beyond the Python standard library.
+**Windows / Linux:**
+```bash
+python PMSaveDiskTool_Mac/PMSaveDiskTool.py
+```
+
+No dependencies beyond the Python standard library. Keyboard shortcuts use ⌘ on macOS and Ctrl on Windows/Linux.
 
 ---
 
