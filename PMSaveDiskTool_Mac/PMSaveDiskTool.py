@@ -3507,6 +3507,181 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
         return "", ""
 
 
+# ─── Player Editor Window ───────────────────────────────────────────
+
+class PlayerEditorWindow(tk.Toplevel):
+    """Edit a single player's attributes and write changes to the ADF."""
+
+    _SKILL_FIELDS = [
+        ("Stamina",    "stamina"),
+        ("Resilience", "resilience"),
+        ("Pace",       "pace"),
+        ("Agility",    "agility"),
+        ("Aggression", "aggression"),
+        ("Flair",      "flair"),
+        ("Passing",    "passing"),
+        ("Shooting",   "shooting"),
+        ("Tackling",   "tackling"),
+        ("Keeping",    "keeping"),
+    ]
+    _INFO_FIELDS = [
+        ("Age",             "age",             0, 50),
+        ("Position (1-4)",  "position",        0, 4),
+        ("Height (cm)",     "height",          140, 255),
+        ("Weight (kg)",     "weight",          30, 150),
+        ("Contract years",  "contract_years",  0, 20),
+        ("Market value",    "value",           0, 255),
+    ]
+    _STAT_FIELDS = [
+        ("Injury weeks",       "injury_weeks"),
+        ("Injuries this year", "injuries_this_year"),
+        ("Injuries last year", "injuries_last_year"),
+        ("Goals this year",    "goals_this_year"),
+        ("Goals last year",    "goals_last_year"),
+        ("Matches this year",  "matches_this_year"),
+        ("Matches last year",  "matches_last_year"),
+    ]
+
+    def __init__(self, parent, player, adf, dir_entry, game_disk=None,
+                 on_save=None):
+        """
+        player:    PlayerRecord to edit (modified in place)
+        adf:       ADF instance (for write-back)
+        dir_entry: DirEntry of the .sav file this player DB belongs to
+        game_disk: optional GameDisk for name lookup
+        on_save:   optional callback() invoked after successful write
+        """
+        super().__init__(parent)
+        self._player = player
+        self._adf = adf
+        self._dir_entry = dir_entry
+        self._game_disk = game_disk
+        self._on_save = on_save
+
+        name = ""
+        if game_disk:
+            name = game_disk.player_name(player.player_id)
+        self.title(f"Edit Player — {name or f'#{player.player_id}'}")
+        self.geometry("480x620")
+        self.resizable(False, True)
+
+        self._vars = {}   # attr_name → tk.IntVar
+        self._build_ui()
+
+    def _build_ui(self):
+        canvas = tk.Canvas(self, borderwidth=0)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        inner = ttk.Frame(canvas)
+        inner.bind("<Configure>",
+                   lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+        canvas.create_window((0, 0), window=inner, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        row = 0
+
+        # Player info header
+        p = self._player
+        pos_name = POSITION_NAMES.get(p.position, "?")
+        ttk.Label(inner, text=f"ID {p.player_id}  |  {pos_name}  |  "
+                              f"Age {p.age}  |  Avg {p.skill_avg:.0f}",
+                  font=("", 12, "bold")).grid(
+            row=row, column=0, columnspan=3, pady=(8, 12), padx=8, sticky="w")
+        row += 1
+
+        # Info fields
+        ttk.Label(inner, text="Player Info",
+                  font=("", 11, "bold")).grid(
+            row=row, column=0, columnspan=3, pady=(8, 4), padx=8, sticky="w")
+        row += 1
+
+        for label, attr, lo, hi in self._INFO_FIELDS:
+            ttk.Label(inner, text=label).grid(row=row, column=0, padx=(12, 4),
+                                              sticky="e")
+            var = tk.IntVar(value=getattr(p, attr))
+            self._vars[attr] = var
+            spin = ttk.Spinbox(inner, from_=lo, to=hi, textvariable=var,
+                               width=6)
+            spin.grid(row=row, column=1, padx=4, sticky="w")
+            row += 1
+
+        # Skills (0-200 sliders + spinboxes)
+        ttk.Label(inner, text="Skills (0–200)",
+                  font=("", 11, "bold")).grid(
+            row=row, column=0, columnspan=3, pady=(12, 4), padx=8, sticky="w")
+        row += 1
+
+        for label, attr in self._SKILL_FIELDS:
+            ttk.Label(inner, text=label).grid(row=row, column=0, padx=(12, 4),
+                                              sticky="e")
+            var = tk.IntVar(value=getattr(p, attr))
+            self._vars[attr] = var
+            scale = ttk.Scale(inner, from_=0, to=200, variable=var,
+                              orient=tk.HORIZONTAL, length=180)
+            scale.grid(row=row, column=1, padx=4, sticky="w")
+            spin = ttk.Spinbox(inner, from_=0, to=200, textvariable=var,
+                               width=5)
+            spin.grid(row=row, column=2, padx=4, sticky="w")
+            row += 1
+
+        # Career stats
+        ttk.Label(inner, text="Career Stats",
+                  font=("", 11, "bold")).grid(
+            row=row, column=0, columnspan=3, pady=(12, 4), padx=8, sticky="w")
+        row += 1
+
+        for label, attr in self._STAT_FIELDS:
+            ttk.Label(inner, text=label).grid(row=row, column=0, padx=(12, 4),
+                                              sticky="e")
+            var = tk.IntVar(value=getattr(p, attr))
+            self._vars[attr] = var
+            spin = ttk.Spinbox(inner, from_=0, to=255, textvariable=var,
+                               width=6)
+            spin.grid(row=row, column=1, padx=4, sticky="w")
+            row += 1
+
+        # Buttons
+        btn_frame = ttk.Frame(inner)
+        btn_frame.grid(row=row, column=0, columnspan=3, pady=12)
+        ttk.Button(btn_frame, text="Apply to ADF",
+                   command=self._apply).pack(side=tk.LEFT, padx=8)
+        ttk.Button(btn_frame, text="Reset",
+                   command=self._reset).pack(side=tk.LEFT, padx=8)
+        ttk.Button(btn_frame, text="Max All Skills",
+                   command=self._max_skills).pack(side=tk.LEFT, padx=8)
+
+    def _apply(self):
+        """Copy UI values into the PlayerRecord and write to ADF."""
+        p = self._player
+        for attr, var in self._vars.items():
+            val = var.get()
+            val = max(0, min(255, val))
+            setattr(p, attr, val)
+        db_offset = self._dir_entry.byte_offset + self._dir_entry.size_bytes
+        records_start = db_offset + PLAYER_DB_HEADER_SIZE
+        off = records_start + p.player_id * PLAYER_RECORD_SIZE
+        if off + PLAYER_RECORD_SIZE <= ADF_SIZE:
+            self._adf.write_bytes(off, p.pack())
+        if self._on_save:
+            self._on_save()
+        messagebox.showinfo("Applied",
+                            f"Player #{p.player_id} updated in ADF buffer.\n"
+                            "Use File → Save to write to disk.",
+                            parent=self)
+
+    def _reset(self):
+        """Reset UI vars to current PlayerRecord values."""
+        p = self._player
+        for attr, var in self._vars.items():
+            var.set(getattr(p, attr))
+
+    def _max_skills(self):
+        """Set all 10 skills to 200."""
+        for _, attr in self._SKILL_FIELDS:
+            self._vars[attr].set(200)
+
+
 # ─── Disassembler Window ────────────────────────────────────────────
 
 class DisassemblerWindow(tk.Toplevel):
