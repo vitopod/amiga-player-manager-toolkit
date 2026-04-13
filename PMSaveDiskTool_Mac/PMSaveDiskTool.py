@@ -316,7 +316,15 @@ _OFFSET_LABELS = {
 }
 
 # Game disk ADF filename (auto-discovered relative to script directory)
-_GAME_DISK_FILENAME = "PlayerManagerITA.adf"
+# Game disk filenames tried in order (first match wins)
+_GAME_DISK_CANDIDATES = [
+    "PlayerManagerITA.adf",   # Italian (primary dev target)
+    "PlayerManager.adf",      # English / generic
+    "PlayerManagerDE.adf",    # German
+    "PlayerManagerFR.adf",    # French
+    "PlayerManagerSP.adf",    # Spanish
+]
+_GAME_DISK_FILENAME = _GAME_DISK_CANDIDATES[0]  # used in error messages
 
 
 # ─── OFS File Reader ────────────────────────────────────────────────
@@ -577,13 +585,14 @@ class GameDisk:
 
 def _find_game_disk():
     """Auto-discover the game disk ADF relative to the script directory.
-    Returns the path if found, or None."""
+    Tries each name in _GAME_DISK_CANDIDATES in both the script dir and its
+    parent. Returns the path of the first match, or None."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    # Check in script directory and parent directory
     for base in [script_dir, os.path.dirname(script_dir)]:
-        path = os.path.join(base, _GAME_DISK_FILENAME)
-        if os.path.isfile(path):
-            return path
+        for name in _GAME_DISK_CANDIDATES:
+            path = os.path.join(base, name)
+            if os.path.isfile(path):
+                return path
     return None
 
 

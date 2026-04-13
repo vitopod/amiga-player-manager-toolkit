@@ -445,7 +445,19 @@ Offset  Size  Field
 
 ## Game Disk Integration
 
-When `PlayerManagerITA.adf` (or any game disk named `PlayerManagerITA.adf`) is placed in the same directory as the script or its parent directory, the tool **automatically loads it at startup**. No file dialog is needed.
+Place your game disk ADF in the same directory as the script (or its parent directory) and the tool **automatically loads it at startup** — no file dialog needed.
+
+**Accepted filenames** (tried in order, first match wins):
+
+| Filename | Version |
+|----------|---------|
+| `PlayerManagerITA.adf` | Italian *(tested and recommended)* |
+| `PlayerManager.adf` | English / generic |
+| `PlayerManagerDE.adf` | German |
+| `PlayerManagerFR.adf` | French |
+| `PlayerManagerSP.adf` | Spanish |
+
+> The Patch Composer, Disassembler, and player name lookup target the Italian version specifically. Save disk editing works with all versions.
 
 This enables:
 

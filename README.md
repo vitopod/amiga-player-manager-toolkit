@@ -11,7 +11,7 @@ Originally based on **Player Manager Save Disk Tool v1.2 (Experimental)** by [Ul
 | Feature | Description |
 |---------|-------------|
 | **Save Disk Editor** | Open any Player Manager save disk ADF. Browse all 11 save slots. Edit team names, divisions, budget tiers, team values, league stats, and the 25-player roster for all 44 teams. Write changes back to the ADF. |
-| **Game Disk Integration** | Auto-loads `PlayerManagerITA.adf` (Italian version) and extracts 245 player surnames from the DEFAJAM-decompressed game image. Player IDs in the roster show real names. |
+| **Game Disk Integration** | Auto-loads a game disk ADF on startup and extracts 245 player surnames from the DEFAJAM-decompressed game image. Player IDs in the roster show real names. Tested with the Italian version; other versions likely work for save editing but name lookup is Italian-specific. |
 | **Patch Composer** | GUI editor for the 68000 runtime patch block (block 1137) on the game disk. Add, remove, and preview byte/word/long patches — with space budget tracking and OFS checksum auto-calculation. Includes one-click manager age patch. |
 | **League Tables** | Four-division league tables sorted by points and goals, with promotion and relegation zone highlighting. |
 | **Compare Saves** | Diff two save slots: player transfers, division changes, and team value deltas. |
@@ -27,9 +27,19 @@ Originally based on **Player Manager Save Disk Tool v1.2 (Experimental)** by [Ul
 | **macOS** | 10.13 or later |
 | **Python** | 3.8+ with tkinter. Use `/usr/local/bin/python3.11` from [python.org](https://www.python.org/downloads/) — the system Python and pyenv Pythons typically lack tkinter. |
 | **Save disk ADF** | A Player Manager **save/data disk** image (901,120 bytes, FFS). |
-| **Game disk ADF** *(optional)* | `PlayerManagerITA.adf` placed next to the script enables player name lookup, the disassembler, and auto-populates the Patch Composer. |
+| **Game disk ADF** *(optional)* | The game disk ADF placed next to the script (or its parent folder) enables player name lookup, the disassembler, and auto-populates the Patch Composer. |
 
 > **Note:** ADF images are not included. You must dump your own floppies. `.adf` files are excluded from this repository by `.gitignore`.
+
+**Accepted game disk filenames** (tried in this order, first match wins):
+
+| Filename | Version |
+|----------|---------|
+| `PlayerManagerITA.adf` | Italian *(tested)* |
+| `PlayerManager.adf` | English / generic |
+| `PlayerManagerDE.adf` | German |
+| `PlayerManagerFR.adf` | French |
+| `PlayerManagerSP.adf` | Spanish |
 
 ---
 
@@ -54,6 +64,8 @@ No dependencies beyond the Python standard library.
 
 Tool windows are under the **Tools** menu: Patch Composer, League Tables, Compare Saves, Tactics Viewer, Disassembler.
 
+Full documentation: **[PMSaveDiskTool_Mac/MANUAL.md](PMSaveDiskTool_Mac/MANUAL.md)**
+
 ---
 
 ## Headless / scripting use
@@ -74,7 +86,9 @@ for team in sf.teams[:5]:
 
 ## Game compatibility
 
-Tested with the **Italian version** (`PlayerManagerITA.adf`). The save disk format is identical across all language versions — the editor works with English, German, and other versions too. The Patch Composer, Disassembler, and player name lookup are Italian-version-specific.
+Developed and tested with the **Italian version** (`PlayerManagerITA.adf`). The save disk format is identical across all language versions, so save editing (team names, rosters, stats, tactics) works with English, German, French, and other versions too.
+
+The **Patch Composer**, **Disassembler**, and **player name lookup** target the Italian game executable specifically. Using them with other versions should be harmless but the patch offsets, player names, and code addresses may differ.
 
 ---
 
@@ -87,9 +101,8 @@ Developed for **MiSTer FPGA** (Minimig core) workflow, where there is no runtime
 ## Credits
 
 - **Player Manager Save Disk Tool v1.2 (Experimental)** — [UltimateBinary](https://ultimatebinary.blogspot.com) (Windows reference implementation, 2010)
-- **Player Manager** — Anco Software, 1990
+- **Player Manager** — Anco Software, 1990. Designed by **Dino Dini**, whose work on Player Manager and Kick Off defined a golden era of football games on the Amiga. Thank you, Dino — these games are still being played and loved more than thirty years later.
 - **DEFAJAM decompressor** — reverse-engineered from the ITA game disk; original packer by DEFAJAM
-- **Block 1137 crack code** — arab^Scoopex (copy-protection bypass in the game disk)
 
 ---
 
