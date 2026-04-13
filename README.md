@@ -2,7 +2,7 @@
 
 A Mac toolkit for editing **Player Manager** (Anco, 1990) save disks on ADF images. Reverse-engineer saves, compose game-disk patches, visualise tactics, and browse the 68000 game code — all without a running emulator.
 
-Originally based on **Player Manager Save Disk Tool v1.2 (Experimental)** by [UltimateBinary](https://github.com/UltimateBinary) (Windows, 2010). This project re-implements and significantly extends that tool for macOS.
+Originally based on **Player Manager Save Disk Tool v1.2 (Experimental)** by [UltimateBinary](https://ultimatebinary.blogspot.com) (Windows, 2010). This project re-implements and significantly extends that tool for macOS.
 
 ---
 
@@ -86,7 +86,7 @@ Developed for **MiSTer FPGA** (Minimig core) workflow, where there is no runtime
 
 ## Credits
 
-- **Player Manager Save Disk Tool v1.2 (Experimental)** — UltimateBinary (Windows reference implementation, 2010)
+- **Player Manager Save Disk Tool v1.2 (Experimental)** — [UltimateBinary](https://ultimatebinary.blogspot.com) (Windows reference implementation, 2010)
 - **Player Manager** — Anco Software, 1990
 - **DEFAJAM decompressor** — reverse-engineered from the ITA game disk; original packer by DEFAJAM
 - **Block 1137 crack code** — arab^Scoopex (copy-protection bypass in the game disk)
