@@ -2923,6 +2923,7 @@ class TransferMarketWindow(tk.Toplevel):
 
     def __init__(self, parent, save, adf, game_disk=None, liga_names=None):
         super().__init__(parent)
+        self.configure(bg=_THEME['bg_deep'])
         self.title(f"Transfer Market — {save.entry.name}")
         self.geometry("1200x720")
         self.resizable(True, True)
@@ -3341,6 +3342,7 @@ class PlayerEditorWindow(tk.Toplevel):
         on_save:   optional callback() invoked after successful write
         """
         super().__init__(parent)
+        self.configure(bg=_THEME['bg_deep'])
         self._player = player
         self._adf = adf
         self._dir_entry = dir_entry
@@ -3358,7 +3360,7 @@ class PlayerEditorWindow(tk.Toplevel):
         self._build_ui()
 
     def _build_ui(self):
-        canvas = tk.Canvas(self, borderwidth=0)
+        canvas = tk.Canvas(self, borderwidth=0, bg=_THEME['bg_deep'])
         scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
         inner = ttk.Frame(canvas)
         inner.bind("<Configure>",
@@ -3433,7 +3435,7 @@ class PlayerEditorWindow(tk.Toplevel):
         # Buttons
         btn_frame = ttk.Frame(inner)
         btn_frame.grid(row=row, column=0, columnspan=3, pady=12)
-        ttk.Button(btn_frame, text="Apply to ADF",
+        ttk.Button(btn_frame, text="Apply to ADF", style='Primary.TButton',
                    command=self._apply).pack(side=tk.LEFT, padx=8)
         ttk.Button(btn_frame, text="Reset",
                    command=self._reset).pack(side=tk.LEFT, padx=8)
@@ -3479,6 +3481,7 @@ class DisassemblerWindow(tk.Toplevel):
 
     def __init__(self, parent, game_disk):
         super().__init__(parent)
+        self.configure(bg=_THEME['bg_deep'])
         self.title("68000 Disassembler — Game Image")
         self.geometry("900x750")
         self.resizable(True, True)
@@ -3492,8 +3495,9 @@ class DisassemblerWindow(tk.Toplevel):
         self._goto(0)
 
     def _build_ui(self):
+        T = _THEME
         # Top bar: navigation
-        nav = ttk.Frame(self)
+        nav = tk.Frame(self, bg=T['bg_deep'])
         nav.pack(fill=tk.X, padx=8, pady=6)
 
         ttk.Label(nav, text="Address:").pack(side=tk.LEFT, padx=4)
@@ -3503,7 +3507,7 @@ class DisassemblerWindow(tk.Toplevel):
         addr_entry.pack(side=tk.LEFT, padx=4)
         addr_entry.bind('<Return>', lambda e: self._go_to_addr())
 
-        ttk.Button(nav, text="Go", command=self._go_to_addr).pack(side=tk.LEFT, padx=2)
+        ttk.Button(nav, text="Go", command=self._go_to_addr, style='Primary.TButton').pack(side=tk.LEFT, padx=2)
         ttk.Button(nav, text="← Back", command=self._go_back).pack(side=tk.LEFT, padx=8)
 
         ttk.Label(nav, text="Lines:").pack(side=tk.LEFT, padx=(12, 4))
@@ -3526,7 +3530,7 @@ class DisassemblerWindow(tk.Toplevel):
             ("Strings ($14000)", 0x14000),
         ]
         for i, (label, addr) in enumerate(quick_targets):
-            ttk.Button(qg, text=label,
+            ttk.Button(qg, text=label, style='Primary.TButton',
                        command=lambda a=addr: self._goto(a)).grid(
                 row=0, column=i, padx=3, pady=2)
 
@@ -3540,14 +3544,14 @@ class DisassemblerWindow(tk.Toplevel):
         self._xref_var = tk.StringVar()
         ttk.Entry(sg, textvariable=self._xref_var, width=10,
                   font=(_MONO, 11)).grid(row=0, column=1, padx=4)
-        ttk.Button(sg, text="X-Ref", command=self._do_xref).grid(
+        ttk.Button(sg, text="X-Ref", command=self._do_xref, style='Primary.TButton').grid(
             row=0, column=2, padx=4)
 
         ttk.Label(sg, text="Search word:").grid(row=0, column=3, sticky='e', padx=(12, 4))
         self._sword_var = tk.StringVar()
         ttk.Entry(sg, textvariable=self._sword_var, width=10,
                   font=(_MONO, 11)).grid(row=0, column=4, padx=4)
-        ttk.Button(sg, text="Find", command=self._do_word_search).grid(
+        ttk.Button(sg, text="Find", command=self._do_word_search, style='Primary.TButton').grid(
             row=0, column=5, padx=4)
 
         ttk.Label(sg, text="MULU/DIVU #imm:").grid(row=1, column=0, sticky='e', padx=4, pady=4)
@@ -3584,8 +3588,9 @@ class DisassemblerWindow(tk.Toplevel):
 
         # Status
         self._status = tk.StringVar(value="Ready")
-        ttk.Label(self, textvariable=self._status, relief='sunken',
-                  anchor='w').pack(fill=tk.X, side=tk.BOTTOM, padx=2, pady=2)
+        tk.Label(self, textvariable=self._status, relief='sunken',
+                 anchor='w', bg=T['bg_chrome'], fg=T['text'],
+                 font=T['font_small']).pack(fill=tk.X, side=tk.BOTTOM, padx=2, pady=2)
 
     def _goto(self, addr):
         self._history.append(addr)
