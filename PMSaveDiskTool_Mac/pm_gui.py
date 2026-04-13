@@ -893,7 +893,9 @@ class PMSaveDiskToolApp:
             var.set(str(team.league_stats[i]))
 
         # Populate roster tree
-        self.roster_tree.delete(*self.roster_tree.get_children())
+        _children = self.roster_tree.get_children()
+        if _children:
+            self.roster_tree.delete(*_children)
         self._player_ids = list(team.player_values)
         for i in range(MAX_PLAYER_SLOTS):
             v = team.player_values[i]
@@ -1311,7 +1313,9 @@ class PatchComposerWindow(tk.Toplevel):
     # ── List management ──
 
     def _refresh_list(self):
-        self._tree.delete(*self._tree.get_children())
+        _children = self._tree.get_children()
+        if _children:
+            self._tree.delete(*_children)
         for i, p in enumerate(self._patches, 1):
             if p.size == 'L':
                 val_str = f"LONG  ${p.value:08X}"
@@ -1736,7 +1740,9 @@ class CompareSavesWindow(tk.Toplevel):
 
     def _populate_transfers(self, sa, sb, db_a, db_b):
         tree = self._xfer_tree
-        tree.delete(*tree.get_children())
+        _children = tree.get_children()
+        if _children:
+            tree.delete(*_children)
         self._xfer_pid_map.clear()
 
         roster_a = build_roster_map(sa)
@@ -1779,7 +1785,9 @@ class CompareSavesWindow(tk.Toplevel):
 
     def _populate_div_budget(self, sa, sb):
         tree = self._div_tree
-        tree.delete(*tree.get_children())
+        _children = tree.get_children()
+        if _children:
+            tree.delete(*_children)
 
         teams_a = {t.name: t for t in sa.teams if t.name}
         teams_b = {t.name: t for t in sb.teams if t.name}
@@ -2068,7 +2076,9 @@ class CompareSavesWindow(tk.Toplevel):
 
         # Repopulate tree
         tree = self._career_tree
-        tree.delete(*tree.get_children())
+        _children = tree.get_children()
+        if _children:
+            tree.delete(*_children)
         self._career_pid_map.clear()
 
         def _v(x):
@@ -2804,15 +2814,18 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
         top.pack(fill=tk.X, padx=4, pady=4)
         ttk.Label(top, text="Team:").pack(side=tk.LEFT)
         self._squad_var = tk.StringVar()
-        team_names = []
-        self._squad_team_map = {}  # display_name → team_index
+
+        # Build team list from save file (teams with at least 1 player)
+        team_choices = []
+        self._squad_idx_map = {}  # display_name → team.index
         for team in self._save.teams:
             if team.num_players > 0:
                 disp = team.name or f"(team {team.index})"
-                team_names.append(disp)
-                self._squad_team_map[disp] = team.index
+                team_choices.append(disp)
+                self._squad_idx_map[disp] = team.index
+
         combo = ttk.Combobox(top, textvariable=self._squad_var,
-                             values=team_names, state='readonly', width=30)
+                             values=team_choices, state='readonly', width=30)
         combo.pack(side=tk.LEFT, padx=8)
         combo.bind('<<ComboboxSelected>>', self._on_squad_selected)
 
@@ -2830,27 +2843,28 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                                            anchors={"name": "w", "hint": "w"},
                                            on_double_click=self._open_editor)
         self._squad_tree._pid_map = {}
-        self._squad_tree.tag_configure('renew', background='#1E3E2E', foreground=_THEME['positive'])
-        self._squad_tree.tag_configure('sack',  background='#3E1E2E', foreground=_THEME['negative'])
+        T = _THEME
+        self._squad_tree.tag_configure('renew', background='#1E3E2E', foreground=T['positive'])
+        self._squad_tree.tag_configure('sack',  background='#3E1E2E', foreground=T['negative'])
         self._squad_tree.tag_configure('watch', background='#3E3E1E', foreground='#CCCC44')
 
-        if team_names:
+        # Pre-index: team_index → list of PlayerRecords (same approach as Best By Position)
+        self._team_rosters = {}
+        for p in self._players.values():
+            self._team_rosters.setdefault(p.team_index, []).append(p)
+
+        if team_choices:
             combo.current(0)
             self._on_squad_selected()
 
     def _on_squad_selected(self, event=None):
         disp = self._squad_var.get()
-        team_idx = self._squad_team_map.get(disp)
+        team_idx = self._squad_idx_map.get(disp)
         if team_idx is None:
             return
-        team = self._save.teams[team_idx]
 
-        # Collect roster player records
-        roster = []
-        for i in range(MAX_PLAYER_SLOTS):
-            pid = struct.unpack_from('>H', team.raw, 12 + i * 2)[0]
-            if pid != 0xFFFF and pid in self._players:
-                roster.append(self._players[pid])
+        # Look up roster from pre-indexed player database (by team_index field)
+        roster = list(self._team_rosters.get(team_idx, []))
 
         # Summary
         if roster:
@@ -2867,12 +2881,14 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
         roster.sort(key=lambda p: (p.position, -p.role_skill_avg()))
 
         tree = self._squad_tree
-        tree.delete(*tree.get_children())
+        children = tree.get_children()
+        if children:
+            tree.delete(*children)
         tree._pid_map = {}
         for p in roster:
             hint, tag = self._squad_hint(p)
-            iid = tree.insert('', 'end', tags=(tag,), values=(
-                player_name_str(self._game_disk,p.player_id),
+            iid = tree.insert('', 'end', tags=(tag,) if tag else (), values=(
+                player_name_str(self._game_disk, p.player_id),
                 p.position_name,
                 p.age,
                 f"{p.role_skill_avg():.0f}",
@@ -3108,7 +3124,9 @@ class TransferMarketWindow(tk.Toplevel):
 
     def _apply_filters(self):
         tree = self._db_tree
-        tree.delete(*tree.get_children())
+        _children = tree.get_children()
+        if _children:
+            tree.delete(*_children)
         tree._pid_map = {}
 
         search = self._search_var.get().lower().strip()
@@ -3168,7 +3186,9 @@ class TransferMarketWindow(tk.Toplevel):
         team = self._save.teams[team_idx]
 
         tree = self._roster_tree
-        tree.delete(*tree.get_children())
+        _children = tree.get_children()
+        if _children:
+            tree.delete(*_children)
         tree._pid_map = {}
 
         roster = []
