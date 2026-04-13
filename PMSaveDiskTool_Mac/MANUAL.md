@@ -1,4 +1,4 @@
-# PMSaveDiskTool — Mac Edition
+# PMSaveDiskTool v2.0 — Mac Edition
 ### Player Manager (1990, Anco) Save Disk Editor
 
 ---
@@ -164,7 +164,13 @@ Each slot holds a **16-bit player ID** (0–1036). These are indices into a mast
 
 **Inline editing:** Double-click any roster row to edit the player ID directly in the table. Type a numeric ID and press Enter to confirm, or Escape to cancel. The player name updates immediately. You can also select a row and click "Set Player ID" or "Remove Player" below the table.
 
-**Important:** The individual player attributes (Stamina, Pace, Agility, etc.) are stored in a per-player database on the save disk. Editing player IDs effectively swaps which players are on the team roster. With the game disk loaded, player names are shown alongside IDs.
+**Important:** The individual player attributes (Stamina, Pace, Agility, etc.) are stored in a per-player database on the save disk. Editing player IDs changes which player occupies a roster slot. With the game disk loaded, player names are shown alongside IDs.
+
+> **Warning — direct ID editing does not perform a full transfer.** Each player has a `team index` byte in the player database that records which team they belong to. "Edit ID" / "Set Player ID" only rewrites the slot in the *destination* team's roster list; it does **not** remove the player from their original team's roster, and it does not update the player's own `team index` byte. This leaves the save in an inconsistent state — the same player ID can appear on two teams simultaneously.
+>
+> Use the **Transfer Market** window when you want to move a player between teams. It handles all three bookkeeping steps atomically: removes the ID from the source roster, writes it to the destination roster, and updates the player's `team index` byte.
+>
+> Direct ID editing is intended for assigning a player to an **empty slot** (overwriting an `FFFF` entry) or recovering a specific known ID that has no current team — for example, free agents or IDs you know are not rostered anywhere.
 
 In the factory template (`start.dat`), each of the 1037 player IDs appears exactly once across all teams — every player has a unique home. The IDs form a nearly-sequential list from 0 to 1036.
 
@@ -687,7 +693,77 @@ If no game disk is found, the tool works normally without player names.
 
 **To start a fresh season:** Load `start.dat`, adjust teams as desired, then save it back and rename it as one of your `.sav` slots.
 
-**To transfer a player:** Find the player's ID in team A's Player IDs list, set it to `FFFF` there, then add that same ID to team B's list in an empty (`FFFF`) slot.
+**To transfer a player:** Use **Tools → Transfer Market…** — it removes the player from the source team, adds them to the destination, and updates the player's own team record in one step. Direct ID editing in the Roster tab does not do this atomically and can leave the save in an inconsistent state (same player on two teams).
+
+---
+
+## FAQ
+
+**Q: I edited a player ID in the Roster tab and now the same player appears on two teams. How do I fix it?**
+
+This happens when you assign an ID that is already rostered on another team. Direct ID editing only writes to the destination slot — it does not remove the player from their original team. To fix it: open **Transfer Market**, find the player, and use **Transfer to Team** to move them properly. Alternatively, manually set the ID back to `FFFF` in the team where the player should not be, then re-add them via Transfer Market to the intended team.
+
+---
+
+**Q: What is the difference between "Edit ID" / "Set Player ID" and the Transfer Market?**
+
+"Edit ID" is a low-level slot assignment — it writes a single 16-bit value into one roster slot and nothing else. It is intended for placing a player into an empty (`FFFF`) slot when you already know their ID.
+
+The Transfer Market performs a complete, consistent transfer: it removes the player from their current team's roster, adds them to the new team's roster, and updates the `team index` byte inside the player's own database record. Always use Transfer Market when moving a player between teams.
+
+---
+
+**Q: I edited a player's skills but after loading the save in the game nothing changed (or the skills reset). Why?**
+
+The game sometimes regenerates player attributes from a stored RNG seed during gameplay. If the game re-rolls skills mid-game, your edits may be overwritten. Changes are most reliable when applied to a save that is then loaded fresh — not resumed mid-season from a point where the game has already seeded those values.
+
+---
+
+**Q: Player names in the Roster tab don't match what the game shows.**
+
+Player names are looked up using a heuristic (`player_id % 245`) against the 245 surnames embedded in the Italian game executable. This mapping is approximate. The in-game display follows a different assignment (exact algorithm unknown). Use the name column for orientation only; the ID is the authoritative identifier.
+
+---
+
+**Q: I opened an ADF and got "no save table found". What went wrong?**
+
+You opened the **game disk** instead of the **save disk**. The tool expects the save/data disk (FFS filesystem with a custom directory at sector 2). The game disk uses OFS and does not have this structure. Make sure you select the correct `.adf` — the save disk is the floppy you insert when the game asks you to "Insert Data Disk".
+
+---
+
+**Q: Points and Goals are all zero. Is the file corrupt?**
+
+No. Points and Goals reset to zero at the start of each new season. If you loaded a save that was created at a season boundary, or if you loaded `start.dat`, all league stats will be zero — this is normal.
+
+---
+
+**Q: Team #43 shows "(record 43)" instead of a name and has garbled stats. Is it safe to edit?**
+
+Team record #43 sometimes contains binary data rather than a normal team entry (observed in some save files). The tool detects this (`_name_is_binary` flag) and preserves the raw bytes unchanged when saving, so it is safe to leave it alone. Do not attempt to edit its name or stats — the tool will not let the name field be changed for this record.
+
+---
+
+**Q: I changed a team's Division to 0 (Div 1) but it still plays in a lower division in-game.**
+
+Division changes only affect which league table the team appears in when the save is read by this tool. The game engine may also use internal promotion/relegation flags (Flag 1, Flag 2 in the League Stats tab) to track division placement. For best results, change the Division field **and** re-balance the other teams in the affected divisions so each division has the correct number of teams (11 per division). Setting Flag 1 and Flag 2 to 0 for the affected teams is also advisable.
+
+---
+
+**Q: Can I use this tool with the English or German version of the game?**
+
+Save disk editing works with all language versions. The game disk integration (player name lookup, Patch Composer, Disassembler) targets the Italian version specifically. If you use a different language game disk, names may not resolve correctly, but save editing is unaffected.
+
+---
+
+**Q: I wrote a patch in the Patch Composer and now the game crashes on startup.**
+
+The most common cause is deleting or corrupting one of the 10 copy-protection bypass patches (offsets `$002B5E`–`$00F29C`). The tool warns before deleting these. Re-open the original unmodified game disk ADF and write a fresh patch set. Always keep a backup of the game disk before writing.
+
+---
+
+**Q: How many extra patches can I add in the Patch Composer?**
+
+The patch area in block 1137 has **168 bytes** available. Each byte or word patch uses 12 bytes; each longword patch uses 14 bytes. The 10 existing copy-protection patches use 124 bytes, leaving 44 bytes free — enough for approximately 3 additional byte/word patches or 2 longword patches. The space indicator in the Patch Composer shows exact remaining capacity.
 
 ---
 

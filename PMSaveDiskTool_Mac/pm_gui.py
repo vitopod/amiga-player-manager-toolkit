@@ -186,7 +186,7 @@ def _make_scrolled_tree(parent, columns, headings, widths, anchors=None,
 class PMSaveDiskToolApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("PM Save Disk Tool")
+        self.root.title("PM Save Disk Tool v2.0")
         self.root.geometry("1060x800")
 
         self.adf = None
@@ -2619,7 +2619,14 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
         nb.add(tab_squad, text="Squad Analyst")
         self._build_squad_tab(tab_squad)
 
-    # ── Common Treeview builder (delegates to module-level helper) ──
+    def _team_name(self, team_idx):
+        """Resolve team index → name using save's own team records (correct ordering)."""
+        if team_idx == 0xFF:
+            return "Free Agent"
+        teams = self._save.teams
+        if 0 <= team_idx < len(teams):
+            return teams[team_idx].name
+        return team_name_str(self._liga, team_idx)
 
     # ── Tab: Best by Position ──
 
@@ -2669,7 +2676,7 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                 rank,
                 player_name_str(self._game_disk,p.player_id),
                 p.age,
-                team_name_str(self._liga,p.team_index),
+                self._team_name(p.team_index),
                 f"{p.role_skill_avg():.0f}",
                 f"{p.skill_avg:.0f}",
                 *sk_vals[:len(sk_attrs)],
@@ -2720,7 +2727,7 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                 player_name_str(self._game_disk,p.player_id),
                 p.position_name,
                 p.age,
-                team_name_str(self._liga,p.team_index),
+                self._team_name(p.team_index),
                 getattr(p, attr),
                 f"{p.skill_avg:.0f}",
             ))
@@ -2747,7 +2754,7 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                 player_name_str(self._game_disk,p.player_id),
                 p.position_name,
                 p.age,
-                team_name_str(self._liga,p.team_index),
+                self._team_name(p.team_index),
                 f"{p.role_skill_avg():.0f}",
                 f"{p.skill_avg:.0f}",
                 p.goals_this_year,
@@ -2776,7 +2783,7 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                 player_name_str(self._game_disk,p.player_id),
                 p.position_name,
                 p.age,
-                team_name_str(self._liga,p.team_index),
+                self._team_name(p.team_index),
                 p.value,
                 f"{p.role_skill_avg():.0f}",
                 f"{p.skill_avg:.0f}",
@@ -3136,7 +3143,7 @@ class TransferMarketWindow(tk.Toplevel):
                 player_name_str(self._game_disk,pid),
                 p.position_name,
                 p.age,
-                team_name_str(self._liga,p.team_index),
+                self._team_name(p.team_index),
                 f"{p.role_skill_avg():.0f}",
                 f"{p.skill_avg:.0f}",
                 p.value,
