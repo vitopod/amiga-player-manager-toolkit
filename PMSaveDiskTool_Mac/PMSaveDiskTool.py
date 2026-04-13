@@ -1730,6 +1730,7 @@ class PMSaveDiskToolApp:
         tools_menu.add_command(label="League Tables…", command=self.show_league_tables)
         tools_menu.add_command(label="Compare Saves…", command=self.show_compare_saves)
         tools_menu.add_command(label="Championship Highlights…", command=self.show_highlights)
+        tools_menu.add_command(label="Transfer Market…", command=self.show_transfer_market)
         tools_menu.add_separator()
         tools_menu.add_command(label="Tactics Viewer…", command=self.show_tactics_viewer)
         tools_menu.add_command(label="Disassembler…", command=self.show_disassembler)
@@ -2222,6 +2223,14 @@ class PMSaveDiskToolApp:
             messagebox.showinfo("Info", "Select a save slot first.")
             return
         ChampionshipHighlightsWindow(
+            self.root, self.current_save, self.adf,
+            game_disk=self.game_disk, liga_names=self.liga_names)
+
+    def show_transfer_market(self):
+        if not self.current_save:
+            messagebox.showinfo("Info", "Select a save slot first.")
+            return
+        TransferMarketWindow(
             self.root, self.current_save, self.adf,
             game_disk=self.game_disk, liga_names=self.liga_names)
 
