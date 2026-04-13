@@ -484,6 +484,21 @@ def parse_player_db(adf, dir_entry):
     return players
 
 
+def write_player_db(adf, dir_entry, players):
+    """Write modified player records back to the ADF buffer.
+
+    `players` is a dict {player_id: PlayerRecord} — the same format
+    returned by parse_player_db().  Only records present in the dict
+    are written; the 2-byte header is preserved.
+    """
+    db_offset = dir_entry.byte_offset + dir_entry.size_bytes
+    records_start = db_offset + PLAYER_DB_HEADER_SIZE
+    for pid, rec in players.items():
+        off = records_start + pid * PLAYER_RECORD_SIZE
+        if off + PLAYER_RECORD_SIZE <= ADF_SIZE:
+            adf.write_bytes(off, rec.pack())
+
+
 # ─── Game Disk / Patch Composer ──────────────────────────────────────
 
 _PATCH_BLOCK_SECTOR = 1137    # Block 1137 on the game disk ADF
