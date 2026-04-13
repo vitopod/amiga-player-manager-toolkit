@@ -1,8 +1,8 @@
 # Amiga Player Manager Toolkit
 
-A Mac toolkit for editing **Player Manager** (Anco, 1990) save disks on ADF images. Reverse-engineer saves, compose game-disk patches, visualise tactics, and browse the 68000 game code — all without a running emulator.
+A cross-platform toolkit for editing **Player Manager** (Anco, 1990) save disks on ADF images. Edit teams, rosters, and player attributes; compose game-disk patches; visualise tactics; and browse the 68000 game code — all without a running emulator.
 
-Originally based on **Player Manager Save Disk Tool v1.2 (Experimental)** by [UltimateBinary](https://ultimatebinary.blogspot.com) (Windows, 2010). This project re-implements and significantly extends that tool for macOS.
+The original **Player Manager Save Disk Tool v1.2** by [UltimateBinary](https://ultimatebinary.blogspot.com) (Windows, 2010) could edit team names, divisions, budgets, and player ID slots in save files. This project re-implements that foundation and adds: full player attribute access (the 42-byte per-player database stored on the save disk), player editing and transfer management, a 68000 runtime patch composer for the game disk, league tables, save comparison, a tactics viewer, and an interactive disassembler.
 
 ---
 
