@@ -186,7 +186,7 @@ def _make_scrolled_tree(parent, columns, headings, widths, anchors=None,
 class PMSaveDiskToolApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("PM Save Disk Tool v2.0")
+        self.root.title("PM Save Disk Tool")
         self.root.geometry("1060x800")
 
         self.adf = None
@@ -1078,6 +1078,11 @@ class PMSaveDiskToolApp:
     def show_highlights(self):
         if not self.current_save:
             messagebox.showinfo("Info", "Select a save slot first.")
+            return
+        if self.current_save.is_template:
+            messagebox.showinfo("Info",
+                "Championship Highlights requires a save slot (e.g. pm1.sav).\n\n"
+                "start.dat is the factory template and has no player database.")
             return
         ChampionshipHighlightsWindow(
             self.root, self.current_save, self.adf,
@@ -2825,9 +2830,9 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                                            anchors={"name": "w", "hint": "w"},
                                            on_double_click=self._open_editor)
         self._squad_tree._pid_map = {}
-        self._squad_tree.tag_configure('renew', background='#d8f5d8')
-        self._squad_tree.tag_configure('sack', background='#f5d8d8')
-        self._squad_tree.tag_configure('watch', background='#f5f0d8')
+        self._squad_tree.tag_configure('renew', background='#1E3E2E', foreground=_THEME['positive'])
+        self._squad_tree.tag_configure('sack',  background='#3E1E2E', foreground=_THEME['negative'])
+        self._squad_tree.tag_configure('watch', background='#3E3E1E', foreground='#CCCC44')
 
         if team_names:
             combo.current(0)

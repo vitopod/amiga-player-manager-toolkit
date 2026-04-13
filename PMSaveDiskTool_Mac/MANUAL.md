@@ -1,4 +1,4 @@
-# PMSaveDiskTool v2.0 — Mac Edition
+# PMSaveDiskTool — Mac Edition
 ### Player Manager (1990, Anco) Save Disk Editor
 
 ---

@@ -1,4 +1,4 @@
-# Amiga Player Manager Toolkit — v2.0
+# Amiga Player Manager Toolkit
 
 A cross-platform toolkit for editing **Player Manager** (Anco, 1990) save disks on ADF images. Edit teams, rosters, and player attributes; compose game-disk patches; visualise tactics; and browse the 68000 game code — all without a running emulator.
 

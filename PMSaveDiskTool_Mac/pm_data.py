@@ -480,7 +480,11 @@ def parse_player_db(adf, dir_entry):
     if db_offset + PLAYER_DB_HEADER_SIZE + PLAYER_RECORD_SIZE > ADF_SIZE:
         return {}
     header_raw = adf.read_bytes(db_offset, PLAYER_DB_HEADER_SIZE)
-    _header_word = struct.unpack_from('>H', header_raw, 0)[0]
+    header_word = struct.unpack_from('>H', header_raw, 0)[0]
+    # Genuine player DBs have a header word in range 1–4.
+    # If not, this is not a real player database (e.g. start.dat has none).
+    if not (1 <= header_word <= 4):
+        return {}
     records_start = db_offset + PLAYER_DB_HEADER_SIZE
     # Read as many 42-byte records as fit before hitting the ADF boundary
     available = ADF_SIZE - records_start
