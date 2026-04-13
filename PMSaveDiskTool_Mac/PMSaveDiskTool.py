@@ -3542,6 +3542,398 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
         pass
 
 
+# ─── Transfer Market Window ─────────────────────────────────────────
+
+class TransferMarketWindow(tk.Toplevel):
+    """Search, filter, and transfer players between teams."""
+
+    def __init__(self, parent, save, adf, game_disk=None, liga_names=None):
+        super().__init__(parent)
+        self.title(f"Transfer Market — {save.entry.name}")
+        self.geometry("1200x720")
+        self.resizable(True, True)
+        self._save = save
+        self._adf = adf
+        self._game_disk = game_disk
+        self._liga = liga_names or []
+        self._players = parse_player_db(adf, save.entry)
+        self._build_ui()
+        self._apply_filters()
+
+    def _player_name(self, pid):
+        if self._game_disk:
+            return self._game_disk.player_name(pid)
+        return f"#{pid}"
+
+    def _team_name(self, team_idx):
+        if team_idx == 0xFF:
+            return "Free Agent"
+        if 0 <= team_idx < len(self._liga):
+            return self._liga[team_idx]
+        return f"Team {team_idx}"
+
+    def _build_ui(self):
+        if not self._players:
+            ttk.Label(self, text="No player database found for this save slot.",
+                      font=("", 13)).pack(pady=40)
+            return
+
+        # Filters
+        filt = ttk.LabelFrame(self, text="Filters")
+        filt.pack(fill=tk.X, padx=8, pady=(8, 4))
+
+        r1 = ttk.Frame(filt)
+        r1.pack(fill=tk.X, padx=4, pady=2)
+
+        ttk.Label(r1, text="Search:").pack(side=tk.LEFT)
+        self._search_var = tk.StringVar()
+        search_entry = ttk.Entry(r1, textvariable=self._search_var, width=20)
+        search_entry.pack(side=tk.LEFT, padx=4)
+        search_entry.bind('<Return>', lambda e: self._apply_filters())
+
+        ttk.Label(r1, text="Position:").pack(side=tk.LEFT, padx=(12, 0))
+        self._pos_var = tk.StringVar(value="All")
+        pos_combo = ttk.Combobox(r1, textvariable=self._pos_var,
+                                 values=["All", "GK", "DEF", "MID", "FWD"],
+                                 state='readonly', width=6)
+        pos_combo.pack(side=tk.LEFT, padx=4)
+        pos_combo.bind('<<ComboboxSelected>>', lambda e: self._apply_filters())
+
+        ttk.Label(r1, text="Age:").pack(side=tk.LEFT, padx=(12, 0))
+        self._age_min_var = tk.IntVar(value=16)
+        self._age_max_var = tk.IntVar(value=50)
+        ttk.Spinbox(r1, from_=16, to=50, textvariable=self._age_min_var,
+                    width=4).pack(side=tk.LEFT, padx=2)
+        ttk.Label(r1, text="–").pack(side=tk.LEFT)
+        ttk.Spinbox(r1, from_=16, to=50, textvariable=self._age_max_var,
+                    width=4).pack(side=tk.LEFT, padx=2)
+
+        ttk.Label(r1, text="Min skill:").pack(side=tk.LEFT, padx=(12, 0))
+        self._skill_min_var = tk.IntVar(value=0)
+        ttk.Spinbox(r1, from_=0, to=200, textvariable=self._skill_min_var,
+                    width=5).pack(side=tk.LEFT, padx=2)
+
+        ttk.Button(r1, text="Apply",
+                   command=self._apply_filters).pack(side=tk.LEFT, padx=8)
+
+        r2 = ttk.Frame(filt)
+        r2.pack(fill=tk.X, padx=4, pady=2)
+
+        ttk.Label(r2, text="Team:").pack(side=tk.LEFT)
+        team_values = ["All", "Free Agents"]
+        for team in self._save.teams:
+            if team.num_players > 0:
+                team_values.append(team.name or f"(team {team.index})")
+        self._team_filter_var = tk.StringVar(value="All")
+        ttk.Combobox(r2, textvariable=self._team_filter_var,
+                     values=team_values, state='readonly',
+                     width=25).pack(side=tk.LEFT, padx=4)
+
+        self._count_label = ttk.Label(r2, text="")
+        self._count_label.pack(side=tk.RIGHT, padx=8)
+
+        # Main PanedWindow
+        pw = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
+        pw.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
+
+        # Left: database list
+        left = ttk.Frame(pw)
+        pw.add(left, weight=3)
+
+        cols = ("name", "pos", "age", "team", "role", "avg",
+                "val", "goals", "mat")
+        headings = ["Name", "Pos", "Age", "Team", "Role", "Avg",
+                    "Val", "Gls", "Mat"]
+        widths = [140, 45, 35, 130, 45, 45, 40, 35, 35]
+
+        db_frame = ttk.Frame(left)
+        db_frame.pack(fill=tk.BOTH, expand=True)
+        self._db_tree = ttk.Treeview(db_frame, columns=cols, show='headings')
+        for col, hd, w in zip(cols, headings, widths):
+            self._db_tree.heading(col, text=hd,
+                                  command=lambda c=col: self._sort_column(c))
+            anc = 'w' if col in ('name', 'team') else 'center'
+            self._db_tree.column(col, width=w, anchor=anc)
+        vsb = ttk.Scrollbar(db_frame, orient='vertical',
+                            command=self._db_tree.yview)
+        self._db_tree.configure(yscrollcommand=vsb.set)
+        vsb.pack(side=tk.RIGHT, fill=tk.Y)
+        self._db_tree.pack(fill=tk.BOTH, expand=True)
+        self._db_tree._pid_map = {}
+        self._db_tree.bind('<Double-1>', self._on_db_double_click)
+
+        btn_mid = ttk.Frame(left)
+        btn_mid.pack(fill=tk.X, pady=4)
+        ttk.Button(btn_mid, text="Transfer to Team →",
+                   command=self._transfer_to_team).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_mid, text="Edit Player…",
+                   command=self._edit_selected).pack(side=tk.LEFT, padx=4)
+
+        # Right: team roster
+        right = ttk.LabelFrame(pw, text="Team Roster")
+        pw.add(right, weight=2)
+
+        top_r = ttk.Frame(right)
+        top_r.pack(fill=tk.X, padx=4, pady=4)
+        ttk.Label(top_r, text="Team:").pack(side=tk.LEFT)
+        self._roster_team_var = tk.StringVar()
+        roster_teams = []
+        self._roster_team_map = {}
+        for team in self._save.teams:
+            disp = team.name or f"(team {team.index})"
+            roster_teams.append(disp)
+            self._roster_team_map[disp] = team.index
+        self._roster_combo = ttk.Combobox(
+            top_r, textvariable=self._roster_team_var,
+            values=roster_teams, state='readonly', width=25)
+        self._roster_combo.pack(side=tk.LEFT, padx=4)
+        self._roster_combo.bind('<<ComboboxSelected>>', self._load_roster)
+
+        self._roster_summary = ttk.Label(right, text="")
+        self._roster_summary.pack(fill=tk.X, padx=8)
+
+        rcols = ("name", "pos", "age", "role", "avg")
+        rheadings = ["Name", "Pos", "Age", "Role", "Avg"]
+        rwidths = [140, 45, 35, 45, 45]
+        roster_frame = ttk.Frame(right)
+        roster_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        self._roster_tree = ttk.Treeview(roster_frame, columns=rcols,
+                                         show='headings')
+        for col, hd, w in zip(rcols, rheadings, rwidths):
+            self._roster_tree.heading(col, text=hd)
+            anc = 'w' if col == 'name' else 'center'
+            self._roster_tree.column(col, width=w, anchor=anc)
+        rvsb = ttk.Scrollbar(roster_frame, orient='vertical',
+                             command=self._roster_tree.yview)
+        self._roster_tree.configure(yscrollcommand=rvsb.set)
+        rvsb.pack(side=tk.RIGHT, fill=tk.Y)
+        self._roster_tree.pack(fill=tk.BOTH, expand=True)
+        self._roster_tree._pid_map = {}
+
+        rbtn = ttk.Frame(right)
+        rbtn.pack(fill=tk.X, padx=4, pady=4)
+        ttk.Button(rbtn, text="← Remove from Team",
+                   command=self._remove_from_team).pack(side=tk.LEFT, padx=4)
+
+        if roster_teams:
+            self._roster_combo.current(0)
+            self._load_roster()
+
+    def _sort_column(self, col):
+        reverse = getattr(self, '_sort_reverse', False)
+        items = [(self._db_tree.set(iid, col), iid)
+                 for iid in self._db_tree.get_children('')]
+        try:
+            items.sort(key=lambda t: float(t[0]), reverse=reverse)
+        except ValueError:
+            items.sort(key=lambda t: t[0].lower(), reverse=reverse)
+        for idx, (_, iid) in enumerate(items):
+            self._db_tree.move(iid, '', idx)
+        self._sort_reverse = not reverse
+
+    def _apply_filters(self):
+        tree = self._db_tree
+        tree.delete(*tree.get_children())
+        tree._pid_map = {}
+
+        search = self._search_var.get().lower().strip()
+        pos_filter = self._pos_var.get()
+        age_lo = self._age_min_var.get()
+        age_hi = self._age_max_var.get()
+        skill_min = self._skill_min_var.get()
+        team_filter = self._team_filter_var.get()
+
+        pos_code = {"GK": 1, "DEF": 2, "MID": 3, "FWD": 4}.get(pos_filter)
+        team_idx_filter = None
+        if team_filter == "Free Agents":
+            team_idx_filter = 0xFF
+        elif team_filter != "All":
+            for team in self._save.teams:
+                disp = team.name or f"(team {team.index})"
+                if disp == team_filter:
+                    team_idx_filter = team.index
+                    break
+
+        count = 0
+        for pid, p in sorted(self._players.items()):
+            if pos_code is not None and p.position != pos_code:
+                continue
+            if not (age_lo <= p.age <= age_hi):
+                continue
+            if p.role_skill_avg() < skill_min:
+                continue
+            if team_idx_filter is not None and p.team_index != team_idx_filter:
+                continue
+            if search:
+                name = self._player_name(pid).lower()
+                if search not in name:
+                    continue
+
+            iid = tree.insert('', 'end', values=(
+                self._player_name(pid),
+                p.position_name,
+                p.age,
+                self._team_name(p.team_index),
+                f"{p.role_skill_avg():.0f}",
+                f"{p.skill_avg:.0f}",
+                p.value,
+                p.goals_this_year,
+                p.matches_this_year,
+            ))
+            tree._pid_map[iid] = pid
+            count += 1
+
+        self._count_label.config(text=f"{count} players")
+
+    def _load_roster(self, event=None):
+        disp = self._roster_team_var.get()
+        team_idx = self._roster_team_map.get(disp)
+        if team_idx is None:
+            return
+        team = self._save.teams[team_idx]
+
+        tree = self._roster_tree
+        tree.delete(*tree.get_children())
+        tree._pid_map = {}
+
+        roster = []
+        for i in range(MAX_PLAYER_SLOTS):
+            pid = struct.unpack_from('>H', team.raw, 12 + i * 2)[0]
+            if pid != 0xFFFF and pid in self._players:
+                roster.append(self._players[pid])
+
+        roster.sort(key=lambda p: (p.position, -p.role_skill_avg()))
+        for p in roster:
+            iid = tree.insert('', 'end', values=(
+                self._player_name(p.player_id),
+                p.position_name,
+                p.age,
+                f"{p.role_skill_avg():.0f}",
+                f"{p.skill_avg:.0f}",
+            ))
+            tree._pid_map[iid] = p.player_id
+
+        self._roster_summary.config(
+            text=f"{len(roster)} / {MAX_PLAYER_SLOTS} slots filled")
+
+    def _transfer_to_team(self):
+        sel = self._db_tree.selection()
+        if not sel:
+            messagebox.showinfo("Info", "Select a player from the left list.",
+                                parent=self)
+            return
+        pid = self._db_tree._pid_map.get(sel[0])
+        if pid is None:
+            return
+
+        disp = self._roster_team_var.get()
+        dest_idx = self._roster_team_map.get(disp)
+        if dest_idx is None:
+            messagebox.showinfo("Info", "Select a destination team.",
+                                parent=self)
+            return
+
+        dest_team = self._save.teams[dest_idx]
+        player = self._players[pid]
+
+        filled = sum(1 for i in range(MAX_PLAYER_SLOTS)
+                     if struct.unpack_from('>H', dest_team.raw, 12 + i * 2)[0]
+                     != 0xFFFF)
+        if filled >= MAX_PLAYER_SLOTS:
+            messagebox.showwarning("Full",
+                                   f"{disp} has no empty roster slots (25/25).",
+                                   parent=self)
+            return
+
+        for i in range(MAX_PLAYER_SLOTS):
+            existing = struct.unpack_from('>H', dest_team.raw, 12 + i * 2)[0]
+            if existing == pid:
+                messagebox.showinfo("Info",
+                                    f"Player is already on {disp}.",
+                                    parent=self)
+                return
+
+        old_idx = player.team_index
+        if old_idx != 0xFF and old_idx < len(self._save.teams):
+            old_team = self._save.teams[old_idx]
+            for i in range(MAX_PLAYER_SLOTS):
+                if struct.unpack_from('>H', old_team.raw, 12 + i * 2)[0] == pid:
+                    struct.pack_into('>H', old_team.raw, 12 + i * 2, 0xFFFF)
+                    old_team.player_values[i] = 0xFFFF
+                    old_team.num_players = sum(
+                        1 for v in old_team.player_values if v != 0xFFFF)
+                    break
+
+        for i in range(MAX_PLAYER_SLOTS):
+            if struct.unpack_from('>H', dest_team.raw, 12 + i * 2)[0] == 0xFFFF:
+                struct.pack_into('>H', dest_team.raw, 12 + i * 2, pid)
+                dest_team.player_values[i] = pid
+                dest_team.num_players = sum(
+                    1 for v in dest_team.player_values if v != 0xFFFF)
+                break
+
+        player.team_index = dest_idx
+        self._save.write_back()
+        write_player_db(self._adf, self._save.entry, {pid: player})
+        self._load_roster()
+        self._apply_filters()
+
+    def _remove_from_team(self):
+        sel = self._roster_tree.selection()
+        if not sel:
+            messagebox.showinfo("Info", "Select a player from the roster.",
+                                parent=self)
+            return
+        pid = self._roster_tree._pid_map.get(sel[0])
+        if pid is None:
+            return
+
+        disp = self._roster_team_var.get()
+        team_idx = self._roster_team_map.get(disp)
+        if team_idx is None:
+            return
+
+        team = self._save.teams[team_idx]
+        player = self._players[pid]
+
+        for i in range(MAX_PLAYER_SLOTS):
+            if struct.unpack_from('>H', team.raw, 12 + i * 2)[0] == pid:
+                struct.pack_into('>H', team.raw, 12 + i * 2, 0xFFFF)
+                team.player_values[i] = 0xFFFF
+                team.num_players = sum(
+                    1 for v in team.player_values if v != 0xFFFF)
+                break
+
+        player.team_index = 0xFF
+        self._save.write_back()
+        write_player_db(self._adf, self._save.entry, {pid: player})
+        self._load_roster()
+        self._apply_filters()
+
+    def _on_db_double_click(self, event):
+        sel = self._db_tree.selection()
+        if not sel:
+            return
+        pid = self._db_tree._pid_map.get(sel[0])
+        if pid is not None and pid in self._players:
+            PlayerEditorWindow(
+                self, self._players[pid], self._adf, self._save.entry,
+                game_disk=self._game_disk,
+                on_save=self._apply_filters)
+
+    def _edit_selected(self):
+        sel = self._db_tree.selection()
+        if not sel:
+            messagebox.showinfo("Info", "Select a player first.", parent=self)
+            return
+        pid = self._db_tree._pid_map.get(sel[0])
+        if pid is not None and pid in self._players:
+            PlayerEditorWindow(
+                self, self._players[pid], self._adf, self._save.entry,
+                game_disk=self._game_disk,
+                on_save=self._apply_filters)
+
+
 # ─── Player Editor Window ───────────────────────────────────────────
 
 class PlayerEditorWindow(tk.Toplevel):
