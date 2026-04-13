@@ -41,31 +41,33 @@ python3 PMSaveDiskTool.py
 
 ## Interface Overview
 
+The app uses a dark Amiga-inspired theme (navy background, orange and cyan accents, Menlo monospace font throughout).
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  [Open ADF]  [Save]   filename.adf                          │
-├──────────────────┬──────────────────────────────────────────┤
-│ Save Slots       │  Team Info                               │
-│ ─────────────    │  ─────────────────────────────────────── │
-│ save1.sav        │  Team Name  [____________]  Division [▼] │
-│ save2.sav        │  Team Value [      ]  Budget Tier [    ] │
-│ save3.sav        │  [Apply Changes]  [Become Manager]       │
-│ ...              │                                          │
-│                  │  League Stats                            │
-│ Teams            │  Points [  ]  Goals [  ]  Rank A [  ]   │
-│ ─────────────    │  Rank B [  ]  Flag1 [  ]  Flag2 [  ]    │
-│ #  Name    Div   │                                          │
-│  0 INTER     1   │  Player IDs (up to 25 roster slots)      │
-│  1 JUVENTUS  1   │  P00 [  ] P01 [  ] P02 [  ] P03 [  ]   │
-│  2 ROMA      1   │  ...                                     │
-│                  │                                          │
-│                  │  Raw Record Hex (100 bytes)              │
-│                  │  +000  00 15 00 21 ...                   │
-│                  │  ...                                     │
-└──────────────────┴──────────────────────────────────────────┘
-│ Status bar                                                   │
+│ [PM] Save Disk Tool                    ⬡ GameDisk loaded    │  Title bar
+├─────────────────────────────────────────────────────────────┤
+│ [Open ADF] [Save] [Save As…]              DataDisk.adf      │  Toolbar
+├──────────────┬──────────────────────────────────────────────┤
+│ SAVE SLOTS   │ ┌─ BAYERN MUNCHEN ── [DIV 1] +4357  46 ──┐  │
+│ ► START.sav  │ │                   [Become Mgr] [Apply]  │  │  Team header
+│   pm1.sav    │ ├─────────────────────────────────────────┤  │
+│              │ │ [Roster]  Team Info  League Stats  Hex   │  │  Tabs
+│ TEAMS (44)   │ ├─────────────────────────────────────────┤  │
+│ Filter…      │ │  #  ID    Player Name                   │  │
+│ ▼ Division 1 │ │  0  473   Zinetti                       │  │
+│  BAYERN MUN. │ │  1  637   Nava                          │  │  Tab content
+│  1. FC KOLN  │ │  2   —    empty slot                    │  │
+│ ▼ Division 2 │ │                                         │  │
+│  BOR. DORT.  │ │ [Set Player ID] [Remove Player]  18/25  │  │
+│ ► Division 3 │ │                                         │  │
+│ ► Division 4 │ │                                         │  │
+├──────────────┴─┴─────────────────────────────────────────┴──┤
+│ Game disk: PlayerManagerITA.adf   START.sav → BAYERN MUNCHEN│  Status bar
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**Before a file is loaded**, the right panel shows a centred empty state with "PM / Save Disk Tool" and an Open ADF button. Once a team is selected, the team header bar and tabs appear.
 
 ---
 
@@ -94,13 +96,26 @@ Click a slot to load it. The **Teams** list on the left populates with all 44 te
 
 ### 3. Select a Team
 
-Click any row in the **Teams** list to load that team's data into the right panel.
+Teams are grouped by division in the sidebar — Division 1 and 2 are expanded by default, Division 3 and 4 are collapsed. Click any team name to load its data into the right panel.
 
-The **Div** column shows the team's current division (0 = Division 1, 1 = Division 2, etc.). A `?` means the division field is not a simple 0–3 value (normal in the `start.dat` template).
+Use the **Filter** box above the team list to search by name across all divisions. Typing a filter expands all groups and hides non-matching teams.
+
+When a team is selected, the **team header bar** appears showing the team name, a coloured division badge (orange for Div 1, cyan for Div 2), team value, and budget tier. The four editing tabs appear below it.
 
 ### 4. Edit Team Data
 
-Change any field in the **Team Info**, **League Stats**, or **Player IDs** sections, then click **Apply Changes**.
+The right panel has four tabs:
+
+| Tab | Content |
+|-----|---------|
+| **Roster** | Player table with slot number, ID, and name. Double-click a row to inline-edit the player ID. Use "Set Player ID" and "Remove Player" buttons below the table. The count (e.g. "18/25") shows how many slots are filled. |
+| **Team Info** | Team Name, Division, Team Value, and Budget Tier fields. |
+| **League Stats** | Points, Goals, Rank A, Rank B, Flag 1, Flag 2. |
+| **Hex Dump** | Read-only hex view of the raw 100-byte team record. |
+
+Switch tabs with **Cmd+1** through **Cmd+4** (Ctrl+1–4 on Windows/Linux).
+
+Edit fields in any tab, then click **Apply Changes** in the team header bar.
 
 > Changes are applied to the in-memory buffer only. Use **File → Save ADF** to write to disk.
 
@@ -147,7 +162,9 @@ Each slot holds a **16-bit player ID** (0–1036). These are indices into a mast
 | 0–1036 | Player ID — references a specific named player with fixed attributes |
 | `FFFF` | Empty slot — no player assigned |
 
-**Important:** The individual player attributes (Stamina, Pace, Agility, Heading, Ball Skills, Passing, Shooting) are stored on the game disk, keyed by player ID. Editing player IDs effectively swaps which players are on the team roster. To see what a player ID means (name, stats), you need the original game disk loaded in an Amiga emulator.
+**Inline editing:** Double-click any roster row to edit the player ID directly in the table. Type a numeric ID and press Enter to confirm, or Escape to cancel. The player name updates immediately. You can also select a row and click "Set Player ID" or "Remove Player" below the table.
+
+**Important:** The individual player attributes (Stamina, Pace, Agility, etc.) are stored in a per-player database on the save disk. Editing player IDs effectively swaps which players are on the team roster. With the game disk loaded, player names are shown alongside IDs.
 
 In the factory template (`start.dat`), each of the 1037 player IDs appears exactly once across all teams — every player has a unique home. The IDs form a nearly-sequential list from 0 to 1036.
 
@@ -271,36 +288,76 @@ Promotion rows are highlighted green; relegation rows are highlighted red.
 
 ### Compare Saves…
 
-Compares two save slots side-by-side. Opens a dialog with two drop-down menus — pick any two slots from the currently loaded disk (including `start.dat`), then click **Compare →**.
+Compares two save slots side-by-side. Pick Save A and Save B from the dropdowns, then click **Compare →**. Results appear in three tabs.
 
-The results show three sections:
+---
 
-**Player Transfers**
+**Tab 1 — Player Transfers**
 
-Lists every player ID whose team assignment changed between Save A and Save B. Player IDs are globally unique across all 44 teams, so any ID that appears in a different team's roster has transferred.
+Lists every player whose team changed between Save A and Save B, sorted by name. Columns: ID, Name, Position, From team, To team, and current role-skill average (from Save B). Double-click any row to open the full Player Detail popup for that player.
+
+---
+
+**Tab 2 — Division & Budget**
+
+Lists teams where the division or team value changed. Division changes show "Promoted" or "Relegated" in green or red. Only rows with at least one change are shown, sorted by division change first then by largest value delta.
+
+---
+
+**Tab 3 — Career Tracker**
+
+Full player database diff — all ~1037 players compared between Save A and Save B.
+
+**Filters (top bar):**
+- **Team** — "All", "Free Agents", or a specific team (from Save B roster)
+- **Position** — All / GK / DEF / MID / FWD
+- **Age** — Min/Max spinboxes (16–40); leave at defaults to show all ages
+- **Show only changed** — default ON; hides players with no skill, team, or position changes
+
+**What counts as "changed":** any skill delta ≠ 0, team changed, or position changed. Age progression alone (which happens to every player each season) does not count.
+
+**Summary bar** (above the table) shows: `Showing N of M players — X improved, Y declined, Z transferred`. Updates whenever filters change.
+
+**Table columns:**
+
+| Column | Content |
+|--------|---------|
+| Name | Player surname |
+| Pos | Position in Save B; shows `DEF->MID` if changed |
+| Age | Age in Save B |
+| Team | Team in Save B; shows `INTER->JUVENTUS` if transferred |
+| Role Δ | Role-skill average change (Save B minus Save A) |
+| Avg Δ | Overall skill average change |
+| Goals | Goals this year in Save B |
+| Mat | Matches this year in Save B |
+| Inj | Injuries this year in Save B |
+| Ctr | Contract years in Save B |
+| Age Grp | Age bracket: 16-20, 21-25, 26-30, 31-35, 36+ |
+
+Click any column header to sort. Click again to reverse. Default sort: Role Δ descending (most improved first).
+
+**Row colours:**
+- Green: role skill improved by 5+
+- Red: role skill declined by 5+
+- Yellow: transferred between teams
+- Gray: player only in Save A (removed or retired)
+- Blue: player only in Save B (newly generated)
+
+**Age–Skill Trend bar** (below the table): when "Show only changed" is on and at least 20 changed players are visible, a one-line summary shows average role delta by age bracket:
 
 ```
-ID  473:  INTER                     → JUVENTUS
-ID  637:  JUVENTUS                  → (unassigned)
+Age–Skill Trends (avg role Δ):  16-20: +8.2  |  21-25: +3.1  |  26-30: +0.4  |  31-35: -2.7  |  36+: -6.1
 ```
 
-**Division Changes**
+Values update when filters change — filtering by position shows position-specific aging curves.
 
-Lists teams whose division number changed, with a promoted/relegated label.
+Double-click any row to open the **Player Detail** popup.
 
-```
-INTER               Div 2 → Div 1  (promoted)
-ROMA                Div 1 → Div 2  (relegated)
-```
+---
 
-**Team Value Changes**
+**Player Detail popup**
 
-Lists all teams whose financial balance changed, sorted by largest absolute change.
-
-```
-JUVENTUS            +4357 → +5100  (Δ +743)
-ROMA                  -48 →   -12  (Δ  +36)
-```
+Opened by double-clicking any player row in the Transfers or Career Tracker tab. Shows a scrollable table of all attributes with Save A, Save B, and delta columns. Deltas are green for improvements, red for declines. At the bottom, **Edit in Save B…** opens the Player Editor for that player.
 
 ---
 
@@ -590,18 +647,13 @@ This enables:
 
 ### Player Names in Roster View
 
-Player ID fields show the player's surname next to the numeric ID (e.g., `473 Zinetti`). Names are extracted from the Italian surname table embedded in the game executable (245 unique surnames). The ID-to-name mapping uses a heuristic (`player_id % 245`) — names are indicative, not guaranteed to match the in-game display.
+The Roster tab shows player surnames in a dedicated Name column (e.g., `Zinetti`). Names are extracted from the Italian surname table embedded in the game executable (245 unique surnames). The ID-to-name mapping uses a heuristic (`player_id % 245`) — names are indicative, not guaranteed to match the in-game display.
 
-When editing player IDs, enter just the numeric ID or the full `ID Name` string — the tool strips the name automatically.
+When inline-editing a player ID, enter just the numeric ID. The name updates automatically on confirm.
 
 ### Player Names in Compare Saves
 
-The **Compare Saves** transfer report shows player surnames alongside IDs:
-
-```
-ID  473 (Zinetti):  INTER                     → JUVENTUS
-ID  637 (Nava):     JUVENTUS                  → (unassigned)
-```
+The **Compare Saves** Transfers tab shows player surnames in the Name column. The Career Tracker tab also shows surnames throughout. Names are extracted from the Italian surname table embedded in the game executable (245 unique surnames). The ID-to-name mapping uses a heuristic (`player_id % 245`) — names are indicative, not guaranteed to match the in-game display.
 
 ### Patch Composer Auto-Load
 
@@ -611,11 +663,15 @@ The **Patch Composer** opens with the game disk already loaded — no need to cl
 
 The tool decompresses the game disk's DEFAJAM-packed executable entirely in Python (two-phase: backward LZ77 + RLE expansion), producing a 131,072-byte game image. This runs once at startup and takes ~1 second. The decompressed image is used for player name extraction, the disassembler, and cross-referencing the player attribute generation code.
 
-### Status Bar
+### Title Bar and Status Bar
 
-The status bar shows game disk loading status at startup:
-- `Game disk loaded: PlayerManagerITA.adf — 245 player names extracted`
-- `Game disk error: <reason>` (if loading fails)
+The **title bar** shows game disk status on the right:
+- `⬡ PlayerManagerITA.adf — 245 names` (if loaded)
+- `(no game disk)` (if not found)
+
+The **status bar** at the bottom has two sections:
+- Left: general status messages (file loaded, changes applied, errors)
+- Right: navigation breadcrumb showing the current save slot and team (e.g., `START.sav → BAYERN MUNCHEN`)
 
 If no game disk is found, the tool works normally without player names.
 

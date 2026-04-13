@@ -14,7 +14,7 @@ The original **Player Manager Save Disk Tool v1.2** by [UltimateBinary](https://
 | **Game Disk Integration** | Auto-loads a game disk ADF on startup and extracts 245 player surnames from the DEFAJAM-decompressed game image. Player IDs in the roster show real names. Tested with the Italian version; other versions likely work for save editing but name lookup is Italian-specific. |
 | **Patch Composer** | GUI editor for the 68000 runtime patch block (block 1137) on the game disk. Add, remove, and preview byte/word/long patches — with space budget tracking and OFS checksum auto-calculation. Includes one-click manager age patch. |
 | **League Tables** | Four-division league tables sorted by points and goals, with promotion and relegation zone highlighting. |
-| **Compare Saves** | Diff two save slots: player transfers, division changes, and team value deltas. |
+| **Compare Saves** | Tabbed diff of two save slots: player transfers, division/budget changes, and full Career Tracker (player DB diff with filters, age-skill trends, and Player Detail popup). |
 | **Championship Highlights** | Player attribute browser. Reads the 42-byte per-player database stored on the save disk after each .sav file. Five tabs: Best By Position (GK/DEF/MID/FWD ranked by role skills), Top Scorers, Young Talents (age 16–22), Market Values, and Squad Analyst with renew/sack hints. |
 | **Transfer Market** | Search and filter all ~1037 players by name, position, age, skill level. Transfer players between teams. Edit individual player attributes (10 skills, physical stats, career stats). |
 | **Tactics Viewer** | Visual pitch editor for `.tac` files. Ten zones × two ball states (with/without ball) × ten outfield players. Drag player dots on a football pitch and save back to disk. |
@@ -64,13 +64,13 @@ No dependencies beyond the Python standard library. Keyboard shortcuts use ⌘ o
 ## Usage
 
 1. **Open ADF** — select a Player Manager save disk ADF.
-2. Select a **save slot** from the left panel.
-3. Select a **team** from the division-grouped list.
-4. Edit fields across the four tabs: **Roster**, **Team Info**, **League Stats**, **Hex Dump**.
-5. Click **Apply Changes** to write to the in-memory ADF buffer.
+2. Select a **save slot** from the sidebar.
+3. Select a **team** from the division-grouped tree (filter by typing in the search box).
+4. Edit fields across the four tabs: **Roster**, **Team Info**, **League Stats**, **Hex Dump** (switch with Cmd+1–4).
+5. Click **Apply Changes** in the team header bar to write to the in-memory ADF buffer.
 6. **Save** (Cmd+S) or **Save As…** (Cmd+Shift+S) to write back to disk.
 
-Tool windows are under the **Tools** menu: Patch Composer, League Tables, Compare Saves, Championship Highlights, Transfer Market, Tactics Viewer, Disassembler.
+Double-click a roster row to inline-edit the player ID. Tool windows are under the **Tools** menu: Patch Composer, League Tables, Compare Saves, Championship Highlights, Transfer Market, Tactics Viewer, Disassembler.
 
 Full documentation: **[PMSaveDiskTool_Mac/MANUAL.md](PMSaveDiskTool_Mac/MANUAL.md)**
 
@@ -78,10 +78,12 @@ Full documentation: **[PMSaveDiskTool_Mac/MANUAL.md](PMSaveDiskTool_Mac/MANUAL.m
 
 ## Headless / scripting use
 
-All parsing logic is cleanly separated from the GUI. To use the data layer in a script:
+All parsing logic lives in `pm_data.py`, cleanly separated from the GUI. To use the data layer in a script:
 
 ```python
-exec(open('PMSaveDiskTool_Mac/PMSaveDiskTool.py').read().split('# ─── GUI')[0])
+import sys
+sys.path.insert(0, 'PMSaveDiskTool_Mac')
+from pm_data import *
 
 adf = ADF('DataDisk.adf')
 entries = parse_file_table(adf)
