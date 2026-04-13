@@ -16,6 +16,7 @@ Originally based on **Player Manager Save Disk Tool v1.2 (Experimental)** by [Ul
 | **League Tables** | Four-division league tables sorted by points and goals, with promotion and relegation zone highlighting. |
 | **Compare Saves** | Diff two save slots: player transfers, division changes, and team value deltas. |
 | **Championship Highlights** | Player attribute browser. Reads the 42-byte per-player database stored on the save disk after each .sav file. Five tabs: Best By Position (GK/DEF/MID/FWD ranked by role skills), Top Scorers, Young Talents (age 16–22), Market Values, and Squad Analyst with renew/sack hints. |
+| **Transfer Market** | Search and filter all ~1037 players by name, position, age, skill level. Transfer players between teams. Edit individual player attributes (10 skills, physical stats, career stats). |
 | **Tactics Viewer** | Visual pitch editor for `.tac` files. Ten zones × two ball states (with/without ball) × ten outfield players. Drag player dots on a football pitch and save back to disk. |
 | **68000 Disassembler** | Interactive disassembler for the decompressed game image. All opcodes and addressing modes, cross-reference search, word/MUL/DIVU searches, and double-click address navigation. |
 

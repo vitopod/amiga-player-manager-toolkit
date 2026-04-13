@@ -163,6 +163,7 @@ In the factory template (`start.dat`), each of the 1037 player IDs appears exact
 | **League Tables…** | Division standings for the selected save slot |
 | **Compare Saves…** | Side-by-side diff of two save slots (transfers, promotions, budgets) |
 | **Championship Highlights…** | Player attribute browser — best by position, top scorers, young talents, market values, squad analyst |
+| **Transfer Market…** | Search, filter, and transfer players between teams |
 | **Tactics Viewer…** | Visual formation editor for .tac files |
 | **Disassembler…** | Interactive 68000 disassembler for the game image |
 
@@ -375,6 +376,57 @@ The summary line shows squad size, average age, average skill, and total team go
 
 Additional fields: Height (cm), Weight (kg), Age, Injury weeks, Disciplinary, Morale, Market value, Transfer weeks, Contract years, Goals/Matches (this year and last year), Division years, International years.
 
+#### Editing Players
+
+Double-click any player row in Championship Highlights (or the Transfer Market) to open the **Player Editor**. This lets you modify:
+
+- **Skills** (0–200): Stamina, Resilience, Pace, Agility, Aggression, Flair, Passing, Shooting, Tackling, Keeping — each with a slider and spinbox
+- **Info**: Age, Position (1=GK, 2=DEF, 3=MID, 4=FWD), Height, Weight, Contract years, Market value
+- **Career stats**: Injury weeks, injuries this/last year, goals this/last year, matches this/last year
+
+Click **Apply to ADF** to write changes to the in-memory buffer. The "Max All Skills" button sets all 10 skills to 200.
+
+> Changes are applied to the in-memory buffer only. Use **File → Save ADF** to write to disk. Always save to a new file first ("Save As") to keep a backup.
+
+---
+
+### Transfer Market…
+
+Opens a full player database browser with search, filtering, and team transfer controls. Requires a save slot selected.
+
+**Left panel — Player Database:**
+
+A searchable table of all ~1037 players. Columns: Name, Position, Age, Team, Role Skill Avg, Overall Avg, Market Value, Goals, Matches. Click column headers to sort.
+
+**Filters:**
+
+| Filter | What it does |
+|--------|-------------|
+| Search | Filter by player name (substring match) |
+| Position | All / GK / DEF / MID / FWD |
+| Age | Min–max range (default 16–50) |
+| Min skill | Only show players with role skill average above this threshold |
+| Team | All / Free Agents / specific team name |
+
+**Right panel — Team Roster:**
+
+Select a team from the dropdown to see its current roster (up to 25 players).
+
+**Transfer operations:**
+
+| Button | What it does |
+|--------|-------------|
+| **Transfer to Team →** | Moves the selected player from the database list into the chosen team's roster. Automatically removes the player from their previous team. |
+| **← Remove from Team** | Removes the selected player from the roster (becomes a free agent). |
+| **Edit Player…** | Opens the Player Editor for the selected player. |
+
+Double-clicking a player in the database list also opens the Player Editor.
+
+**Safeguards:**
+- Cannot exceed 25 players per team
+- Cannot transfer a player who is already on the destination team
+- All changes are written to the in-memory ADF buffer immediately. Use **File → Save ADF** to persist to disk.
+
 ---
 
 ### Tactics Viewer…
@@ -510,7 +562,7 @@ Offset  Size  Field
 
 ## Limitations
 
-- **Player attributes are read-only.** The tool reads all 10 skill attributes and career stats from the player database on the save disk (see Championship Highlights). Editing player attributes is not yet supported. Player ID-to-name mapping uses a heuristic (`id % 245`) and may not match in-game names exactly.
+- **Player attribute changes are save-disk only.** Edited skills and stats are written to the player database on the save disk. The game loads this database when resuming a saved game, so changes take effect on next load. However, the game may regenerate some values during gameplay.
 - **Team name changes are save-disk only.** The game disk has its own name table. If you rename a team here, the game may show the old name on some screens.
 - **Tactics zones are approximate.** The 10 zone names are inferred from positional analysis; the exact game-engine mapping has not been confirmed.
 - **Record #43 is sometimes binary.** In some save files the last team slot contains non-ASCII data. The tool displays it as `(record 43)` and preserves the raw bytes on save.
