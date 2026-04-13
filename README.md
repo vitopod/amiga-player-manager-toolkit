@@ -70,7 +70,7 @@ No dependencies beyond the Python standard library. Keyboard shortcuts use ⌘ o
 5. Click **Apply Changes** to write to the in-memory ADF buffer.
 6. **Save** (Cmd+S) or **Save As…** (Cmd+Shift+S) to write back to disk.
 
-Tool windows are under the **Tools** menu: Patch Composer, League Tables, Compare Saves, Tactics Viewer, Disassembler.
+Tool windows are under the **Tools** menu: Patch Composer, League Tables, Compare Saves, Championship Highlights, Transfer Market, Tactics Viewer, Disassembler.
 
 Full documentation: **[PMSaveDiskTool_Mac/MANUAL.md](PMSaveDiskTool_Mac/MANUAL.md)**
 
@@ -83,11 +83,24 @@ All parsing logic is cleanly separated from the GUI. To use the data layer in a 
 ```python
 exec(open('PMSaveDiskTool_Mac/PMSaveDiskTool.py').read().split('# ─── GUI')[0])
 
-adf = ADF('DataDisk_Simone.adf')
+adf = ADF('DataDisk.adf')
 entries = parse_file_table(adf)
-sf = SaveFile(adf, next(e for e in entries if e.name == 'START.sav'))
+
+# Browse teams in a save slot
+sf = SaveFile(adf, next(e for e in entries if e.name == 'pm1.sav'))
 for team in sf.teams[:5]:
     print(team.index, team.name, team.division, team.num_players)
+
+# Read the player attribute database (42 bytes × ~1037 players)
+players = parse_player_db(adf, sf.entry)
+best_fwd = max((p for p in players.values() if p.position == 4),
+               key=lambda p: p.role_skill_avg())
+print(best_fwd)  # PlayerRecord(id=270, age=26, pos=FWD, skills_avg=144)
+
+# Edit and write back
+best_fwd.shooting = 200
+write_player_db(adf, sf.entry, {best_fwd.player_id: best_fwd})
+adf.save('DataDisk_modified.adf')
 ```
 
 ---
