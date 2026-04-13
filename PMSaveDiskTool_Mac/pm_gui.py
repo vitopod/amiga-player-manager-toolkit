@@ -1852,7 +1852,7 @@ class CompareSavesWindow(tk.Toplevel):
         # Summary bar
         self._summary_var = tk.StringVar(value="No comparison loaded.")
         ttk.Label(parent, textvariable=self._summary_var,
-                  foreground='gray').pack(fill=tk.X, padx=8, pady=(0, 2))
+                  foreground=_THEME['text_muted']).pack(fill=tk.X, padx=8, pady=(0, 2))
 
         # Career treeview
         cols  = ('name', 'pos', 'age', 'team', 'role_delta', 'avg_delta',
