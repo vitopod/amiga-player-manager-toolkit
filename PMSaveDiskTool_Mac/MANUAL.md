@@ -162,6 +162,7 @@ In the factory template (`start.dat`), each of the 1037 player IDs appears exact
 | **Patch Composer…** | Game-disk block 1137 editor — add/remove/preview 68000 patches |
 | **League Tables…** | Division standings for the selected save slot |
 | **Compare Saves…** | Side-by-side diff of two save slots (transfers, promotions, budgets) |
+| **Championship Highlights…** | Player attribute browser — best by position, top scorers, young talents, market values, squad analyst |
 | **Tactics Viewer…** | Visual formation editor for .tac files |
 | **Disassembler…** | Interactive 68000 disassembler for the game image |
 
@@ -302,6 +303,80 @@ ROMA                  -48 →   -12  (Δ  +36)
 
 ---
 
+### Championship Highlights…
+
+Opens a player attribute browser for the currently selected save slot. The game stores a full player database (42 bytes per player, ~1037 players) on the save disk immediately after each `.sav` file. This window reads that database and presents five analysis tabs.
+
+**Requires:** A save slot selected (not `start.dat` — it has no player database).
+
+#### Tab: Best By Position
+
+Four sub-tabs (Goalkeepers, Defenders, Midfielders, Forwards) each showing the top 15 players ranked by **role-relevant skill average**:
+
+| Position | Key skills used for ranking |
+|----------|----------------------------|
+| GK | Keeping, Agility, Resilience |
+| DEF | Tackling, Stamina, Aggression, Pace |
+| MID | Passing, Flair, Stamina, Agility |
+| FWD | Shooting, Pace, Flair, Agility |
+
+Each row shows the player's name, age, team, role average, overall skill average, position-specific skill values, goals, and matches.
+
+#### Tab: Top Scorers
+
+Four sub-tabs ranking players by:
+
+| Sub-tab | Stat |
+|---------|------|
+| Goals This Year | Season goal tally |
+| Goals Last Year | Previous season goals |
+| Matches This Year | Games played this season |
+| Display Pts This Year | The game's internal performance metric |
+
+Only players with a non-zero stat are shown, ranked highest first.
+
+#### Tab: Young Talents
+
+Shows the top 30 players aged 16–22, ranked by role-relevant skill average. Useful for scouting young players with high potential. Includes contract years remaining.
+
+#### Tab: Market Values
+
+Shows the top 30 players by market value (a 0–255 field in the player record). Cross-references with role skill average and career stats to identify over/undervalued players.
+
+#### Tab: Squad Analyst
+
+Pick any team from the dropdown to see its full roster with colour-coded recommendations:
+
+| Colour | Hint | Meaning |
+|--------|------|---------|
+| Green | "Young talent" | Age 22 or under with role avg 100+ |
+| Green | "Star player" | Role avg 130+ |
+| Green | "Renew contract!" | Star player (130+) with 1 or fewer contract years |
+| Red | "Past peak" | Age 30+ with role avg under 100 |
+| Red | "Below average" | Role avg under 70 |
+| Yellow | "Injury prone" | 4+ injuries across this and last year |
+
+The summary line shows squad size, average age, average skill, and total team goals.
+
+#### Player attributes (10 skills, all 0–200 range)
+
+| Skill | Description |
+|-------|-------------|
+| Stamina | Endurance over 90 minutes |
+| Resilience | Recovery from tackles and fatigue |
+| Pace | Sprint speed |
+| Agility | Turning and close control |
+| Aggression | Tackling intensity (displayed inverted by the Windows tool) |
+| Flair | Creative ability |
+| Passing | Pass accuracy and vision |
+| Shooting | Shot power and accuracy |
+| Tackling | Defensive interception ability |
+| Keeping | Goalkeeping ability |
+
+Additional fields: Height (cm), Weight (kg), Age, Injury weeks, Disciplinary, Morale, Market value, Transfer weeks, Contract years, Goals/Matches (this year and last year), Division years, International years.
+
+---
+
 ### Tactics Viewer…
 
 Opens a visual formation editor for `.tac` tactics files on the save disk. Requires a save disk with at least one `.tac` file loaded.
@@ -435,7 +510,7 @@ Offset  Size  Field
 
 ## Limitations
 
-- **Player attributes remain unknown.** The tool can show player names (surnames) but not individual stats (Stamina, Pace, etc.). The attribute table may be procedurally generated rather than stored as a static table. Player ID-to-name mapping uses a heuristic and may not match in-game names exactly.
+- **Player attributes are read-only.** The tool reads all 10 skill attributes and career stats from the player database on the save disk (see Championship Highlights). Editing player attributes is not yet supported. Player ID-to-name mapping uses a heuristic (`id % 245`) and may not match in-game names exactly.
 - **Team name changes are save-disk only.** The game disk has its own name table. If you rename a team here, the game may show the old name on some screens.
 - **Tactics zones are approximate.** The 10 zone names are inferred from positional analysis; the exact game-engine mapping has not been confirmed.
 - **Record #43 is sometimes binary.** In some save files the last team slot contains non-ASCII data. The tool displays it as `(record 43)` and preserves the raw bytes on save.
@@ -482,7 +557,7 @@ The **Patch Composer** opens with the game disk already loaded — no need to cl
 
 ### DEFAJAM Decompression
 
-The tool decompresses the game disk's DEFAJAM-packed executable entirely in Python (two-phase: backward LZ77 + RLE expansion), producing a 131,072-byte game image. This runs once at startup and takes ~1 second. The decompressed image is used internally for name extraction and will support future features (player attribute database, transfer market intelligence).
+The tool decompresses the game disk's DEFAJAM-packed executable entirely in Python (two-phase: backward LZ77 + RLE expansion), producing a 131,072-byte game image. This runs once at startup and takes ~1 second. The decompressed image is used for player name extraction, the disassembler, and cross-referencing the player attribute generation code.
 
 ### Status Bar
 
