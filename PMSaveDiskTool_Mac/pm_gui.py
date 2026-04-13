@@ -65,6 +65,12 @@ def _apply_theme(root):
     s.map('Primary.TButton',
           background=[('active', '#E07C18'), ('pressed', '#C06C08')])
 
+    # Danger (red) button
+    s.configure('Danger.TButton', background=T['negative'],
+                foreground=T['bg_chrome'], font=T['font_button'])
+    s.map('Danger.TButton',
+          background=[('active', '#C05555'), ('pressed', '#A04040')])
+
     # Entry
     s.configure('TEntry', fieldbackground=T['bg_elevated'],
                 foreground=T['text_bright'], insertcolor=T['text_bright'],
@@ -997,29 +1003,31 @@ class PMSaveDiskToolApp:
             messagebox.showinfo("Info", "Open an ADF first.")
             return
 
+        T = _THEME
         win = tk.Toplevel(self.root)
         win.title("Hex Viewer")
         win.geometry("820x600")
+        win.configure(bg=T['bg_deep'])
 
-        ctrl = ttk.Frame(win)
+        ctrl = tk.Frame(win, bg=T['bg_deep'])
         ctrl.pack(fill=tk.X, padx=8, pady=4)
 
-        ttk.Label(ctrl, text="Sector:").pack(side=tk.LEFT)
+        tk.Label(ctrl, text="Sector:", bg=T['bg_deep'], fg=T['text_muted'], font=T['font_small']).pack(side=tk.LEFT)
         sector_var = tk.StringVar(value="0")
         sector_entry = ttk.Entry(ctrl, textvariable=sector_var, width=6)
         sector_entry.pack(side=tk.LEFT, padx=4)
 
-        ttk.Label(ctrl, text="or Byte offset:").pack(side=tk.LEFT, padx=(8, 0))
+        tk.Label(ctrl, text="or Byte offset:", bg=T['bg_deep'], fg=T['text_muted'], font=T['font_small']).pack(side=tk.LEFT, padx=(8, 0))
         offset_var = tk.StringVar(value="")
         offset_entry = ttk.Entry(ctrl, textvariable=offset_var, width=10)
         offset_entry.pack(side=tk.LEFT, padx=4)
 
-        ttk.Label(ctrl, text="Sectors:").pack(side=tk.LEFT, padx=(8, 0))
+        tk.Label(ctrl, text="Sectors:", bg=T['bg_deep'], fg=T['text_muted'], font=T['font_small']).pack(side=tk.LEFT, padx=(8, 0))
         count_var = tk.StringVar(value="2")
         ttk.Entry(ctrl, textvariable=count_var, width=4).pack(side=tk.LEFT, padx=4)
 
         text = tk.Text(win, font=(_MONO, 11), wrap='none',
-                       bg='#1e1e1e', fg='#d4d4d4')
+                       bg='#1e1e1e', fg='#d4d4d4', selectbackground=T['bg_surface'])
         text.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
 
         def do_dump():
@@ -1048,7 +1056,7 @@ class PMSaveDiskToolApp:
                 lines.append(f"{addr:06X}  {hex_str:<48s}  {asc_str}")
             text.insert('1.0', '\n'.join(lines))
 
-        ttk.Button(ctrl, text="Dump", command=do_dump).pack(side=tk.LEFT, padx=8)
+        ttk.Button(ctrl, text="Dump", command=do_dump, style='Primary.TButton').pack(side=tk.LEFT, padx=8)
         do_dump()
 
     def open_patch_composer(self):
@@ -1113,7 +1121,10 @@ class PMSaveDiskToolApp:
         win = tk.Toplevel(self.root)
         win.title("Disk Info")
         win.geometry("500x600")
-        text = tk.Text(win, font=(_MONO, 11), wrap='word')
+        win.configure(bg=_THEME['bg_deep'])
+        text = tk.Text(win, font=(_MONO, 11), wrap='word',
+                       bg='#1e1e1e', fg='#d4d4d4',
+                       selectbackground=_THEME['bg_surface'])
         text.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
         text.insert('1.0', '\n'.join(info))
         text.config(state='disabled')
@@ -1149,6 +1160,7 @@ class PatchComposerWindow(tk.Toplevel):
 
     def __init__(self, parent, game_disk=None):
         super().__init__(parent)
+        self.configure(bg=_THEME['bg_deep'])
         self.title("Patch Composer — Game Disk Block 1137")
         self.geometry("820x720")
         self.resizable(True, True)
@@ -1172,13 +1184,15 @@ class PatchComposerWindow(tk.Toplevel):
     # ── Build UI ──
 
     def _build_ui(self):
+        T = _THEME
         # Top bar
-        top = ttk.Frame(self)
+        top = tk.Frame(self, bg=T['bg_chrome'])
         top.pack(fill=tk.X, padx=8, pady=6)
         ttk.Button(top, text="Open Game Disk ADF…",
-                   command=self._open_adf).pack(side=tk.LEFT)
+                   command=self._open_adf, style='Primary.TButton').pack(side=tk.LEFT)
         self._fname_var = tk.StringVar(value="No game disk loaded")
-        ttk.Label(top, textvariable=self._fname_var, foreground="gray").pack(
+        tk.Label(top, textvariable=self._fname_var,
+                 bg=T['bg_chrome'], fg=T['text_muted'], font=T['font_small']).pack(
             side=tk.LEFT, padx=(10, 0))
 
         # Patch list
@@ -1206,7 +1220,7 @@ class PatchComposerWindow(tk.Toplevel):
         del_frame = ttk.Frame(self)
         del_frame.pack(fill=tk.X, padx=8)
         ttk.Button(del_frame, text="Delete Selected Patch",
-                   command=self._delete_patch).pack(side=tk.LEFT, padx=4, pady=2)
+                   command=self._delete_patch, style='Danger.TButton').pack(side=tk.LEFT, padx=4, pady=2)
 
         # Quick Patches
         qf = ttk.LabelFrame(self, text="Quick Patches")
@@ -1259,7 +1273,7 @@ class PatchComposerWindow(tk.Toplevel):
         self._space_var = tk.StringVar(value="Space: open a game disk to begin")
         ttk.Label(bot, textvariable=self._space_var).pack(side=tk.LEFT)
         ttk.Button(bot, text="Write to Game Disk ADF",
-                   command=self._write_adf).pack(side=tk.RIGHT, padx=4)
+                   command=self._write_adf, style='Primary.TButton').pack(side=tk.RIGHT, padx=4)
         ttk.Button(bot, text="Preview ASM",
                    command=self._preview_asm).pack(side=tk.RIGHT, padx=4)
 
@@ -1530,6 +1544,7 @@ class LeagueDashboardWindow(tk.Toplevel):
 
     def __init__(self, parent, save, liga_names):
         super().__init__(parent)
+        self.configure(bg=_THEME['bg_deep'])
         self.title(f"League Tables — {save.entry.name}")
         self.geometry("920x640")
         self.resizable(True, True)
@@ -1559,7 +1574,7 @@ class LeagueDashboardWindow(tk.Toplevel):
         ttk.Label(info, text="▲ = promotion zone (top 2)    "
                              "▼ = relegation zone (bottom 2)    "
                              "Sorted by Points, then Goals",
-                  foreground="gray").pack(side=tk.LEFT)
+                  foreground=_THEME['text_muted']).pack(side=tk.LEFT)
 
         nb = ttk.Notebook(self)
         nb.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
@@ -1605,8 +1620,8 @@ class LeagueDashboardWindow(tk.Toplevel):
                 f"{val:+d}",
                 zone))
 
-        tree.tag_configure('promote',  background='#d8f5d8')
-        tree.tag_configure('relegate', background='#f5d8d8')
+        tree.tag_configure('promote',  background=_THEME['promo_bg'], foreground=_THEME['positive'])
+        tree.tag_configure('relegate', background=_THEME['relegate_bg'], foreground=_THEME['negative'])
 
         vsb = ttk.Scrollbar(parent, orient='vertical', command=tree.yview)
         tree.configure(yscrollcommand=vsb.set)
