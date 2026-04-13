@@ -3227,7 +3227,8 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
 
     # ── Common Treeview builder ──
 
-    def _make_tree(self, parent, columns, headings, widths, anchors=None):
+    def _make_tree(self, parent, columns, headings, widths, anchors=None,
+                   on_double_click=None):
         frame = ttk.Frame(parent)
         frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
         tree = ttk.Treeview(frame, columns=columns, show='headings')
@@ -3241,6 +3242,9 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
         tree.configure(yscrollcommand=vsb.set)
         vsb.pack(side=tk.RIGHT, fill=tk.Y)
         tree.pack(fill=tk.BOTH, expand=True)
+        tree._pid_map = {}
+        if on_double_click:
+            tree.bind('<Double-1>', on_double_click)
         return tree
 
     # ── Tab: Best by Position ──
@@ -3279,14 +3283,15 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
         widths = [30, 140, 40, 140, 50, 50] + [45] * len(sk_heads) + [40, 40]
         tree = self._make_tree(parent, cols[:6 + len(sk_heads) + 2],
                                headings, widths,
-                               anchors={"name": "w", "team": "w"})
+                               anchors={"name": "w", "team": "w"},
+                               on_double_click=self._open_editor)
 
         for rank, p in enumerate(players, 1):
             sk_vals = [str(getattr(p, a)) for a in sk_attrs]
             # Pad to 4 if fewer skills
             while len(sk_vals) < 4:
                 sk_vals.append("")
-            tree.insert('', 'end', values=(
+            iid = tree.insert('', 'end', values=(
                 rank,
                 self._player_name(p.player_id),
                 p.age,
@@ -3297,6 +3302,7 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                 p.goals_this_year,
                 p.matches_this_year,
             ))
+            tree._pid_map[iid] = p.player_id
 
     # ── Tab: Top Scorers ──
 
@@ -3332,9 +3338,10 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
         headings = ["#", "Name", "Pos", "Age", "Team", label, "Skill Avg"]
         widths = [30, 140, 50, 40, 140, 60, 60]
         tree = self._make_tree(parent, cols, headings, widths,
-                               anchors={"name": "w", "team": "w"})
+                               anchors={"name": "w", "team": "w"},
+                               on_double_click=self._open_editor)
         for rank, p in enumerate(players, 1):
-            tree.insert('', 'end', values=(
+            iid = tree.insert('', 'end', values=(
                 rank,
                 self._player_name(p.player_id),
                 p.position_name,
@@ -3343,6 +3350,7 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                 getattr(p, attr),
                 f"{p.skill_avg:.0f}",
             ))
+            tree._pid_map[iid] = p.player_id
 
     # ── Tab: Young Talents ──
 
@@ -3357,9 +3365,10 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                     "Gls", "Mat", "Contract"]
         widths = [30, 140, 50, 40, 140, 50, 50, 40, 40, 60]
         tree = self._make_tree(parent, cols, headings, widths,
-                               anchors={"name": "w", "team": "w"})
+                               anchors={"name": "w", "team": "w"},
+                               on_double_click=self._open_editor)
         for rank, p in enumerate(young, 1):
-            tree.insert('', 'end', values=(
+            iid = tree.insert('', 'end', values=(
                 rank,
                 self._player_name(p.player_id),
                 p.position_name,
@@ -3371,6 +3380,7 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                 p.matches_this_year,
                 p.contract_years,
             ))
+            tree._pid_map[iid] = p.player_id
 
     # ── Tab: Market Values ──
 
@@ -3384,9 +3394,10 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                     "Avg", "Gls", "Mat"]
         widths = [30, 140, 50, 40, 140, 50, 50, 50, 40, 40]
         tree = self._make_tree(parent, cols, headings, widths,
-                               anchors={"name": "w", "team": "w"})
+                               anchors={"name": "w", "team": "w"},
+                               on_double_click=self._open_editor)
         for rank, p in enumerate(valued, 1):
-            tree.insert('', 'end', values=(
+            iid = tree.insert('', 'end', values=(
                 rank,
                 self._player_name(p.player_id),
                 p.position_name,
@@ -3398,6 +3409,7 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                 p.goals_this_year,
                 p.matches_this_year,
             ))
+            tree._pid_map[iid] = p.player_id
 
     # ── Tab: Squad Analyst ──
 
@@ -3429,7 +3441,9 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                     "Gls", "Mat", "Inj", "Contract", "Hint"]
         widths = [140, 50, 40, 50, 50, 40, 40, 35, 60, 120]
         self._squad_tree = self._make_tree(parent, cols, headings, widths,
-                                           anchors={"name": "w", "hint": "w"})
+                                           anchors={"name": "w", "hint": "w"},
+                                           on_double_click=self._open_editor)
+        self._squad_tree._pid_map = {}
         self._squad_tree.tag_configure('renew', background='#d8f5d8')
         self._squad_tree.tag_configure('sack', background='#f5d8d8')
         self._squad_tree.tag_configure('watch', background='#f5f0d8')
@@ -3468,9 +3482,10 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
 
         tree = self._squad_tree
         tree.delete(*tree.get_children())
+        tree._pid_map = {}
         for p in roster:
             hint, tag = self._squad_hint(p)
-            tree.insert('', 'end', tags=(tag,), values=(
+            iid = tree.insert('', 'end', tags=(tag,), values=(
                 self._player_name(p.player_id),
                 p.position_name,
                 p.age,
@@ -3482,6 +3497,7 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
                 p.contract_years,
                 hint,
             ))
+            tree._pid_map[iid] = p.player_id
 
     def _squad_hint(self, p):
         """Return (hint_text, tag) for renew/sack/watch recommendations."""
@@ -3505,6 +3521,25 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
         if role_avg >= 130:
             return "Star player", "renew"
         return "", ""
+
+    def _open_editor(self, event):
+        """Open the Player Editor for the double-clicked row."""
+        tree = event.widget
+        sel = tree.selection()
+        if not sel:
+            return
+        iid = sel[0]
+        pid = tree._pid_map.get(iid)
+        if pid is None or pid not in self._players:
+            return
+        PlayerEditorWindow(
+            self, self._players[pid], self._adf, self._save.entry,
+            game_disk=self._game_disk,
+            on_save=lambda: self._refresh_tree(tree))
+
+    def _refresh_tree(self, tree):
+        """Placeholder for refreshing a tree after edits."""
+        pass
 
 
 # ─── Player Editor Window ───────────────────────────────────────────
