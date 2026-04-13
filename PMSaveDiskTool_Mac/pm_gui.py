@@ -1643,6 +1643,7 @@ class CompareSavesWindow(tk.Toplevel):
 
     def __init__(self, parent, adf, dir_entries, game_disk=None, liga_names=None):
         super().__init__(parent)
+        self.configure(bg=_THEME['bg_deep'])
         self.title("Compare Saves")
         self.geometry("1100x700")
         self.resizable(True, True)
@@ -1768,8 +1769,8 @@ class CompareSavesWindow(tk.Toplevel):
         widths = (200, 60, 60, 90, 80, 80, 80)
         self._div_tree = _make_scrolled_tree(
             parent, cols, heads, widths, anchors={'team': 'w'})
-        self._div_tree.tag_configure('promoted', foreground='#006600')
-        self._div_tree.tag_configure('relegated', foreground='#990000')
+        self._div_tree.tag_configure('promoted', foreground=_THEME['positive'])
+        self._div_tree.tag_configure('relegated', foreground=_THEME['negative'])
 
     def _populate_div_budget(self, sa, sb):
         tree = self._div_tree
@@ -1867,21 +1868,22 @@ class CompareSavesWindow(tk.Toplevel):
             hscroll=True)
 
         # Row color tags
-        self._career_tree.tag_configure('improved',    background='#c8f0c8')
-        self._career_tree.tag_configure('declined',    background='#f0c8c8')
-        self._career_tree.tag_configure('transferred', background='#f5f5c0')
-        self._career_tree.tag_configure('only_a',      background='#d8d8d8')
-        self._career_tree.tag_configure('only_b',      background='#c8d8f0')
+        T = _THEME
+        self._career_tree.tag_configure('improved',    background='#1E3E2E', foreground=T['positive'])
+        self._career_tree.tag_configure('declined',    background='#3E1E2E', foreground=T['negative'])
+        self._career_tree.tag_configure('transferred', background='#3E3E1E', foreground='#CCCC44')
+        self._career_tree.tag_configure('only_a',      background=T['bg_surface'], foreground=T['text_dim'])
+        self._career_tree.tag_configure('only_b',      background='#1E2E3E', foreground=T['accent2'])
 
         # Age–Skill Trend bar (hidden until there is enough data)
         self._age_trend_frame = ttk.Frame(parent)
         self._age_trend_text  = tk.Text(
             self._age_trend_frame, height=1, font=(_MONO, 10),
-            relief='flat', bg=self.cget('bg'), state='disabled', cursor='arrow',
+            relief='flat', bg=_THEME['bg_deep'], state='disabled', cursor='arrow',
         )
-        self._age_trend_text.tag_configure('pos', foreground='#006600')
-        self._age_trend_text.tag_configure('neg', foreground='#990000')
-        self._age_trend_text.tag_configure('neu', foreground='gray')
+        self._age_trend_text.tag_configure('pos', foreground=_THEME['positive'])
+        self._age_trend_text.tag_configure('neg', foreground=_THEME['negative'])
+        self._age_trend_text.tag_configure('neu', foreground=_THEME['text_muted'])
         self._age_trend_text.pack(fill=tk.X, padx=4, pady=2)
         # Frame is shown/hidden dynamically by _update_age_trend
 
@@ -2233,6 +2235,7 @@ class _PlayerDetailPopup(tk.Toplevel):
 
     def __init__(self, parent, pid, rec_a, rec_b, adf, entry_b, game_disk):
         super().__init__(parent)
+        self.configure(bg=_THEME['bg_deep'])
         rec  = rec_b or rec_a
         name = (game_disk.player_name(pid) or "") if game_disk else ""
         self.title(f"Player Detail — {name or f'#{pid}'}")
@@ -2260,7 +2263,7 @@ class _PlayerDetailPopup(tk.Toplevel):
         ttk.Separator(self, orient='horizontal').pack(fill=tk.X, padx=8, pady=2)
 
         # Scrollable content
-        canvas = tk.Canvas(self, borderwidth=0)
+        canvas = tk.Canvas(self, borderwidth=0, bg=_THEME['bg_deep'])
         vsb    = ttk.Scrollbar(self, orient='vertical', command=canvas.yview)
         inner  = ttk.Frame(canvas)
         inner.bind("<Configure>",
@@ -2274,14 +2277,14 @@ class _PlayerDetailPopup(tk.Toplevel):
             val_a     = getattr(rec_a, attr, None) if rec_a else None
             val_b     = getattr(rec_b, attr, None) if rec_b else None
             delta_str = ""
-            delta_fg  = 'gray'
+            delta_fg  = _THEME['text_muted']
             if val_a is not None and val_b is not None:
                 try:
                     d = int(val_b) - int(val_a)
                     if d != 0:
                         delta_str = f"{d:+d}"
-                    delta_fg = ('#006600' if d > 0 else
-                                '#990000' if d < 0 else 'gray')
+                    delta_fg = (_THEME['positive'] if d > 0 else
+                                _THEME['negative'] if d < 0 else _THEME['text_muted'])
                 except (TypeError, ValueError):
                     pass
 
@@ -2338,6 +2341,7 @@ class TacticsViewerWindow(tk.Toplevel):
 
     def __init__(self, parent, adf, tac_entries):
         super().__init__(parent)
+        self.configure(bg=_THEME['bg_deep'])
         self.title("Tactics Viewer")
         self.geometry("560x780")
         self.resizable(True, True)
@@ -2368,7 +2372,7 @@ class TacticsViewerWindow(tk.Toplevel):
             cb.current(0)
 
         ttk.Button(top, text="Load", command=self._load_tac).pack(side=tk.LEFT, padx=4)
-        ttk.Button(top, text="Save to Disk", command=self._save_tac).pack(side=tk.LEFT, padx=8)
+        ttk.Button(top, text="Save to Disk", command=self._save_tac, style='Primary.TButton').pack(side=tk.LEFT, padx=8)
 
         # Controls: zone and state
         ctrl = ttk.Frame(self)
@@ -2394,7 +2398,7 @@ class TacticsViewerWindow(tk.Toplevel):
 
         # Description
         self._desc_var = tk.StringVar()
-        ttk.Label(self, textvariable=self._desc_var, foreground='gray',
+        ttk.Label(self, textvariable=self._desc_var, foreground=_THEME['text_muted'],
                   wraplength=520).pack(fill=tk.X, padx=12, pady=2)
 
         # Canvas — football pitch
@@ -2566,6 +2570,7 @@ class ChampionshipHighlightsWindow(tk.Toplevel):
 
     def __init__(self, parent, save, adf, game_disk=None, liga_names=None):
         super().__init__(parent)
+        self.configure(bg=_THEME['bg_deep'])
         self.title(f"Championship Highlights — {save.entry.name}")
         self.geometry("1020x700")
         self.resizable(True, True)
