@@ -21,23 +21,39 @@ This version extends it with cross-platform support, player name generation, and
 
 ## GUI Usage
 
+### Menu map
+
+| Menu | Action | Shortcut |
+|------|--------|----------|
+| File | Open Save Disk… | Ctrl/Cmd+O |
+| File | Open Game Disk… | Ctrl/Cmd+G |
+| File | Open Recent ▸ | — |
+| File | Save | Ctrl/Cmd+S |
+| File | Save As… | Ctrl/Cmd+Shift+S |
+| File | Export Players… | Ctrl/Cmd+E |
+| Edit | Apply Changes | Ctrl/Cmd+Return |
+| Edit | Revert Player | Esc |
+| Edit | Find Player… | Ctrl/Cmd+F |
+| View | Young Talents (≤21) | Ctrl/Cmd+Y |
+| View | Top Scorers, Squad Analyst, Best XI ▸ | — |
+| Tools | Career Tracker… | Ctrl/Cmd+T |
+
+On macOS, **About** lives in the apple menu and **Quit** is Cmd+Q.
+
 ### Opening a save disk
 
-1. Run `python3 pm_gui.py`
-2. Click **Open Save Disk** or use **File > Open Save Disk ADF** (Ctrl+O)
-3. Select your Player Manager save disk `.adf` file — **open a copy, not the original**
+Use **File > Open Save Disk…** (Ctrl/Cmd+O) and pick a Player Manager save
+disk ADF — **open a copy, not the original**. The five most recently opened
+save disks are kept under **File > Open Recent**.
 
 ### Loading player names (optional)
 
-Player names are generated from the game disk, not the save disk. To see names:
-
-1. Click **Load Game ADF (names)** or use **File > Open Game ADF (for names)** (Ctrl+G)
-2. Select your `PlayerManagerITA.adf` (or any Player Manager game disk)
-3. The tool decompresses the game executable, extracts the surname table, and
-   immediately populates the Name column and player detail panel
-
-If no game ADF is loaded, the Name field is left blank — all other editing functions
-work normally without it.
+Player names are generated from the game disk, not the save disk. Use
+**File > Open Game Disk…** (Ctrl/Cmd+G) and pick `PlayerManagerITA.adf`
+(or any Player Manager game disk). The Name column populates immediately.
+When no game disk is loaded the Name field is left blank; every other
+editing function works without it. The status bar's right-hand label
+always shows the current game-disk state.
 
 ### Selecting a save slot
 
@@ -46,7 +62,9 @@ in the toolbar to switch between them.
 
 ### Browsing players
 
-Use the **Team** dropdown to filter players:
+Use the **View** dropdown (toolbar) or the **View** menu to switch between
+lists. The dropdown and the menu stay in sync; the menu gives keyboard
+shortcuts for the views you hit most. Available entries:
 
 - **All Players** — every player with age > 0
 - **Free Agents** — unassigned players (team index 0xFF)
@@ -72,13 +90,20 @@ to quickly spot high-value targets you can actually sign.
 
 ### Editing a player
 
-1. Select a player from the list
-2. Modify any field in the detail panel (age, skills, stats, etc.)
-3. Click **Apply Changes** to write the changes to the in-memory ADF image
-4. Use **File > Save ADF** (Ctrl+S) to write back to disk
+1. Select a player from the list.
+2. Flip through the **Core · Skills · Status · Season · Career** tabs in
+   the detail panel; fields are grouped by topic. The identity row
+   (Player #, Name, Seed) stays visible above the tabs no matter which
+   tab you are on.
+3. Click **Apply Changes** (Ctrl/Cmd+Return) in the footer to write to the
+   in-memory ADF image. **Revert** (or Esc when the filter is not focused)
+   reloads the detail panel from the last applied record.
+4. Use **File > Save** (Ctrl/Cmd+S) to write back to disk.
 
-**Important:** "Apply Changes" updates the in-memory image only. You must also **Save ADF**
-to persist changes to the file on disk.
+**Important:** "Apply Changes" updates the in-memory image only. You must also **Save**
+to persist changes to the file on disk. The window title ends with a "•" marker
+while you have unsaved edits; quitting, closing the window, or opening a
+different ADF will prompt you to save first.
 
 ### Save As
 

@@ -4,6 +4,41 @@ All notable changes to PMSaveDiskTool v2 are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] — 2026-04-16
+
+### Added
+- **Reorganised menu bar** — File / Edit / View / Tools / Help with
+  proper accelerators. File: Open Save Disk…, Open Game Disk…, Open
+  Recent ▸, Save, Save As…, Export Players…, Quit. Edit: Apply
+  Changes, Revert Player, Find Player…. View: All Players, Free
+  Agents, Young Talents, Top Scorers, Squad Analyst, Best XI ▸. Tools:
+  Career Tracker…. All actions are keyboard-reachable on macOS (Cmd)
+  and Windows/Linux (Ctrl).
+- **macOS native menu conventions** — About appears in the apple menu,
+  Cmd+Q routes through the same dirty-state guard as WM_DELETE_WINDOW.
+- **Detail panel refactored into tabs** — Core · Skills · Status ·
+  Season · Career, with an always-visible identity header (Player #,
+  Name, Seed) above and a sticky footer below (Apply Changes / Revert).
+  No more long scrolling form; Apply is always in view.
+- **Dirty-state tracking** — window title shows the open file name,
+  with a "•" marker while unsaved edits are pending. Quitting,
+  closing the window, or opening a different ADF prompts to save.
+- **File → Open Recent** — last five save disks, persisted to
+  `~/.pmsavedisktool/recent.json`.
+- **Polished About dialog** — versioned header, attribution, clickable
+  GitHub and MIT License links.
+- **Status bar split** — left: transient status messages; right:
+  persistent game-disk indicator.
+- Search-entry focus via Ctrl/Cmd+F; Esc clears the filter when the
+  filter entry has focus, otherwise reverts the current player.
+
+### Changed
+- **Toolbar slimmed** — Open / Load Game / Save Changes buttons
+  removed (all in File menu with accelerators). Team dropdown
+  relabeled **View** since it holds both teams and analytical views.
+- **Renamed labels** — "Open Game ADF (for names)" →
+  "Open Game Disk"; "Save ADF" → "Save"; "Save ADF As…" → "Save As…".
+
 ## [0.99] — 2026-04-16
 
 ### Added

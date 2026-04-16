@@ -10,6 +10,7 @@ import json
 import os
 import sys
 import tkinter as tk
+import webbrowser
 from tkinter import ttk, filedialog, messagebox
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -29,6 +30,36 @@ XI_ENTRIES = {
     "— Free-Agent XI":    {"formation": "4-4-2",
                            "filter_fn": lambda p: p.is_free_agent},
 }
+
+# Platform-specific modifier for accelerators: Cmd on macOS, Ctrl elsewhere.
+if sys.platform == "darwin":
+    MOD, MOD_LABEL = "Command", "Cmd"
+else:
+    MOD, MOD_LABEL = "Control", "Ctrl"
+
+CONFIG_DIR = os.path.expanduser("~/.pmsavedisktool")
+RECENT_FILE = os.path.join(CONFIG_DIR, "recent.json")
+RECENT_LIMIT = 5
+GITHUB_URL = "https://github.com/vitopod/amiga-player-manager-toolkit"
+LICENSE_URL = f"{GITHUB_URL}/blob/main/LICENSE"
+
+
+def _load_recent() -> list[str]:
+    try:
+        with open(RECENT_FILE) as f:
+            data = json.load(f)
+        return [p for p in data.get("save_adfs", []) if isinstance(p, str)]
+    except (OSError, json.JSONDecodeError):
+        return []
+
+
+def _save_recent(paths: list[str]) -> None:
+    try:
+        os.makedirs(CONFIG_DIR, exist_ok=True)
+        with open(RECENT_FILE, "w") as f:
+            json.dump({"save_adfs": paths[:RECENT_LIMIT]}, f, indent=2)
+    except OSError:
+        pass  # recent list is best-effort
 
 
 class CareerTrackerWindow(tk.Toplevel):
@@ -165,7 +196,6 @@ class CareerTrackerWindow(tk.Toplevel):
 class PMSaveDiskToolGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title(f"PMSaveDiskTool v2 — {__version__}")
         self.root.geometry("1100x700")
         self.root.minsize(900, 600)
 
@@ -174,40 +204,128 @@ class PMSaveDiskToolGUI:
         self.current_player = None
         self.adf_path = None
         self.game_disk = None   # GameDisk for name generation (optional)
+        self.dirty = False
 
         self._build_menu()
         self._build_toolbar()
         self._build_main()
         self._build_status_bar()
+        self._update_title()
+
+        self.root.protocol("WM_DELETE_WINDOW", self._on_quit)
+        if sys.platform == "darwin":
+            self.root.createcommand("tk::mac::Quit", self._on_quit)
 
     # ── Menu ──────────────────────────────────────────────────
 
     def _build_menu(self):
         menubar = tk.Menu(self.root)
+        is_mac = sys.platform == "darwin"
+
+        # macOS apple menu (holds About per platform convention).
+        if is_mac:
+            app_menu = tk.Menu(menubar, name="apple", tearoff=0)
+            app_menu.add_command(label="About PMSaveDiskTool",
+                                 command=self._show_about)
+            menubar.add_cascade(menu=app_menu)
+
+        # File
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="Open Save Disk ADF...", command=self._open_adf, accelerator="Ctrl+O")
-        file_menu.add_command(label="Open Game ADF (for names)...", command=self._open_game_adf, accelerator="Ctrl+G")
-        file_menu.add_command(label="Save ADF", command=self._save_adf, accelerator="Ctrl+S")
-        file_menu.add_command(label="Save ADF As...", command=self._save_adf_as)
+        file_menu.add_command(label="Open Save Disk…",
+                              command=self._open_adf,
+                              accelerator=f"{MOD_LABEL}+O")
+        file_menu.add_command(label="Open Game Disk…",
+                              command=self._open_game_adf,
+                              accelerator=f"{MOD_LABEL}+G")
+        self.recent_menu = tk.Menu(file_menu, tearoff=0)
+        file_menu.add_cascade(label="Open Recent", menu=self.recent_menu)
+        self._rebuild_recent_menu()
         file_menu.add_separator()
-        file_menu.add_command(label="Export Players...", command=self._export_players)
+        file_menu.add_command(label="Save",
+                              command=self._save_adf,
+                              accelerator=f"{MOD_LABEL}+S")
+        file_menu.add_command(label="Save As…",
+                              command=self._save_adf_as,
+                              accelerator=f"{MOD_LABEL}+Shift+S")
         file_menu.add_separator()
-        file_menu.add_command(label="Quit", command=self.root.quit, accelerator="Ctrl+Q")
+        file_menu.add_command(label="Export Players…",
+                              command=self._export_players,
+                              accelerator=f"{MOD_LABEL}+E")
+        if not is_mac:
+            file_menu.add_separator()
+            file_menu.add_command(label="Quit",
+                                  command=self._on_quit,
+                                  accelerator=f"{MOD_LABEL}+Q")
         menubar.add_cascade(label="File", menu=file_menu)
 
+        # Edit
+        edit_menu = tk.Menu(menubar, tearoff=0)
+        edit_menu.add_command(label="Apply Changes",
+                              command=self._apply_changes,
+                              accelerator=f"{MOD_LABEL}+Return")
+        edit_menu.add_command(label="Revert Player",
+                              command=self._revert_player,
+                              accelerator="Esc")
+        edit_menu.add_separator()
+        edit_menu.add_command(label="Find Player…",
+                              command=self._find_player,
+                              accelerator=f"{MOD_LABEL}+F")
+        menubar.add_cascade(label="Edit", menu=edit_menu)
+
+        # View — mirrors the team-combo analytical entries with accelerators.
+        view_menu = tk.Menu(menubar, tearoff=0)
+        view_menu.add_command(label="All Players",
+                              command=lambda: self._set_view("All Players"))
+        view_menu.add_command(label="Free Agents",
+                              command=lambda: self._set_view("Free Agents"))
+        view_menu.add_separator()
+        view_menu.add_command(label="Young Talents (≤21)",
+                              command=lambda: self._set_view("— Young Talents (≤21)"),
+                              accelerator=f"{MOD_LABEL}+Y")
+        view_menu.add_command(label="Top Scorers",
+                              command=lambda: self._set_view("— Top Scorers"))
+        view_menu.add_command(label="Squad Analyst (all teams)",
+                              command=lambda: self._set_view("— Squad Analyst (all teams)"))
+        view_menu.add_separator()
+        xi_menu = tk.Menu(view_menu, tearoff=0)
+        for label in XI_ENTRIES:
+            display = label.lstrip("— ").rstrip()
+            xi_menu.add_command(
+                label=display,
+                command=lambda L=label: self._set_view(L),
+            )
+        view_menu.add_cascade(label="Best XI", menu=xi_menu)
+        menubar.add_cascade(label="View", menu=view_menu)
+
+        # Tools
         tools_menu = tk.Menu(menubar, tearoff=0)
-        tools_menu.add_command(label="Career Tracker...",
-                               command=self._open_career_tracker)
+        tools_menu.add_command(label="Career Tracker…",
+                               command=self._open_career_tracker,
+                               accelerator=f"{MOD_LABEL}+T")
         menubar.add_cascade(label="Tools", menu=tools_menu)
 
+        # Help
         help_menu = tk.Menu(menubar, tearoff=0)
-        help_menu.add_command(label="About", command=self._show_about)
+        if not is_mac:
+            help_menu.add_command(label="About", command=self._show_about)
         menubar.add_cascade(label="Help", menu=help_menu)
 
         self.root.config(menu=menubar)
-        self.root.bind("<Control-o>", lambda e: self._open_adf())
-        self.root.bind("<Control-g>", lambda e: self._open_game_adf())
-        self.root.bind("<Control-s>", lambda e: self._save_adf())
+
+        # Accelerator bindings (menu `accelerator=` only displays — doesn't bind).
+        bind = self.root.bind
+        bind(f"<{MOD}-o>", lambda e: self._open_adf())
+        bind(f"<{MOD}-g>", lambda e: self._open_game_adf())
+        bind(f"<{MOD}-s>", lambda e: self._save_adf())
+        bind(f"<{MOD}-S>", lambda e: self._save_adf_as())  # Shift+S
+        bind(f"<{MOD}-e>", lambda e: self._export_players())
+        bind(f"<{MOD}-f>", lambda e: self._find_player())
+        bind(f"<{MOD}-t>", lambda e: self._open_career_tracker())
+        bind(f"<{MOD}-y>", lambda e: self._set_view("— Young Talents (≤21)"))
+        bind(f"<{MOD}-Return>", lambda e: self._apply_changes())
+        bind("<Escape>", lambda e: self._on_escape())
+        if not is_mac:
+            bind(f"<{MOD}-q>", lambda e: self._on_quit())
 
     # ── Toolbar ───────────────────────────────────────────────
 
@@ -215,27 +333,19 @@ class PMSaveDiskToolGUI:
         toolbar = ttk.Frame(self.root)
         toolbar.pack(fill=tk.X, padx=5, pady=(5, 0))
 
-        ttk.Button(toolbar, text="Open Save Disk", command=self._open_adf).pack(side=tk.LEFT, padx=2)
-        ttk.Button(toolbar, text="Load Game ADF (names)", command=self._open_game_adf).pack(side=tk.LEFT, padx=2)
-        self.game_label = ttk.Label(toolbar, text="No game ADF", foreground="gray")
-        self.game_label.pack(side=tk.LEFT, padx=(4, 10))
-
-        ttk.Label(toolbar, text="Save:").pack(side=tk.LEFT, padx=(10, 2))
+        ttk.Label(toolbar, text="Save:").pack(side=tk.LEFT, padx=(2, 2))
         self.save_var = tk.StringVar()
         self.save_combo = ttk.Combobox(toolbar, textvariable=self.save_var,
                                        state="readonly", width=12)
         self.save_combo.pack(side=tk.LEFT, padx=2)
         self.save_combo.bind("<<ComboboxSelected>>", self._on_save_selected)
 
-        ttk.Label(toolbar, text="Team:").pack(side=tk.LEFT, padx=(10, 2))
+        ttk.Label(toolbar, text="View:").pack(side=tk.LEFT, padx=(14, 2))
         self.team_var = tk.StringVar()
         self.team_combo = ttk.Combobox(toolbar, textvariable=self.team_var,
-                                       state="readonly", width=20)
+                                       state="readonly", width=28)
         self.team_combo.pack(side=tk.LEFT, padx=2)
         self.team_combo.bind("<<ComboboxSelected>>", self._on_team_selected)
-
-        ttk.Button(toolbar, text="Save Changes", command=self._save_adf).pack(
-            side=tk.RIGHT, padx=2)
 
     # ── Main area ─────────────────────────────────────────────
 
@@ -285,93 +395,114 @@ class PMSaveDiskToolGUI:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.tree.bind("<<TreeviewSelect>>", self._on_player_selected)
 
-        # Right: Player detail
+        # Right: header (identity) + notebook (editable fields) + sticky footer (Apply)
         right = ttk.Frame(paned)
         paned.add(right, weight=1)
 
-        canvas = tk.Canvas(right)
-        detail_scroll = ttk.Scrollbar(right, orient=tk.VERTICAL, command=canvas.yview)
-        self.detail_frame = ttk.Frame(canvas)
-        self.detail_frame.bind("<Configure>",
-                               lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=self.detail_frame, anchor="nw")
-        canvas.configure(yscrollcommand=detail_scroll.set)
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        detail_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.detail_header = ttk.Frame(right)
+        self.detail_header.pack(fill=tk.X, padx=6, pady=(6, 2))
+
+        self.notebook = ttk.Notebook(right)
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+
+        footer = ttk.Frame(right)
+        footer.pack(fill=tk.X, side=tk.BOTTOM, padx=6, pady=(0, 6))
+        ttk.Separator(footer, orient="horizontal").pack(fill=tk.X, pady=(0, 4))
+        self.apply_button = ttk.Button(footer, text="Apply Changes",
+                                       command=self._apply_changes)
+        self.apply_button.pack(side=tk.RIGHT)
+        ttk.Button(footer, text="Revert",
+                   command=self._revert_player).pack(side=tk.RIGHT, padx=(0, 6))
 
         self.fields = {}
         self._build_detail_fields()
 
+    _CORE_FIELDS = [
+        ("Age:", "age"), ("Position:", "position"), ("Division:", "division"),
+        ("Team Index:", "team_index"),
+        ("Height (cm):", "height"), ("Weight (kg):", "weight"),
+    ]
+    _STATUS_FIELDS = [
+        ("Injury Weeks:", "injury_weeks"), ("Disciplinary:", "disciplinary"),
+        ("Morale:", "morale"), ("Value:", "value"),
+        ("Wks Since Transfer:", "weeks_since_transfer"),
+    ]
+    _SEASON_FIELDS = [
+        ("Injuries This Yr:", "injuries_this_year"),
+        ("Injuries Last Yr:", "injuries_last_year"),
+        ("DspPts This Yr:", "dsp_pts_this_year"),
+        ("DspPts Last Yr:", "dsp_pts_last_year"),
+        ("Goals This Yr:", "goals_this_year"),
+        ("Goals Last Yr:", "goals_last_year"),
+        ("Matches This Yr:", "matches_this_year"),
+        ("Matches Last Yr:", "matches_last_year"),
+    ]
+    _CAREER_FIELDS = [
+        ("Div1 Years:", "div1_years"), ("Div2 Years:", "div2_years"),
+        ("Div3 Years:", "div3_years"), ("Div4 Years:", "div4_years"),
+        ("Int Years:", "int_years"), ("Contract Yrs:", "contract_years"),
+    ]
+
     def _build_detail_fields(self):
-        frame = self.detail_frame
-        row = 0
-
-        def add_field(label, key, row_num, readonly=False):
-            ttk.Label(frame, text=label).grid(row=row_num, column=0, sticky="e", padx=(5, 2), pady=1)
+        # Identity header (read-only; always visible above the tabs).
+        for i, (label, key) in enumerate(
+            [("Player #", "player_id"), ("Name", "name"), ("Seed", "rng_seed")]
+        ):
+            ttk.Label(self.detail_header, text=label, anchor="e").grid(
+                row=0, column=i * 2, sticky="e", padx=(0, 3))
             var = tk.StringVar()
-            state = "readonly" if readonly else "normal"
-            entry = ttk.Entry(frame, textvariable=var, width=12, state=state)
-            entry.grid(row=row_num, column=1, sticky="w", padx=(2, 5), pady=1)
+            entry = ttk.Entry(self.detail_header, textvariable=var,
+                              state="readonly", width=14)
+            entry.grid(row=0, column=i * 2 + 1, sticky="w", padx=(0, 10))
             self.fields[key] = var
-            return row_num + 1
 
-        def add_section(title, row_num):
-            ttk.Separator(frame, orient="horizontal").grid(
-                row=row_num, column=0, columnspan=2, sticky="ew", pady=(8, 2))
-            ttk.Label(frame, text=title, font=("TkDefaultFont", 0, "bold")).grid(
-                row=row_num + 1, column=0, columnspan=2, sticky="w", padx=5)
-            return row_num + 2
+        def add_field(parent, label, key, row):
+            ttk.Label(parent, text=label).grid(
+                row=row, column=0, sticky="e", padx=(6, 3), pady=2)
+            var = tk.StringVar()
+            ttk.Entry(parent, textvariable=var, width=12).grid(
+                row=row, column=1, sticky="w", padx=(3, 6), pady=2)
+            self.fields[key] = var
 
-        row = add_field("Player ID:", "player_id", row, readonly=True)
-        row = add_field("Name:", "name", row, readonly=True)
-        row = add_field("RNG Seed:", "rng_seed", row, readonly=True)
+        def add_tab(title, fields):
+            tab = ttk.Frame(self.notebook)
+            self.notebook.add(tab, text=title)
+            for r, (label, key) in enumerate(fields):
+                add_field(tab, label, key, r)
+            return tab
 
-        row = add_section("Core", row)
-        row = add_field("Age:", "age", row)
-        row = add_field("Position:", "position", row)
-        row = add_field("Division:", "division", row)
-        row = add_field("Team Index:", "team_index", row)
-        row = add_field("Height (cm):", "height", row)
-        row = add_field("Weight (kg):", "weight", row)
+        add_tab("Core", self._CORE_FIELDS)
 
-        row = add_section("Skills (0-200)", row)
-        for skill in SKILL_NAMES:
-            row = add_field(f"{skill.capitalize()}:", skill, row)
+        # Skills tab: two columns so all 10 fit without scrolling.
+        skills_tab = ttk.Frame(self.notebook)
+        self.notebook.add(skills_tab, text="Skills")
+        half = (len(SKILL_NAMES) + 1) // 2
+        for i, skill in enumerate(SKILL_NAMES):
+            col_block, row = (0, i) if i < half else (2, i - half)
+            ttk.Label(skills_tab, text=f"{skill.capitalize()}:").grid(
+                row=row, column=col_block, sticky="e", padx=(6, 3), pady=2)
+            var = tk.StringVar()
+            ttk.Entry(skills_tab, textvariable=var, width=8).grid(
+                row=row, column=col_block + 1, sticky="w", padx=(3, 16), pady=2)
+            self.fields[skill] = var
 
-        row = add_section("Status", row)
-        row = add_field("Injury Weeks:", "injury_weeks", row)
-        row = add_field("Disciplinary:", "disciplinary", row)
-        row = add_field("Morale:", "morale", row)
-        row = add_field("Value:", "value", row)
-        row = add_field("Wks Since Transfer:", "weeks_since_transfer", row)
-
-        row = add_section("Season Stats", row)
-        row = add_field("Injuries This Yr:", "injuries_this_year", row)
-        row = add_field("Injuries Last Yr:", "injuries_last_year", row)
-        row = add_field("DspPts This Yr:", "dsp_pts_this_year", row)
-        row = add_field("DspPts Last Yr:", "dsp_pts_last_year", row)
-        row = add_field("Goals This Yr:", "goals_this_year", row)
-        row = add_field("Goals Last Yr:", "goals_last_year", row)
-        row = add_field("Matches This Yr:", "matches_this_year", row)
-        row = add_field("Matches Last Yr:", "matches_last_year", row)
-
-        row = add_section("Career", row)
-        row = add_field("Div1 Years:", "div1_years", row)
-        row = add_field("Div2 Years:", "div2_years", row)
-        row = add_field("Div3 Years:", "div3_years", row)
-        row = add_field("Div4 Years:", "div4_years", row)
-        row = add_field("Int Years:", "int_years", row)
-        row = add_field("Contract Yrs:", "contract_years", row)
-
-        ttk.Button(frame, text="Apply Changes", command=self._apply_changes).grid(
-            row=row, column=0, columnspan=2, pady=10)
+        add_tab("Status", self._STATUS_FIELDS)
+        add_tab("Season", self._SEASON_FIELDS)
+        add_tab("Career", self._CAREER_FIELDS)
 
     # ── Status bar ────────────────────────────────────────────
 
     def _build_status_bar(self):
-        self.status_var = tk.StringVar(value="Open an ADF file to begin.")
-        status = ttk.Label(self.root, textvariable=self.status_var, relief=tk.SUNKEN)
-        status.pack(fill=tk.X, side=tk.BOTTOM, padx=5, pady=2)
+        bar = ttk.Frame(self.root, relief=tk.SUNKEN, borderwidth=1)
+        bar.pack(fill=tk.X, side=tk.BOTTOM, padx=5, pady=2)
+
+        self.status_var = tk.StringVar(value="Open a save disk to begin.")
+        ttk.Label(bar, textvariable=self.status_var,
+                  anchor="w").pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+
+        self.game_label = ttk.Label(bar, text="No game disk",
+                                    foreground="gray", anchor="e")
+        self.game_label.pack(side=tk.RIGHT, padx=4)
 
     # ── Actions ───────────────────────────────────────────────
 
@@ -380,22 +511,8 @@ class PMSaveDiskToolGUI:
             title="Open Player Manager Save Disk",
             filetypes=[("ADF Disk Images", "*.adf"), ("All Files", "*.*")],
         )
-        if not path:
-            return
-        try:
-            self.adf = ADF.load(path)
-            self.adf_path = path
-        except (ValueError, OSError) as e:
-            messagebox.showerror("Error", str(e))
-            return
-
-        saves = self.adf.list_saves()
-        save_names = [e.name for e in saves]
-        self.save_combo["values"] = save_names
-        if save_names:
-            self.save_combo.current(0)
-            self._on_save_selected(None)
-        self.status_var.set(f"Loaded: {os.path.basename(path)}")
+        if path:
+            self._open_adf_path(path)
 
     def _open_game_adf(self):
         path = filedialog.askopenfilename(
@@ -614,6 +731,7 @@ class PMSaveDiskToolGUI:
             return
 
         self.slot.write_player(p.player_id)
+        self._set_dirty(True)
         self._refresh_player_list()
         # Re-select the player
         try:
@@ -634,6 +752,7 @@ class PMSaveDiskToolGUI:
             if bak:
                 msg += f"  (backup: {os.path.basename(bak)})"
             self.status_var.set(msg)
+            self._set_dirty(False)
         except OSError as e:
             messagebox.showerror("Error", f"Failed to save: {e}")
 
@@ -652,8 +771,134 @@ class PMSaveDiskToolGUI:
             self.adf.save(path)
             self.adf_path = path
             self.status_var.set(f"Saved: {os.path.basename(path)}")
+            self._set_dirty(False)
+            self._update_title()
         except OSError as e:
             messagebox.showerror("Error", f"Failed to save: {e}")
+
+    def _rebuild_recent_menu(self):
+        self.recent_menu.delete(0, "end")
+        paths = _load_recent()
+        if not paths:
+            self.recent_menu.add_command(label="(empty)", state="disabled")
+            return
+        for p in paths:
+            self.recent_menu.add_command(
+                label=os.path.basename(p),
+                command=lambda path=p: self._open_adf_path(path),
+            )
+        self.recent_menu.add_separator()
+        self.recent_menu.add_command(label="Clear Recent",
+                                     command=self._clear_recent)
+
+    def _add_recent(self, path: str):
+        paths = [p for p in _load_recent() if p != path]
+        paths.insert(0, path)
+        _save_recent(paths)
+        self._rebuild_recent_menu()
+
+    def _clear_recent(self):
+        _save_recent([])
+        self._rebuild_recent_menu()
+
+    def _open_adf_path(self, path: str):
+        """Open a specific ADF path (used by Recent menu)."""
+        if not os.path.isfile(path):
+            messagebox.showerror("Not found",
+                                 f"File no longer exists:\n{path}")
+            # Prune and rebuild
+            _save_recent([p for p in _load_recent() if p != path])
+            self._rebuild_recent_menu()
+            return
+        if self.dirty:
+            answer = messagebox.askyesnocancel(
+                "Unsaved changes",
+                "Save current changes before opening a new ADF?",
+            )
+            if answer is None:
+                return
+            if answer:
+                self._save_adf()
+                if self.dirty:
+                    return
+        try:
+            self.adf = ADF.load(path)
+            self.adf_path = path
+        except (ValueError, OSError) as e:
+            messagebox.showerror("Error", str(e))
+            return
+        saves = self.adf.list_saves()
+        save_names = [e.name for e in saves]
+        self.save_combo["values"] = save_names
+        if save_names:
+            self.save_combo.current(0)
+            self._on_save_selected(None)
+        self._set_dirty(False)
+        self._update_title()
+        self._add_recent(path)
+        self.status_var.set(f"Loaded: {os.path.basename(path)}")
+
+    def _update_title(self):
+        if self.adf_path:
+            base = f"PMSaveDiskTool v2 — {os.path.basename(self.adf_path)}"
+            if self.dirty:
+                base += " •"
+        else:
+            base = f"PMSaveDiskTool v2 — {__version__}"
+        self.root.title(base)
+
+    def _set_dirty(self, flag: bool = True):
+        if self.dirty != flag:
+            self.dirty = flag
+            self._update_title()
+
+    def _on_quit(self):
+        if self.dirty:
+            answer = messagebox.askyesnocancel(
+                "Unsaved changes",
+                "You have unsaved changes to the ADF.\n\nSave before quitting?",
+            )
+            if answer is None:
+                return  # Cancel — stay open
+            if answer:
+                self._save_adf()
+                if self.dirty:
+                    return  # Save failed; stay open
+        self.root.quit()
+
+    def _set_view(self, label: str):
+        """Switch the Team dropdown (and list) to the named view."""
+        if not self.slot:
+            return
+        values = self.team_combo["values"]
+        if label not in values:
+            return
+        self.team_var.set(label)
+        self._refresh_player_list()
+
+    def _revert_player(self):
+        """Reload the detail panel from the current in-memory record."""
+        if not self.current_player:
+            return
+        self._populate_fields(self.current_player)
+        self.status_var.set(f"Reverted Player #{self.current_player.player_id}")
+
+    def _find_player(self):
+        """Focus the filter entry so the user can start typing."""
+        if hasattr(self, "search_entry"):
+            self.search_entry.focus_set()
+            self.search_entry.selection_range(0, tk.END)
+
+    def _on_escape(self):
+        """Esc: clear the filter if it has focus; otherwise revert the player."""
+        try:
+            focused = self.root.focus_get()
+        except KeyError:
+            focused = None
+        if focused is getattr(self, "search_entry", None):
+            self.search_var.set("")
+        else:
+            self._revert_player()
 
     def _export_players(self):
         if not self.slot:
@@ -702,14 +947,42 @@ class PMSaveDiskToolGUI:
         CareerTrackerWindow(self.root, self.adf, self.adf_path, self.game_disk)
 
     def _show_about(self):
-        messagebox.showinfo(
-            "About PMSaveDiskTool v2",
-            f"PMSaveDiskTool v2 — {__version__}\n"
-            "Cross-platform Player Manager Save Disk Editor\n\n"
-            "Compatible with the original PMSaveDiskTool by UltimateBinary.\n"
-            "Supports Player Manager (Amiga, 1990).\n\n"
-            "Works on Mac, Linux, and Windows."
-        )
+        top = tk.Toplevel(self.root)
+        top.title("About PMSaveDiskTool")
+        top.resizable(False, False)
+        top.transient(self.root)
+
+        body = ttk.Frame(top, padding=(24, 20, 24, 16))
+        body.pack()
+
+        ttk.Label(body, text="PMSaveDiskTool v2",
+                  font=("TkDefaultFont", 14, "bold")).pack(anchor="w")
+        ttk.Label(body, text=f"Version {__version__}",
+                  foreground="gray30").pack(anchor="w", pady=(0, 12))
+        ttk.Label(
+            body, justify=tk.LEFT,
+            text=("Cross-platform save-disk editor for Player Manager\n"
+                  "(Anco Software, 1990 — Amiga)."),
+        ).pack(anchor="w", pady=(0, 12))
+        ttk.Label(
+            body, justify=tk.LEFT, foreground="gray30",
+            text=("Based on PMSaveDiskTool v1.2 by UltimateBinary.\n"
+                  "Original game by Dino Dini."),
+        ).pack(anchor="w", pady=(0, 12))
+
+        def add_link(text, url):
+            lbl = ttk.Label(body, text=text, foreground="#1a56db",
+                            cursor="hand2")
+            lbl.pack(anchor="w")
+            lbl.bind("<Button-1>", lambda e: webbrowser.open(url))
+
+        add_link("GitHub repository", GITHUB_URL)
+        add_link("MIT License", LICENSE_URL)
+
+        ttk.Button(body, text="OK", command=top.destroy).pack(
+            anchor="e", pady=(16, 0))
+        top.bind("<Escape>", lambda e: top.destroy())
+        top.grab_set()
 
 
 def main():
