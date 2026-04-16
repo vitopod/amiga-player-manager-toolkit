@@ -103,6 +103,11 @@ class PlayerRecord:
         return self.team_index == 0xFF
 
     @property
+    def is_market_available(self) -> bool:
+        """True if the player can be purchased: free agent or listed for transfer."""
+        return self.is_free_agent or self.transfer_weeks > 0
+
+    @property
     def skills(self) -> dict[str, int]:
         return {name: getattr(self, name) for name in SKILL_NAMES}
 

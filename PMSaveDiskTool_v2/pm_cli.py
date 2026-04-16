@@ -130,6 +130,75 @@ def cmd_show_player(args):
     print(f"  Contract Years:      {p.contract_years}")
 
 
+def cmd_young_talents(args):
+    adf = ADF.load(args.adf)
+    slot = SaveSlot(adf, args.save)
+    gd = _load_game_disk(getattr(args, 'game_adf', None))
+    max_age = args.max_age
+
+    players = slot.get_young_talents(max_age)
+    if args.market_only:
+        players = [p for p in players if p.is_market_available]
+
+    on_market = sum(1 for p in players if p.is_market_available)
+    print(f"Young Talents — age ≤ {max_age}  ({len(players)} players, {on_market} on market)")
+
+    if gd:
+        print(f"{'ID':>5} {'Name':<18} {'Age':>4} {'Pos':>4} {'Team':<16} {'Skill':>5} {'Mkt':>3}")
+        print("-" * 65)
+        for p in players:
+            team = slot.get_team_name(p.team_index)
+            name = gd.player_full_name(p.rng_seed) if p.rng_seed else ""
+            mkt = "★" if p.is_market_available else ""
+            print(f"{p.player_id:>5} {name:<18} {p.age:>4} {p.position_name:>4} {team:<16} {p.total_skill:>5} {mkt:>3}")
+    else:
+        print(f"{'ID':>5} {'Age':>4} {'Pos':>4} {'Team':<16} {'Skill':>5} {'Mkt':>3}")
+        print("-" * 45)
+        for p in players:
+            team = slot.get_team_name(p.team_index)
+            mkt = "★" if p.is_market_available else ""
+            print(f"{p.player_id:>5} {p.age:>4} {p.position_name:>4} {team:<16} {p.total_skill:>5} {mkt:>3}")
+
+
+def cmd_highlights(args):
+    adf = ADF.load(args.adf)
+    slot = SaveSlot(adf, args.save)
+    gd = _load_game_disk(getattr(args, 'game_adf', None))
+
+    all_players = slot.get_top_scorers()  # sorted by division, then goals desc
+    if args.market_only:
+        all_players = [p for p in all_players if p.is_market_available]
+
+    print("Championship Highlights\n")
+
+    # Group by division
+    divisions: dict[int, list] = {}
+    for p in all_players:
+        divisions.setdefault(p.division, []).append(p)
+
+    for div in sorted(divisions.keys()):
+        players = divisions[div]
+        div_label = f"Division {div}" if div > 0 else "Division (unset)"
+        on_market = sum(1 for p in players if p.is_market_available)
+        print(f"=== {div_label} ({len(players)} players, {on_market} on market) ===")
+        if gd:
+            print(f"{'ID':>5} {'Name':<18} {'Age':>4} {'Pos':>4} {'Team':<16} {'Goals':>6} {'Matches':>8} {'Mkt':>3}")
+            print("-" * 75)
+            for p in players:
+                team = slot.get_team_name(p.team_index)
+                name = gd.player_full_name(p.rng_seed) if p.rng_seed else ""
+                mkt = "★" if p.is_market_available else ""
+                print(f"{p.player_id:>5} {name:<18} {p.age:>4} {p.position_name:>4} {team:<16} {p.goals_this_year:>6} {p.matches_this_year:>8} {mkt:>3}")
+        else:
+            print(f"{'ID':>5} {'Age':>4} {'Pos':>4} {'Team':<16} {'Goals':>6} {'Matches':>8} {'Mkt':>3}")
+            print("-" * 55)
+            for p in players:
+                team = slot.get_team_name(p.team_index)
+                mkt = "★" if p.is_market_available else ""
+                print(f"{p.player_id:>5} {p.age:>4} {p.position_name:>4} {team:<16} {p.goals_this_year:>6} {p.matches_this_year:>8} {mkt:>3}")
+        print()
+
+
 def cmd_edit_player(args):
     adf = ADF.load(args.adf)
     slot = SaveSlot(adf, args.save)
@@ -196,6 +265,21 @@ def main():
     p_sp.add_argument("--save", required=True, help="Save file name")
     p_sp.add_argument("--id", type=int, required=True, help="Player ID (0-based)")
 
+    # young-talents
+    p_yt = sub.add_parser("young-talents", help="List young players sorted by skill")
+    p_yt.add_argument("adf", help="Path to the ADF disk image")
+    p_yt.add_argument("--save", required=True, help="Save file name (e.g. pm1.sav)")
+    p_yt.add_argument("--max-age", type=int, default=21, help="Maximum age (default: 21)")
+    p_yt.add_argument("--market-only", action="store_true", help="Show only players available on the market")
+    p_yt.add_argument("--game-adf", metavar="PATH", help="Game disk ADF for player names")
+
+    # highlights
+    p_hl = sub.add_parser("highlights", help="Top scorers per division")
+    p_hl.add_argument("adf", help="Path to the ADF disk image")
+    p_hl.add_argument("--save", required=True, help="Save file name (e.g. pm1.sav)")
+    p_hl.add_argument("--market-only", action="store_true", help="Show only players available on the market")
+    p_hl.add_argument("--game-adf", metavar="PATH", help="Game disk ADF for player names")
+
     # edit-player
     p_ep = sub.add_parser("edit-player", help="Edit player attributes")
     p_ep.add_argument("adf", help="Path to the ADF disk image")
@@ -234,6 +318,8 @@ def main():
         "list-players": cmd_list_players,
         "show-player": cmd_show_player,
         "edit-player": cmd_edit_player,
+        "young-talents": cmd_young_talents,
+        "highlights": cmd_highlights,
     }
     commands[args.command](args)
 

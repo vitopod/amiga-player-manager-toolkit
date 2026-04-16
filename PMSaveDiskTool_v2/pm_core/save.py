@@ -98,3 +98,18 @@ class SaveSlot:
         """Write all player records back to the ADF image."""
         for i in range(len(self.players)):
             self.write_player(i)
+
+    def get_young_talents(self, max_age: int = 21) -> list[PlayerRecord]:
+        """Players aged ≤ max_age with age > 0, sorted by total skill descending."""
+        return sorted(
+            [p for p in self.players if 0 < p.age <= max_age],
+            key=lambda p: p.total_skill,
+            reverse=True,
+        )
+
+    def get_top_scorers(self) -> list[PlayerRecord]:
+        """All active players sorted by division, then goals this year descending."""
+        return sorted(
+            [p for p in self.players if p.age > 0],
+            key=lambda p: (p.division, -p.goals_this_year),
+        )

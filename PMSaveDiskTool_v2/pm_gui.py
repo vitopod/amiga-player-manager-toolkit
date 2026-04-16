@@ -96,7 +96,7 @@ class PMSaveDiskToolGUI:
         left = ttk.Frame(paned)
         paned.add(left, weight=1)
 
-        cols = ("id", "name", "age", "pos", "team", "total")
+        cols = ("id", "name", "age", "pos", "team", "total", "mkt")
         self.tree = ttk.Treeview(left, columns=cols, show="headings", selectmode="browse")
         self.tree.heading("id", text="ID")
         self.tree.heading("name", text="Name")
@@ -104,12 +104,14 @@ class PMSaveDiskToolGUI:
         self.tree.heading("pos", text="Pos")
         self.tree.heading("team", text="Team")
         self.tree.heading("total", text="Skill")
+        self.tree.heading("mkt", text="Mkt")
         self.tree.column("id", width=50, anchor="e")
         self.tree.column("name", width=140)
         self.tree.column("age", width=40, anchor="e")
         self.tree.column("pos", width=45, anchor="center")
         self.tree.column("team", width=120)
         self.tree.column("total", width=50, anchor="e")
+        self.tree.column("mkt", width=30, anchor="center", stretch=False)
 
         scrollbar = ttk.Scrollbar(left, orient=tk.VERTICAL, command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
@@ -266,6 +268,8 @@ class PMSaveDiskToolGUI:
         team_options = ["All Players", "Free Agents"]
         for i, name in enumerate(self.slot.team_names):
             team_options.append(f"{i}: {name}")
+        team_options.append("— Young Talents (≤21)")
+        team_options.append("— Top Scorers")
         self.team_combo["values"] = team_options
         self.team_combo.current(0)
         self._refresh_player_list()
@@ -280,21 +284,36 @@ class PMSaveDiskToolGUI:
         self.tree.delete(*self.tree.get_children())
 
         team_sel = self.team_var.get()
-        if team_sel == "Free Agents":
+        if team_sel == "— Young Talents (≤21)":
+            players = self.slot.get_young_talents()
+            self.tree.heading("total", text="Skill")
+            score_fn = lambda p: p.total_skill
+        elif team_sel == "— Top Scorers":
+            players = self.slot.get_top_scorers()
+            self.tree.heading("total", text="Goals")
+            score_fn = lambda p: p.goals_this_year
+        elif team_sel == "Free Agents":
             players = self.slot.get_free_agents()
+            self.tree.heading("total", text="Skill")
+            score_fn = lambda p: p.total_skill
         elif team_sel.startswith("All"):
             players = [p for p in self.slot.players if p.age > 0]
+            self.tree.heading("total", text="Skill")
+            score_fn = lambda p: p.total_skill
         else:
             team_idx = int(team_sel.split(":")[0])
             players = self.slot.get_players_by_team(team_idx)
+            self.tree.heading("total", text="Skill")
+            score_fn = lambda p: p.total_skill
 
         for p in players:
             team = self.slot.get_team_name(p.team_index)
             name = (self.game_disk.player_full_name(p.rng_seed)
                     if self.game_disk and p.rng_seed else "")
+            mkt = "★" if p.is_market_available else ""
             self.tree.insert("", "end", iid=str(p.player_id),
                              values=(p.player_id, name, p.age, p.position_name,
-                                     team, p.total_skill))
+                                     team, score_fn(p), mkt))
 
     def _on_player_selected(self, event):
         sel = self.tree.selection()
