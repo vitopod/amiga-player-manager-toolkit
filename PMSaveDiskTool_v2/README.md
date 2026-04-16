@@ -72,6 +72,8 @@ python3 -m pytest tests/ -v
   Windows tool, save disk format research, and field naming. This project would not exist
   without that work.
 - **Player Manager** by Anco Software (1990) — the game.
+- **Dino Dini** (https://github.com/dndn1011) — original programmer of Player Manager.
+  The game that started it all.
 
 ## License
 

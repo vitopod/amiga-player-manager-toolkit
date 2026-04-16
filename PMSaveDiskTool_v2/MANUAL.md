@@ -254,3 +254,5 @@ Fiorentina, Napoli, Roma, Torino, and 38 further clubs.
   layout, and all field names in this project derive directly from that work.
   UltimateBinary's tool remains the definitive reference for the Player Manager save format.
 - **Player Manager** by Anco Software (1990).
+- **Dino Dini** (https://github.com/dndn1011) — original programmer of Player Manager.
+  Without his work none of this would exist.
