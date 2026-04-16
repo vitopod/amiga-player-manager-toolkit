@@ -41,7 +41,7 @@ python3 PMSaveDiskTool_v2/pm_cli.py list-players Save1_PM.adf --save pm1.sav --t
 ## Features
 
 - Open any Player Manager save disk ADF image
-- **Load game ADF to show Italian player names** (decompressed from game executable)
+- **Load game ADF to show player names** (decompressed from game executable; compatible with Italian version and potentially others)
 - Browse players by team or view all/free agents
 - View and edit all player attributes: age, position, skills, career stats
 - Save changes back to ADF — byte-for-byte compatible with PMSaveDiskTool v1.2
