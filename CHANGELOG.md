@@ -4,6 +4,59 @@ All notable changes to PMSaveDiskTool v2 are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] — 2026-04-16
+
+### Added
+- **Line-up Coach (BETA)** — Tools → Line-up Coach (BETA)… (accelerator
+  Cmd/Ctrl+L). Suggests a starting XI for a team or the whole championship.
+  Scores every (player, role) pair over a 12-role taxonomy (GK / CB·FB·SW
+  / DM·CM·AM·WM / POA·TGT·WNG·DLF), assembles the best XI via global-greedy
+  assignment, and ranks the three supported formations (4-4-2 / 4-3-3 /
+  3-5-2) by a composite of skill, role fit, morale, fatigue, card-risk and
+  form. Also flags players whose best-fit role lies **outside** their
+  nominal position — useful for squad rotation experiments.
+  BETA: scoring is a modern football-management heuristic, **not** a
+  reconstruction of PM's match-engine weights. Treat output as "suggested,"
+  not "optimal."
+- **CLI** `suggest-xi` — same engine on the command line. Ranks formations,
+  prints the recommended XI with role tags and fit percentages, and lists
+  reassignment suggestions with a configurable gap threshold. `--team`,
+  `--formation`, `--allow-cross-position`, `--include-injured`, `--weights
+  KEY=VAL…`, `--reassign-threshold`, `--reassign-limit`.
+- **`pm_core.lineup`** — pure library module (zero external deps). Exposes
+  `ROLES`, `FORMATION_ROLES`, `role_fit`, `best_role`, `assemble_xi`,
+  `score_xi`, `suggest_reassignments`, `rank_formations`, plus the
+  composite-weight defaults and result dataclasses. 33 unit tests pin
+  down the role maths, taxonomy consistency (FORMATION_ROLES must match
+  `pm_core.save.FORMATIONS` at the position-count level), XI-assembly
+  invariants, and reassignment flagging.
+
+## [1.1.0] — 2026-04-16
+
+### Added
+- **Byte Workbench** — Tools → Byte Workbench… (accelerator Cmd/Ctrl+B). A
+  reverse-engineering UI for the 42-byte player record with three tabs:
+  - **Raw View** — hex / decimal / binary dump of the selected player, each
+    byte annotated with the field it belongs to and any known invariants.
+  - **Histogram** — value distribution at any offset, optionally masked to
+    a single bit. Preset filters (real / free agents / transfer-listed /
+    by position / young / veteran / contracted) narrow the input set.
+  - **Diff** — picks two player sets by preset filter and ranks the bits
+    whose probability of being set differs most between them. Reproduces
+    the manual process that originally cracked `mystery3 bit 0x80`, now as
+    a push-button tool for cracking the remaining unknowns (`mystery3`
+    lower 7 bits, `last_byte` skew).
+- **CLI** `byte-stats` — histogram a byte/bit across a preset set, e.g.
+  `byte-stats … --offset 0x1A --mask 0x80 --filter real`.
+- **CLI** `byte-diff` — rank the top-N discriminative bits between two
+  preset sets, e.g. `byte-diff … --set-a transfer-listed --set-b not-transfer-listed`.
+- **`pm_core.workbench`** — pure analysis module: `byte_histogram`,
+  `bit_probability`, `diff_sets`, `query`. Operates on iterables of
+  `PlayerRecord`; no `SaveSlot` dependency. 26 unit tests.
+- **`pm_core.player.FIELD_LAYOUT`** and **`field_at_offset(offset)`** — the
+  single source of truth mapping each of the 42 bytes to its field, size,
+  and note. Used by the workbench UI and CLI to label every offset.
+
 ## [1.0.0] — 2026-04-16
 
 ### Added

@@ -155,8 +155,77 @@ class TestCLISmoke(unittest.TestCase):
         # comparing a slot to itself should yield 0 changed players
         self.assertIn("(0 players changed)", r.stdout)
 
+    def test_byte_stats_reserved_is_zero(self):
+        r = _run("byte-stats", _ADF, "--save", "pm1.sav",
+                 "--offset", "0x14", "--filter", "real")
+        self.assertSuccess(r)
+        self.assertIn("reserved", r.stdout)
+        self.assertIn("100.0%", r.stdout)  # all 1031 players have byte=0
+
+    def test_byte_stats_transfer_list_bit_counts(self):
+        r = _run("byte-stats", _ADF, "--save", "pm1.sav",
+                 "--offset", "0x1A", "--mask", "0x80", "--filter", "real")
+        self.assertSuccess(r)
+        self.assertIn("mystery3", r.stdout)
+        self.assertIn("255", r.stdout)  # known transfer-listed count
+
+    def test_byte_diff_surfaces_transfer_list_bit(self):
+        r = _run("byte-diff", _ADF, "--save", "pm1.sav",
+                 "--set-a", "transfer-listed",
+                 "--set-b", "not-transfer-listed",
+                 "--top", "3")
+        self.assertSuccess(r)
+        self.assertIn("mystery3", r.stdout)
+        self.assertIn("0x80", r.stdout)
+        self.assertIn("100.0%", r.stdout)  # delta should be 100%
+
+    def test_byte_diff_rejects_unknown_filter(self):
+        r = _run("byte-diff", _ADF, "--save", "pm1.sav",
+                 "--set-a", "bogus", "--set-b", "all")
+        self.assertNotEqual(r.returncode, 0)
+
     def test_unknown_subcommand_fails(self):
         r = _run("not-a-command")
+        self.assertNotEqual(r.returncode, 0)
+
+    # --- Line-up Coach (BETA) ------------------------------------------------
+
+    def test_suggest_xi_championship(self):
+        r = _run("suggest-xi", _ADF, "--save", "pm1.sav")
+        self.assertSuccess(r)
+        self.assertIn("[BETA]", r.stdout)
+        self.assertIn("Recommended XI", r.stdout)
+        self.assertIn("Formation ranking", r.stdout)
+
+    def test_suggest_xi_team_needs_include_injured(self):
+        # MILAN in Save1 has too many injuries to field a default XI.
+        r = _run("suggest-xi", _ADF, "--save", "pm1.sav", "--team", "0")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("No formation could be filled", r.stdout)
+
+    def test_suggest_xi_with_include_injured(self):
+        r = _run("suggest-xi", _ADF, "--save", "pm1.sav",
+                 "--team", "0", "--include-injured")
+        self.assertSuccess(r)
+        self.assertIn("MILAN", r.stdout)
+        self.assertIn("Recommended XI", r.stdout)
+
+    def test_suggest_xi_explicit_formation(self):
+        r = _run("suggest-xi", _ADF, "--save", "pm1.sav",
+                 "--formation", "3-5-2")
+        self.assertSuccess(r)
+        self.assertIn("3-5-2", r.stdout)
+        # With a forced formation there's no ranking block.
+        self.assertNotIn("Formation ranking", r.stdout)
+
+    def test_suggest_xi_weights_override(self):
+        r = _run("suggest-xi", _ADF, "--save", "pm1.sav",
+                 "--weights", "morale=0", "fatigue=0")
+        self.assertSuccess(r)
+
+    def test_suggest_xi_invalid_weight_rejected(self):
+        r = _run("suggest-xi", _ADF, "--save", "pm1.sav",
+                 "--weights", "bogus-no-equals")
         self.assertNotEqual(r.returncode, 0)
 
 

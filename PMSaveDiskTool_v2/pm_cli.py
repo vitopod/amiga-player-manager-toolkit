@@ -19,8 +19,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pm_core import __version__
 from pm_core.adf import ADF, ensure_backup
 from pm_core.save import SaveSlot, FORMATIONS, player_to_row
-from pm_core.player import SKILL_NAMES, POSITION_NAMES, PlayerRecord
+from pm_core.player import (
+    SKILL_NAMES, POSITION_NAMES, PlayerRecord, field_at_offset, FIELD_LAYOUT,
+)
 from pm_core.names import GameDisk
+from pm_core import workbench
+from pm_core import lineup
 
 
 XI_FILTERS = {
@@ -29,6 +33,36 @@ XI_FILTERS = {
     "free-agent": lambda p: p.is_free_agent,
     "market": lambda p: p.is_market_available,
 }
+
+# Named filters used by byte-stats and byte-diff. "real" uses SaveSlot's
+# _is_real_player filter so garbage sentinel records don't skew analysis.
+BYTE_FILTERS = {
+    "all": lambda p: True,
+    "real": SaveSlot._is_real_player,
+    "free-agents": lambda p: p.is_free_agent,
+    "contracted": lambda p: not p.is_free_agent,
+    "transfer-listed": lambda p: p.is_transfer_listed,
+    "not-transfer-listed": lambda p: not p.is_transfer_listed,
+    "gk": lambda p: p.position == 1,
+    "def": lambda p: p.position == 2,
+    "mid": lambda p: p.position == 3,
+    "fwd": lambda p: p.position == 4,
+    "young": lambda p: 0 < p.age <= 21,
+    "veteran": lambda p: p.age >= 30,
+}
+
+
+def _parse_byte_int(s: str) -> int:
+    """Accept 0x..., 0b..., or plain decimal."""
+    return int(s, 0)
+
+
+def _resolve_filter(name: str):
+    if name not in BYTE_FILTERS:
+        raise SystemExit(
+            f"Unknown filter {name!r}. Available: {', '.join(sorted(BYTE_FILTERS))}"
+        )
+    return BYTE_FILTERS[name]
 
 
 def _load_game_disk(path):
@@ -359,6 +393,172 @@ def cmd_export_players(args):
             print(f"Wrote {len(rows)} players to {args.output}", file=sys.stderr)
 
 
+def cmd_byte_stats(args):
+    adf = ADF.load(args.adf)
+    slot = SaveSlot(adf, args.save)
+    predicate = _resolve_filter(args.filter)
+    players = [p for p in slot.players if predicate(p)]
+
+    offset = args.offset
+    mask = args.mask
+    hist = workbench.byte_histogram(players, offset, mask)
+    name, sub, size = field_at_offset(offset)
+    total = sum(hist.values())
+
+    print(f"Byte @ 0x{offset:02X} = {name}"
+          + (f"[{sub}/{size}]" if size > 1 else "")
+          + f"  filter={args.filter} ({total} players)"
+          + (f"  mask=0x{mask:02X}" if mask != 0xFF else ""))
+    if total == 0:
+        return
+    print(f"  {'value':>8} {'count':>8} {'pct':>7}")
+    for value, count in hist.most_common():
+        pct = 100.0 * count / total
+        print(f"  {value:>4} (0x{value:02X}) {count:>8} {pct:>6.1f}%")
+
+
+def cmd_byte_diff(args):
+    adf = ADF.load(args.adf)
+    slot = SaveSlot(adf, args.save)
+    pred_a = _resolve_filter(args.set_a)
+    pred_b = _resolve_filter(args.set_b)
+    a = [p for p in slot.players if pred_a(p)]
+    b = [p for p in slot.players if pred_b(p)]
+
+    if not a or not b:
+        print(f"Empty set: A={len(a)} B={len(b)}", file=sys.stderr)
+        return
+
+    diffs = workbench.diff_sets(a, b, top_n=args.top)
+    print(f"Bit-level diff: A={args.set_a} ({len(a)}) vs B={args.set_b} ({len(b)})")
+    print(f"  {'offset':>7} {'field':<22} {'bit':>6} {'P(A)':>7} {'P(B)':>7} {'delta':>7}")
+    for d in diffs:
+        loc = f"0x{d.offset:02X}"
+        field = d.field_name + (f"[{d.field_byte}]" if d.field_byte > 0 else "")
+        bit = f"{d.bit_index} (0x{d.bit:02X})"
+        print(f"  {loc:>7} {field:<22} {bit:>6} "
+              f"{d.p_a*100:>6.1f}% {d.p_b*100:>6.1f}% {d.delta*100:>6.1f}%")
+
+
+def cmd_suggest_xi(args):
+    """Line-up Coach (BETA) — suggest formation, XI, and role reassignments.
+
+    Scoring is a modern-football heuristic layered on top of PM's 10 skill
+    fields, not a reconstruction of PM's match engine. Treat the output as
+    "suggested," not "optimal."
+    """
+    adf = ADF.load(args.adf)
+    slot = SaveSlot(adf, args.save)
+    gd = _load_game_disk(getattr(args, "game_adf", None))
+
+    if args.team is None:
+        pool = [p for p in slot.players if SaveSlot._is_real_player(p)]
+        pool_label = "whole championship"
+    else:
+        pool = slot.get_players_by_team(args.team)
+        pool_label = f"team {args.team} — {slot.get_team_name(args.team)}"
+
+    weights = None
+    if args.weights:
+        weights = {}
+        for kv in args.weights:
+            if "=" not in kv:
+                raise SystemExit(f"--weights entry must be key=value, got {kv!r}")
+            key, val = kv.split("=", 1)
+            weights[key.strip()] = float(val)
+
+    formations = [args.formation] if args.formation else None
+    eligibility = lineup._is_eligible
+    if args.include_injured:
+        eligibility = lambda p: (p.position in (1, 2, 3, 4) and p.age > 0)
+    pool_list = list(pool)
+
+    if formations:
+        try:
+            xi = lineup.assemble_xi(
+                pool_list, args.formation,
+                allow_cross_position=args.allow_cross_position,
+                eligibility=eligibility,
+            )
+            comp, br = lineup.score_xi(xi, weights=weights)
+            ranked = [lineup.LineupResult(formation=args.formation, assignments=xi,
+                                          composite=comp, breakdown=br)]
+        except ValueError as e:
+            raise SystemExit(str(e))
+    else:
+        ranked = []
+        for f in lineup.FORMATION_ROLES:
+            try:
+                xi = lineup.assemble_xi(
+                    pool_list, f,
+                    allow_cross_position=args.allow_cross_position,
+                    eligibility=eligibility,
+                )
+            except ValueError:
+                continue
+            comp, br = lineup.score_xi(xi, weights=weights)
+            ranked.append(lineup.LineupResult(formation=f, assignments=xi,
+                                              composite=comp, breakdown=br))
+        ranked.sort(key=lambda r: r.composite, reverse=True)
+
+    print(f"[BETA] Line-up Coach — {pool_label}  (pool size {len(pool)})")
+    print("Scoring is heuristic; not calibrated to PM's match engine.\n")
+
+    if not ranked:
+        print("No formation could be filled from this pool. Try --allow-cross-position.")
+        return
+
+    if len(ranked) > 1:
+        print("Formation ranking (by composite score):")
+        for r in ranked:
+            print(f"  {r.formation:<6} composite {r.composite:>8.1f}   "
+                  f"skill {r.total_skill:>4}   "
+                  f"fit {r.breakdown['mean_fit']*100:>5.1f}%   "
+                  f"morale {r.breakdown['mean_morale']*100:>5.1f}%   "
+                  f"fatigue {r.breakdown['mean_fatigue']*100:>5.1f}%")
+        print()
+
+    best = ranked[0]
+    print(f"Recommended XI — {best.formation}  (composite {best.composite:.1f}, "
+          f"skill {best.total_skill})")
+    group_labels = {1: "Goalkeeper", 2: "Defenders",
+                    3: "Midfielders", 4: "Forwards"}
+    current_pos = None
+    for a in best.assignments:
+        pos = a.player.position
+        if pos != current_pos:
+            current_pos = pos
+            print(f"— {group_labels[pos]} —")
+        team = slot.get_team_name(a.player.team_index)
+        name = (gd.player_full_name(a.player.rng_seed)
+                if gd and a.player.rng_seed else "")
+        name_col = f"{name:<18} " if gd else ""
+        print(f"  {a.role:<4} #{a.player.player_id:>4} {name_col}"
+              f"{a.player.age:>3}y  {team:<16} "
+              f"skill {a.player.total_skill:>4}  fit {a.fit*100:>5.1f}%")
+
+    br = best.breakdown
+    print(f"\nBreakdown: mean fit {br['mean_fit']*100:.1f}%, "
+          f"mean morale {br['mean_morale']*100:.1f}%, "
+          f"mean fatigue {br['mean_fatigue']*100:.1f}%, "
+          f"mean card-risk {br['mean_card_risk']*100:.1f}%, "
+          f"mean form {br['mean_form']*100:.1f}%")
+
+    flags = lineup.suggest_reassignments(pool, threshold=args.reassign_threshold)
+    if flags:
+        print(f"\nReassignment suggestions (gap ≥ {args.reassign_threshold:.2f}):")
+        for s in flags[: args.reassign_limit]:
+            name = (gd.player_full_name(s.player.rng_seed)
+                    if gd and s.player.rng_seed else "")
+            name_col = f"{name:<18} " if gd else ""
+            print(f"  #{s.player.player_id:>4} {name_col}"
+                  f"{s.player.position_name:<3} → {s.best_role:<4} "
+                  f"(nominal {s.nominal_role} fit {s.nominal_fit*100:.0f}%, "
+                  f"best fit {s.best_fit*100:.0f}%, gap {s.gap*100:+.0f}%)")
+        if len(flags) > args.reassign_limit:
+            print(f"  … and {len(flags) - args.reassign_limit} more.")
+
+
 def cmd_edit_player(args):
     adf = ADF.load(args.adf)
     slot = SaveSlot(adf, args.save)
@@ -489,6 +689,52 @@ def main():
     p_ex.add_argument("--free-agents", action="store_true", help="Free agents only")
     p_ex.add_argument("--game-adf", metavar="PATH", help="Game disk ADF for player names")
 
+    # byte-stats
+    p_bs = sub.add_parser("byte-stats",
+                          help="Histogram a byte/bit at a given offset across a player set")
+    p_bs.add_argument("adf", help="Path to the ADF disk image")
+    p_bs.add_argument("--save", required=True, help="Save file name (e.g. pm1.sav)")
+    p_bs.add_argument("--offset", required=True, type=_parse_byte_int,
+                      help="Byte offset in the 42-byte record (0x00..0x29)")
+    p_bs.add_argument("--mask", type=_parse_byte_int, default=0xFF,
+                      help="Bit mask (e.g. 0x80 for a single bit); default 0xFF")
+    p_bs.add_argument("--filter", default="real",
+                      help=f"Preset filter. Choices: {', '.join(sorted(BYTE_FILTERS))}")
+
+    # byte-diff
+    p_bd = sub.add_parser("byte-diff",
+                          help="Rank bits that most discriminate set A from set B")
+    p_bd.add_argument("adf", help="Path to the ADF disk image")
+    p_bd.add_argument("--save", required=True, help="Save file name (e.g. pm1.sav)")
+    p_bd.add_argument("--set-a", required=True,
+                      help=f"Filter for set A. Choices: {', '.join(sorted(BYTE_FILTERS))}")
+    p_bd.add_argument("--set-b", required=True,
+                      help=f"Filter for set B. Choices: {', '.join(sorted(BYTE_FILTERS))}")
+    p_bd.add_argument("--top", type=int, default=20,
+                      help="Show the top N most-discriminative bits (default 20)")
+
+    # suggest-xi (BETA)
+    p_sx = sub.add_parser("suggest-xi",
+                          help="[BETA] Line-up Coach — suggest formation, XI, role reassignments")
+    p_sx.add_argument("adf", help="Path to the ADF disk image")
+    p_sx.add_argument("--save", required=True, help="Save file name (e.g. pm1.sav)")
+    p_sx.add_argument("--team", type=int,
+                      help="Team index (omit to pick from the whole championship)")
+    p_sx.add_argument("--formation", choices=list(lineup.FORMATION_ROLES),
+                      help="Force a specific formation (default: rank all)")
+    p_sx.add_argument("--allow-cross-position", action="store_true",
+                      help="Let players fill slots outside their nominal position")
+    p_sx.add_argument("--include-injured", action="store_true",
+                      help="Include currently-injured players (shows the 'ideal' XI)")
+    p_sx.add_argument("--weights", nargs="*", metavar="KEY=VAL",
+                      help="Override composite weights (e.g. morale=40 fatigue=10)")
+    p_sx.add_argument("--reassign-threshold", type=float, default=0.15,
+                      help="Min best-vs-nominal gap to flag (default 0.15)")
+    p_sx.add_argument("--reassign-limit", type=int, default=10,
+                      help="Max reassignment suggestions shown (default 10)")
+    p_sx.add_argument("--game-adf", metavar="PATH",
+                      help="Game disk ADF for player names")
+
     # edit-player
     p_ep = sub.add_parser("edit-player", help="Edit player attributes")
     p_ep.add_argument("adf", help="Path to the ADF disk image")
@@ -533,6 +779,9 @@ def main():
         "squad-analyst": cmd_squad_analyst,
         "career-tracker": cmd_career_tracker,
         "export-players": cmd_export_players,
+        "byte-stats": cmd_byte_stats,
+        "byte-diff": cmd_byte_diff,
+        "suggest-xi": cmd_suggest_xi,
     }
     commands[args.command](args)
 

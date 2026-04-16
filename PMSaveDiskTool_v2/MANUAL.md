@@ -37,6 +37,8 @@ This version extends it with cross-platform support, player name generation, and
 | View | Young Talents (≤21) | Ctrl/Cmd+Y |
 | View | Top Scorers, Squad Analyst, Best XI ▸ | — |
 | Tools | Career Tracker… | Ctrl/Cmd+T |
+| Tools | Byte Workbench… | Ctrl/Cmd+B |
+| Tools | Line-up Coach (BETA)… | Ctrl/Cmd+L |
 
 On macOS, **About** lives in the apple menu and **Quit** is Cmd+Q.
 
@@ -46,14 +48,24 @@ Use **File > Open Save Disk…** (Ctrl/Cmd+O) and pick a Player Manager save
 disk ADF — **open a copy, not the original**. The five most recently opened
 save disks are kept under **File > Open Recent**.
 
-### Loading player names (optional)
+### Loading player names (you need the game disk for this)
 
-Player names are generated from the game disk, not the save disk. Use
-**File > Open Game Disk…** (Ctrl/Cmd+G) and pick `PlayerManagerITA.adf`
-(or any Player Manager game disk). The Name column populates immediately.
-When no game disk is loaded the Name field is left blank; every other
-editing function works without it. The status bar's right-hand label
-always shows the current game-disk state.
+Player names are **not stored on the save disk** — they are generated from
+a 4-byte RNG seed by a name table that lives inside the **game disk**. To
+see any player names anywhere in the tool (roster list, Best XI, Career
+Tracker, Line-up Coach, CSV/JSON export, …), you must open the game disk
+in addition to the save disk:
+
+1. **File > Open Save Disk…** (Ctrl/Cmd+O) — the ADF that contains your
+   save slots (typically shipped as a separate floppy from the game).
+2. **File > Open Game Disk…** (Ctrl/Cmd+G) — the Player Manager game disk
+   ADF (e.g. `PlayerManagerITA.adf`).
+
+Both disks are plain ADF images; the save disk by itself is enough to
+edit every byte of every player — names just stay blank without the
+game disk. The status bar's right-hand label always shows the current
+game-disk state. The CLI equivalent is `--game-adf PlayerManagerITA.adf`
+on every subcommand that prints player details.
 
 ### Selecting a save slot
 
@@ -138,6 +150,64 @@ a different disk image (e.g. an older backup). Tick **Team changes only** to
 restrict the output to transfers. The table lists player id, name (if a game
 ADF is loaded), ages, total skills, skill delta, and team names for each
 side, sorted by skill delta descending.
+
+### Byte Workbench window
+
+Open **Tools > Byte Workbench...** to inspect and experiment with the raw
+42-byte player record. The tool was built to continue the reverse-engineering
+work that identified `mystery3 bit 0x80` as the LISTA TRASFERIMENTI flag —
+the same method, now automated across the whole database.
+
+- **Raw View** — pick a player by ID and see all 42 bytes side-by-side with
+  their field name, hex/dec/bin values, and any known invariants (e.g.
+  `reserved` always 0, `mystery3` bit 7 = transfer-listed).
+- **Histogram** — choose a preset set of players (real / free agents /
+  transfer-listed / GK / young / …), an offset, and an optional mask.
+  The tab shows the distribution of values for that byte, which makes it
+  obvious when a byte is constant (unidentified field always 0), skewed
+  (e.g. `last_byte` heavily favours 2 and 3), or discrete (known enums).
+- **Diff** — pick two preset sets for A and B. The tool computes
+  `P(bit=1|A)` and `P(bit=1|B)` for every bit in the record and lists
+  the top N by absolute difference. Splitting the DB on
+  "On transfer list" vs "Not on transfer list" puts `mystery3 bit 7` at
+  100% delta — a sanity anchor for the already-known bit — and reveals
+  which other bits co-vary with transfer-listing.
+
+Both the Histogram and Diff tabs also have CLI equivalents (`byte-stats`
+and `byte-diff`) if you prefer pipeline-friendly output.
+
+### Line-up Coach (BETA) window
+
+Open **Tools > Line-up Coach (BETA)…** (Ctrl/Cmd+L). The coach suggests
+a starting XI — for a single team or for the whole championship — by
+scoring every (player, role) pair against a 12-role taxonomy, then
+assembling the best XI in each of the three supported formations
+(4-4-2 / 4-3-3 / 3-5-2) and ranking them by a composite of **skill**,
+**role fit**, **morale**, **fatigue**, **card-risk**, and **form**.
+The same run also flags players whose best-fit role lies **outside**
+their nominal position — useful for spotting a defender who would be
+a better attacking midfielder, or similar.
+
+- **Team** — pick a single team or leave on "— Whole championship" to
+  build the best XI of the entire DB.
+- **Formation** — force a specific formation, or leave on "— Rank all"
+  to see the three options scored side-by-side.
+- **Allow cross-position** — let players fill slots outside their
+  nominal position. Useful when the chosen pool is thin in one area.
+- **Include injured** — include players with active injury weeks in
+  the candidate pool. Without this flag, a heavily-injured team may
+  return "No formation could be filled".
+
+Left pane lists the formation ranking (click a row to load its XI into
+the right pane) and the reassignment suggestions. Right pane shows the
+XI with the role tag, player, age, team, skill and fit percentage.
+Under it, a one-liner breakdown summarises the six composite components.
+
+**BETA caveat.** The scoring is a modern football-management heuristic
+on top of the 10 skill fields Player Manager stores. PM's actual match
+engine weights are **not** reverse-engineered. Treat the output as
+"suggested," not "optimal" — the weights are starting points, not
+ground truth. The CLI equivalent is `pm_cli.py suggest-xi`.
 
 ### Automatic `.bak` on first write
 
@@ -392,6 +462,74 @@ Each row includes the raw 42-byte fields plus synthetic conveniences:
 `position_name`, `team_name`, `total_skill`, `is_free_agent`,
 `is_transfer_listed`, `is_market_available`, and `name` (when a game ADF is
 supplied).
+
+### Byte Stats
+
+Histogram a single byte (or bit) at a chosen offset across a preset player
+set. Useful for confirming invariants (e.g. `reserved == 0`) and spotting
+skewed / enum-looking distributions.
+
+```
+# Verify the reserved byte is always zero across real players
+python3 pm_cli.py byte-stats Save1_PM.adf --save pm1.sav \
+    --offset 0x14 --filter real
+
+# Isolate a single bit: how many real players have the transfer-list flag set?
+python3 pm_cli.py byte-stats Save1_PM.adf --save pm1.sav \
+    --offset 0x1A --mask 0x80 --filter real
+```
+
+Preset filters: `all`, `real`, `free-agents`, `contracted`, `transfer-listed`,
+`not-transfer-listed`, `gk`, `def`, `mid`, `fwd`, `young`, `veteran`.
+
+### Byte Diff
+
+Rank the bits whose probability of being set differs most between two
+preset player sets. Automates the method used to identify `mystery3`
+bit 0x80 — split the DB on a known property and see which bits light up.
+
+```
+# Anchor: splitting on transfer-listed puts mystery3 bit 7 at 100% delta
+python3 pm_cli.py byte-diff Save1_PM.adf --save pm1.sav \
+    --set-a transfer-listed --set-b not-transfer-listed --top 5
+
+# Exploratory: what bytes/bits distinguish goalkeepers from forwards?
+python3 pm_cli.py byte-diff Save1_PM.adf --save pm1.sav \
+    --set-a gk --set-b fwd --top 10
+```
+
+### Suggest XI (BETA)
+
+Line-up Coach on the command line. Suggests a formation + XI from a
+team or the whole championship, and flags players whose best-fit role
+is outside their nominal position. Scoring is the same heuristic as the
+GUI — modern football-management weights layered on PM's 10 skill
+fields, **not** a reconstruction of PM's match engine. Treat output as
+"suggested," not "optimal."
+
+```
+# Best XI of the whole championship, ranked over 4-4-2 / 4-3-3 / 3-5-2
+python3 pm_cli.py suggest-xi Save1_PM.adf --save pm1.sav
+
+# A specific team — add --include-injured if the squad has too many
+# injuries to field the coach's default (uninjured) pool
+python3 pm_cli.py suggest-xi Save1_PM.adf --save pm1.sav \
+    --team 0 --include-injured --formation 4-3-3
+
+# Weight overrides (see CHANGELOG/pm_core.lineup for default values)
+python3 pm_cli.py suggest-xi Save1_PM.adf --save pm1.sav \
+    --weights morale=40 fatigue=10
+
+# Show more reassignment suggestions, or tighten the threshold
+python3 pm_cli.py suggest-xi Save1_PM.adf --save pm1.sav \
+    --reassign-threshold 0.10 --reassign-limit 30
+```
+
+Flags: `--team N`, `--formation {4-4-2,4-3-3,3-5-2}`,
+`--allow-cross-position`, `--include-injured`,
+`--weights KEY=VAL…` (keys: `skill`, `fit`, `morale`, `fatigue`,
+`card_risk`, `form`), `--reassign-threshold FLOAT` (default 0.15),
+`--reassign-limit N` (default 10), `--game-adf PATH`.
 
 ---
 

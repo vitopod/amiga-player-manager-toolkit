@@ -22,6 +22,65 @@ SKILL_NAMES = [
 
 SKILL_OFFSETS = {name: 0x0A + i for i, name in enumerate(SKILL_NAMES)}
 
+# Byte layout of the 42-byte player record: (offset, size, field_name, note).
+# Used by the Byte Workbench and annotation tooling — the single source of
+# truth for "what lives at which offset".
+FIELD_LAYOUT: list[tuple[int, int, str, str]] = [
+    (0x00, 4, "rng_seed", "Drives procedural name generation"),
+    (0x04, 1, "age", ""),
+    (0x05, 1, "position", "1=GK 2=DEF 3=MID 4=FWD"),
+    (0x06, 1, "division", ""),
+    (0x07, 1, "team_index", "0xFF = free agent"),
+    (0x08, 1, "height", ""),
+    (0x09, 1, "weight", ""),
+    (0x0A, 1, "stamina", ""),
+    (0x0B, 1, "resilience", ""),
+    (0x0C, 1, "pace", ""),
+    (0x0D, 1, "agility", ""),
+    (0x0E, 1, "aggression", ""),
+    (0x0F, 1, "flair", ""),
+    (0x10, 1, "passing", ""),
+    (0x11, 1, "shooting", ""),
+    (0x12, 1, "tackling", ""),
+    (0x13, 1, "keeping", ""),
+    (0x14, 1, "reserved", "Always 0 in observed data"),
+    (0x15, 1, "injury_weeks", ""),
+    (0x16, 1, "disciplinary", ""),
+    (0x17, 1, "morale", ""),
+    (0x18, 1, "value", ""),
+    (0x19, 1, "weeks_since_transfer", "Post-transfer cooldown, not a listed flag"),
+    (0x1A, 1, "mystery3", "bit 0x80 = is_transfer_listed; lower 7 bits TBD"),
+    (0x1B, 1, "injuries_this_year", ""),
+    (0x1C, 1, "injuries_last_year", ""),
+    (0x1D, 1, "dsp_pts_this_year", ""),
+    (0x1E, 1, "dsp_pts_last_year", ""),
+    (0x1F, 1, "goals_this_year", ""),
+    (0x20, 1, "goals_last_year", ""),
+    (0x21, 1, "matches_this_year", ""),
+    (0x22, 1, "matches_last_year", ""),
+    (0x23, 1, "div1_years", ""),
+    (0x24, 1, "div2_years", ""),
+    (0x25, 1, "div3_years", ""),
+    (0x26, 1, "div4_years", ""),
+    (0x27, 1, "int_years", ""),
+    (0x28, 1, "contract_years", ""),
+    (0x29, 1, "last_byte", "Observed 1..5; semantics TBD"),
+]
+
+
+def field_at_offset(offset: int) -> tuple[str, int, int]:
+    """Return (field_name, sub_index_in_field, field_size) for a byte offset.
+
+    For a byte inside a multi-byte field (e.g. rng_seed), sub_index is the
+    byte position within that field (0..field_size-1).
+    """
+    if not 0 <= offset < RECORD_SIZE:
+        raise IndexError(f"offset {offset} out of range [0, {RECORD_SIZE})")
+    for off, size, name, _ in FIELD_LAYOUT:
+        if off <= offset < off + size:
+            return name, offset - off, size
+    raise IndexError(f"no field covers offset {offset}")
+
 
 class Position(IntEnum):
     UNKNOWN = 0

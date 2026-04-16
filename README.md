@@ -1,11 +1,24 @@
 # PMSaveDiskTool v2
 
-Cross-platform save disk editor for **Player Manager** (Anco, 1990) on Amiga.
+Cross-platform save disk editor and analytics workbench for **Player Manager**
+(Anco, 1990) on Amiga.
 
-This project is a cross-platform rewrite of **PMSaveDiskTool v1.2** by **UltimateBinary**
-(http://www.ultimatebinary.com). All credit for the original Windows tool, the save disk format
-research, and the field naming conventions goes to UltimateBinary. This version adds Mac and
-Linux support, player name generation from the game disk, and a command-line interface.
+Started out as a cross-platform port of **PMSaveDiskTool v1.2** by
+**UltimateBinary** (http://www.ultimatebinary.com) — that's where I got the
+save disk format, the 42-byte record layout, and the field naming
+conventions. Full credit to UltimateBinary for that ground-work; without it
+this project wouldn't exist.
+
+From there it's grown into something different. On top of the original
+byte-for-byte save editing I've added: Mac / Linux / Windows support, a
+full command-line interface, **player name generation** from the game
+disk (reverse-engineered from the DEFAJAM-compressed executable), and a
+stack of analytical / reverse-engineering views that weren't part of v1.2 —
+Young Talents, Championship Highlights, Top 11 of the championship,
+Squad Analyst, Career Tracker, Byte Workbench (the reverse-engineering UI
+that originally cracked the LISTA TRASFERIMENTI flag), and the Line-up
+Coach (BETA) role-fit / formation suggester. The editor part stays
+byte-for-byte compatible with v1.2; everything else is new territory.
 
 ---
 
@@ -54,6 +67,8 @@ python3 PMSaveDiskTool_v2/pm_cli.py list-players Save1_PM.adf --save pm1.sav --t
 - **Top 11** — the best XI of the championship in a chosen formation (4-4-2, 4-3-3, 3-5-2); includes Young XI (≤21) and Free-Agent XI variants, and an optional per-team cap
 - **Squad Analyst** — per-team composition breakdown (roster size, GK/DEF/MID/FWD counts, average age and skill, youngest/oldest/best, on-market count). Available in the GUI as "— Squad Analyst (all teams)", as a per-team summary label above the roster view, and via `pm_cli.py squad-analyst`.
 - **Career Tracker** — diff two save slots (same ADF or two ADFs) to surface skill, age, and team changes per player. Available in the GUI under **Tools → Career Tracker...** and via `pm_cli.py career-tracker`.
+- **Byte Workbench** — reverse-engineering UI for the 42-byte player record with three tabs: raw dump (hex/dec/bin with field labels), value histogram at any offset/mask across a preset player set, and bit-level diff between two sets. The same method that identified `mystery3` bit 0x80 as the LISTA TRASFERIMENTI flag, now a push-button tool for cracking the remaining unknowns (`mystery3` lower 7 bits, `last_byte` skew). GUI: **Tools → Byte Workbench...**. CLI: `pm_cli.py byte-stats`, `pm_cli.py byte-diff`.
+- **Line-up Coach (BETA)** — suggests a formation + starting XI for a team (or the whole championship) using a 12-role taxonomy layered on PM's skill fields, ranks 4-4-2 / 4-3-3 / 3-5-2 by a composite of skill, role fit, morale, fatigue, card risk and form, and flags players whose best-fit role lies outside their nominal position. BETA: scoring is a heuristic, not a reconstruction of PM's match engine — treat output as *suggested*, not *optimal*. GUI: **Tools → Line-up Coach (BETA)...**. CLI: `pm_cli.py suggest-xi`.
 - **Export** players as CSV or JSON for use in spreadsheets or external tools: GUI **File → Export Players...** or `pm_cli.py export-players --format csv|json`.
 - View and edit all player attributes: age, position, skills, career stats
 - **Automatic `.bak`** on first write — your original byte-for-byte state is always recoverable
