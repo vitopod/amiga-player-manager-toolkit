@@ -14,6 +14,12 @@ Linux support, player name generation from the game disk, and a command-line int
 - Python 3.8+
 - No external dependencies (tkinter is included with Python)
 
+## Important: Always Work on Copies
+
+**Always make a backup of your save disk ADF before editing.**
+The tool writes changes directly to the file. If something goes wrong, there is no undo.
+Keep the original ADF safe and work on a copy.
+
 ## Quick Start
 
 **GUI:**

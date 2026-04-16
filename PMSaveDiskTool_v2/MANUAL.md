@@ -7,6 +7,10 @@ It reads standard ADF disk images, lets you view and modify player attributes, a
 the changes back. The modified ADF can then be loaded in an emulator (WinUAE, FS-UAE) or
 on real hardware (MiSTer FPGA, Gotek, real Amiga).
 
+> **Always work on a copy of your save disk ADF, never on the original.**
+> The tool writes changes directly to the file — there is no undo. Keep the original ADF
+> in a safe location and open only the copy for editing.
+
 **Based on PMSaveDiskTool v1.2 by UltimateBinary** (http://www.ultimatebinary.com).
 The original Windows-only tool by UltimateBinary laid the groundwork for understanding the
 save disk format, the 42-byte player record layout, and the field naming conventions used
@@ -21,7 +25,7 @@ This version extends it with cross-platform support, player name generation, and
 
 1. Run `python3 pm_gui.py`
 2. Click **Open Save Disk** or use **File > Open Save Disk ADF** (Ctrl+O)
-3. Select your Player Manager save disk `.adf` file
+3. Select your Player Manager save disk `.adf` file — **open a copy, not the original**
 
 ### Loading player names (optional)
 
@@ -63,7 +67,8 @@ to persist changes to the file on disk.
 ### Save As
 
 Use **File > Save ADF As** to write to a new file, keeping the original unmodified.
-Recommended when experimenting — always keep a backup of your save disk.
+This is the safest workflow: always keep an unedited backup of your save disk and use
+**Save ADF As** to produce modified copies.
 
 ---
 
@@ -169,10 +174,11 @@ python3 pm_cli.py edit-player Save1_PM.adf --save pm1.sav --id 42 \
 ## MiSTer FPGA Workflow
 
 1. Copy the save disk ADF from the MiSTer SD card to your Mac/PC
-2. Optionally copy the game disk ADF too (for player names)
-3. Edit players with PMSaveDiskTool v2 (GUI or CLI)
-4. Copy the modified save disk ADF back to the SD card
-5. Load it in the Minimig core as a second floppy (DF1)
+2. **Make a backup copy before editing** — keep the original untouched
+3. Optionally copy the game disk ADF too (for player names)
+4. Edit players with PMSaveDiskTool v2 (GUI or CLI) on the copy
+5. Copy the modified save disk ADF back to the SD card
+6. Load it in the Minimig core as a second floppy (DF1)
 
 ---
 
