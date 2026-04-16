@@ -1,0 +1,36 @@
+# macOS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V8
+.Trashes
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# ADF game/save disk images (personal files, not committed)
+PlayerManagerITA.adf
+PlayerManagerCR.zip
+*.adf
+
+# Windows tool installer (binary, not committed)
+PMSaveDiskTool_v1.2.zip
+PMSaveDiskTool_v1.2/
+
+# Screenshots and other personal files
+Screenshot*.png
+*.png
+
+# Editor / IDE
+.superpowers/
+.vscode/
+*.swp
+
+# Old/work directories
+PMSaveDiskTool_2026/
