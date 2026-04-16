@@ -103,12 +103,13 @@ class SaveSlot:
     def _is_real_player(p: PlayerRecord) -> bool:
         """Return True if the record looks like a genuine player.
 
-        Filters out garbage/sentinel records near the end of the database that
-        have age > 0 but invalid position or out-of-range team indices.
+        Filters out garbage/sentinel records that have age > 0 but invalid
+        position, out-of-range team indices, or uninitialised physical fields.
         """
         valid_team = p.team_index <= 43 or p.team_index == 0xFF
         valid_position = p.position in (1, 2, 3, 4)
-        return p.age > 0 and valid_team and valid_position
+        valid_physical = p.height >= 100 and p.weight > 0
+        return p.age > 0 and valid_team and valid_position and valid_physical
 
     def get_young_talents(self, max_age: int = 21) -> list[PlayerRecord]:
         """Players aged ≤ max_age, sorted by total skill descending."""
