@@ -51,6 +51,7 @@ python3 PMSaveDiskTool_v2/pm_cli.py list-players Save1_PM.adf --save pm1.sav --t
 - Browse players by team, view all players, or view free agents
 - **Young Talents** — list players aged ≤ 21 sorted by skill; ★ marks who is available on the market
 - **Championship Highlights** — top scorers grouped by division; ★ marks who is available on the market
+- **Top 11** — the best XI of the championship in a chosen formation (4-4-2, 4-3-3, 3-5-2); includes Young XI (≤21) and Free-Agent XI variants, and an optional per-team cap
 - View and edit all player attributes: age, position, skills, career stats
 - Save changes back to ADF — byte-for-byte compatible with PMSaveDiskTool v1.2
 - Works on Mac, Linux, and Windows
@@ -67,7 +68,6 @@ are reworked and re-validated. They are still planned for a future release (if f
 
 - **Transfer Market** — move players between teams with full consistency (roster + player DB)
 - **Squad Analyst** — team composition breakdown by position and division
-- **Best By Position** — rank players per position across all teams
 - **League Stats** — view and edit team standings, division flags, and season records
 - **Patch Composer** — write copy-protection bypass and custom patches into the game disk
 
