@@ -9,15 +9,18 @@ Usage:
 """
 
 import argparse
+import csv
+import dataclasses
+import json
 import sys
 import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from pm_core import __version__
-from pm_core.adf import ADF
+from pm_core.adf import ADF, ensure_backup
 from pm_core.save import SaveSlot, FORMATIONS
-from pm_core.player import SKILL_NAMES, POSITION_NAMES
+from pm_core.player import SKILL_NAMES, POSITION_NAMES, PlayerRecord
 from pm_core.names import GameDisk
 
 
@@ -213,7 +216,13 @@ def cmd_best_xi(args):
     slot = SaveSlot(adf, args.save)
     gd = _load_game_disk(getattr(args, 'game_adf', None))
 
-    filter_fn = XI_FILTERS.get(args.filter) if args.filter else None
+    named_filter = XI_FILTERS.get(args.filter) if args.filter else None
+    if args.market_only and named_filter:
+        filter_fn = lambda p: named_filter(p) and p.is_market_available
+    elif args.market_only:
+        filter_fn = lambda p: p.is_market_available
+    else:
+        filter_fn = named_filter
     xi = slot.best_xi(
         args.formation,
         filter_fn=filter_fn,
@@ -242,6 +251,126 @@ def cmd_best_xi(args):
         else:
             print(f"  {p.player_id:>5} {p.age:>3}y {p.position_name:<3} "
                   f"{team:<16} skill {p.total_skill:>4} {mkt}")
+
+
+def cmd_career_tracker(args):
+    adf_a = ADF.load(args.adf)
+    adf_b = ADF.load(args.adf_b) if args.adf_b else adf_a
+    slot_a = SaveSlot(adf_a, args.save_a)
+    slot_b = SaveSlot(adf_b, args.save_b)
+    gd = _load_game_disk(getattr(args, "game_adf", None))
+
+    diffs = slot_a.diff_players(slot_b)
+    if args.team_changes_only:
+        diffs = [d for d in diffs if d["team_changed"]]
+
+    sort_key = {
+        "skill": lambda d: -d["skill_delta"],
+        "id": lambda d: d["player_id"],
+        "changes": lambda d: -len(d["changed"]),
+    }[args.sort]
+    diffs.sort(key=sort_key)
+    if args.limit:
+        diffs = diffs[: args.limit]
+
+    print(f"Comparing A={args.save_a} -> B={args.save_b}  ({len(diffs)} players changed)")
+    print()
+    for d in diffs:
+        p_old, p_new = d["old"], d["new"]
+        name = (gd.player_full_name(p_new.rng_seed)
+                if gd and p_new.rng_seed else "")
+        team_old = slot_a.get_team_name(p_old.team_index)
+        team_new = slot_b.get_team_name(p_new.team_index)
+        header = f"#{d['player_id']:>4}"
+        if name:
+            header += f"  {name}"
+        header += f"  skill {p_old.total_skill:>4} -> {p_new.total_skill:>4} "
+        if d["skill_delta"]:
+            header += f"({d['skill_delta']:+d})"
+        print(header)
+        if d["team_changed"]:
+            print(f"      team: {team_old} -> {team_new}")
+        if d["age_delta"]:
+            print(f"      age:  {p_old.age} -> {p_new.age}")
+        # Highlight skill-level changes to individual attributes
+        for field, (va, vb) in sorted(d["changed"].items()):
+            if field in SKILL_NAMES and va != vb:
+                print(f"      {field:<10} {va:>3} -> {vb:>3} ({vb-va:+d})")
+
+
+def cmd_squad_analyst(args):
+    adf = ADF.load(args.adf)
+    slot = SaveSlot(adf, args.save)
+
+    if args.team is not None:
+        summaries = [slot.squad_summary(args.team)]
+    else:
+        summaries = slot.all_squad_summaries()
+
+    print(f"{'#':>3} {'Team':<16} {'Sz':>3} {'GK':>3} {'DEF':>4} {'MID':>4} {'FWD':>4} "
+          f"{'Age':>5} {'Skill':>6} {'Young':>5} {'Old':>3} {'Mkt':>4}")
+    print("-" * 80)
+    for s in summaries:
+        print(f"{s['team_index']:>3} {s['team_name'][:16]:<16} {s['size']:>3} "
+              f"{s['by_position']['GK']:>3} {s['by_position']['DEF']:>4} "
+              f"{s['by_position']['MID']:>4} {s['by_position']['FWD']:>4} "
+              f"{s['avg_age']:>5.1f} {s['avg_skill']:>6.0f} "
+              f"{s['min_age'] or 0:>5} {s['max_age'] or 0:>3} "
+              f"{s['on_market']:>4}")
+
+    if args.team is not None and summaries and summaries[0]["size"]:
+        s = summaries[0]
+        print()
+        print(f"  Youngest: #{s['youngest'].player_id} ({s['youngest'].age}y, "
+              f"{s['youngest'].position_name})")
+        print(f"  Oldest:   #{s['oldest'].player_id} ({s['oldest'].age}y, "
+              f"{s['oldest'].position_name})")
+        print(f"  Best:     #{s['best'].player_id} "
+              f"(skill {s['best'].total_skill}, {s['best'].position_name})")
+
+
+def _player_to_row(p: PlayerRecord, slot: SaveSlot, gd) -> dict:
+    row = {f.name: getattr(p, f.name) for f in dataclasses.fields(p)}
+    row["position_name"] = p.position_name
+    row["team_name"] = slot.get_team_name(p.team_index)
+    row["is_free_agent"] = p.is_free_agent
+    row["is_transfer_listed"] = p.is_transfer_listed
+    row["is_market_available"] = p.is_market_available
+    row["total_skill"] = p.total_skill
+    row["name"] = (gd.player_full_name(p.rng_seed)
+                   if gd and p.rng_seed else "")
+    return row
+
+
+def cmd_export_players(args):
+    adf = ADF.load(args.adf)
+    slot = SaveSlot(adf, args.save)
+    gd = _load_game_disk(getattr(args, "game_adf", None))
+
+    if args.team is not None:
+        players = slot.get_players_by_team(args.team)
+    elif args.free_agents:
+        players = slot.get_free_agents()
+    else:
+        players = [p for p in slot.players if p.age > 0]
+
+    rows = [_player_to_row(p, slot, gd) for p in players]
+
+    out = open(args.output, "w", newline="", encoding="utf-8") if args.output else sys.stdout
+    try:
+        if args.format == "json":
+            json.dump(rows, out, indent=2)
+            out.write("\n")
+        else:
+            if not rows:
+                return
+            writer = csv.DictWriter(out, fieldnames=list(rows[0].keys()))
+            writer.writeheader()
+            writer.writerows(rows)
+    finally:
+        if args.output:
+            out.close()
+            print(f"Wrote {len(rows)} players to {args.output}", file=sys.stderr)
 
 
 def cmd_edit_player(args):
@@ -277,12 +406,13 @@ def cmd_edit_player(args):
 
     slot.write_player(args.id)
 
-    if args.output:
-        adf.save(args.output)
-        print(f"Saved to {args.output}")
-    else:
-        adf.save(args.adf)
-        print(f"Saved to {args.adf}")
+    dest = args.output or args.adf
+    if dest == args.adf:
+        bak = ensure_backup(dest)
+        if bak:
+            print(f"Backup created: {bak}")
+    adf.save(dest)
+    print(f"Saved to {dest}")
 
 
 def main():
@@ -337,7 +467,41 @@ def main():
                       help="Cap selections per team (free agents exempt)")
     p_xi.add_argument("--filter", choices=list(XI_FILTERS),
                       help="Pre-filter the pool")
+    p_xi.add_argument("--market-only", action="store_true",
+                      help="Restrict to players available on the market (free agent or transfer-listed)")
     p_xi.add_argument("--game-adf", metavar="PATH", help="Game disk ADF for player names")
+
+    # career-tracker
+    p_ct = sub.add_parser("career-tracker",
+                          help="Diff two save slots to track player progression")
+    p_ct.add_argument("adf", help="Path to the ADF disk image (side A)")
+    p_ct.add_argument("--save-a", default="pm1.sav", help="Save slot A (default: pm1.sav)")
+    p_ct.add_argument("--save-b", default="pm2.sav", help="Save slot B (default: pm2.sav)")
+    p_ct.add_argument("--adf-b", metavar="PATH",
+                      help="Second ADF for slot B (default: same ADF)")
+    p_ct.add_argument("--sort", choices=("skill", "id", "changes"), default="skill",
+                      help="Sort output (default: skill delta descending)")
+    p_ct.add_argument("--limit", type=int, help="Show only the top N players")
+    p_ct.add_argument("--team-changes-only", action="store_true",
+                      help="Show only players whose team changed")
+    p_ct.add_argument("--game-adf", metavar="PATH", help="Game disk ADF for player names")
+
+    # squad-analyst
+    p_sa = sub.add_parser("squad-analyst", help="Per-team composition breakdown")
+    p_sa.add_argument("adf", help="Path to the ADF disk image")
+    p_sa.add_argument("--save", required=True, help="Save file name (e.g. pm1.sav)")
+    p_sa.add_argument("--team", type=int, help="Single team (omit for all teams)")
+
+    # export-players
+    p_ex = sub.add_parser("export-players", help="Export players as CSV or JSON")
+    p_ex.add_argument("adf", help="Path to the ADF disk image")
+    p_ex.add_argument("--save", required=True, help="Save file name (e.g. pm1.sav)")
+    p_ex.add_argument("--format", choices=("csv", "json"), default="csv",
+                      help="Output format (default: csv)")
+    p_ex.add_argument("--output", "-o", help="Output file (default: stdout)")
+    p_ex.add_argument("--team", type=int, help="Filter by team index")
+    p_ex.add_argument("--free-agents", action="store_true", help="Free agents only")
+    p_ex.add_argument("--game-adf", metavar="PATH", help="Game disk ADF for player names")
 
     # edit-player
     p_ep = sub.add_parser("edit-player", help="Edit player attributes")
@@ -380,6 +544,9 @@ def main():
         "young-talents": cmd_young_talents,
         "highlights": cmd_highlights,
         "best-xi": cmd_best_xi,
+        "squad-analyst": cmd_squad_analyst,
+        "career-tracker": cmd_career_tracker,
+        "export-players": cmd_export_players,
     }
     commands[args.command](args)
 

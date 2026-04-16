@@ -64,7 +64,8 @@ class PlayerRecord:
     tackling: int = 0
     keeping: int = 0
 
-    # Byte +14: Reserved
+    # Byte +14: Reserved — observed to be 0 for every real player in Save1_PM
+    # (1031/1031). Preserved in round-trip serialization.
     reserved: int = 0
 
     # Bytes +15-1A: Status
@@ -72,7 +73,16 @@ class PlayerRecord:
     disciplinary: int = 0
     morale: int = 0
     value: int = 0
-    weeks_since_transfer: int = 0  # Originally "transfer_weeks" in UB's notes; empirical testing shows it is a post-transfer cooldown, NOT a "listed for sale" flag. The real transfer-list flag is not yet identified.
+    weeks_since_transfer: int = 0  # Originally "transfer_weeks" in UB's notes; empirical testing shows it is a post-transfer cooldown, NOT a "listed for sale" flag.
+    # mystery3 bit layout (Save1_PM, 1031 real players):
+    #   bit 7 (0x80) — is_transfer_listed (on in-game LISTA TRASFERIMENTI)
+    #   bit 5 (0x20) — never set in observed data
+    #   bits 0,1,4   — combined value 0x13 (=19) appears 131 times; 126 of those
+    #                  are free agents. Likely a free-agent / offered-out marker.
+    #   bits 0,1     — combined value 0x12 (=18) appears 31 times, all with team,
+    #                  avg age ~31. Likely a veteran / end-of-career marker.
+    #   bits 2,3,6   — rarely set; semantics unidentified.
+    # Treat the whole byte as opaque except for the known 0x80 flag.
     mystery3: int = 0
 
     # Bytes +1B-22: Season stats
@@ -92,6 +102,11 @@ class PlayerRecord:
     div4_years: int = 0
     int_years: int = 0
     contract_years: int = 0
+    # Byte +29: observed values 1..5 in Save1_PM (n=1031). Skew: v=3 (51%),
+    # v=2 (32%), v=4 (8%), v=5 (5%), v=1 (4%). Players with v=4 have the
+    # highest average total_skill; players with v=5 are the youngest cohort.
+    # Likely a 1–5 rating (preferred foot / personality / scout grade);
+    # semantics not definitively identified.
     last_byte: int = 0
 
     @property

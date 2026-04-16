@@ -11,7 +11,7 @@ Linux support, player name generation from the game disk, and a command-line int
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.10+
 - No external dependencies (tkinter is included with Python)
 
 ## Important: Always Work on Copies

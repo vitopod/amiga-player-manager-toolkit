@@ -1,0 +1,132 @@
+"""End-to-end smoke tests for pm_cli.py subcommands.
+
+Uses subprocess.run against Save1_PM.adf. Skips if the ADF is not present.
+Each test asserts exit code 0 and some expected marker in the output so a
+regression in argument parsing, dispatch, or default formatting is caught.
+"""
+
+import csv
+import io
+import json
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import unittest
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(os.path.dirname(_HERE))
+_CLI = os.path.join(os.path.dirname(_HERE), "pm_cli.py")
+_ADF = os.path.join(_ROOT, "PMSaveDiskTool_v1.2", "Save1_PM.adf")
+
+
+def _run(*args, input_bytes=None):
+    return subprocess.run(
+        [sys.executable, _CLI, *args],
+        capture_output=True, text=True, check=False, input=input_bytes,
+    )
+
+
+@unittest.skipUnless(os.path.isfile(_ADF), f"{_ADF} not available")
+class TestCLISmoke(unittest.TestCase):
+
+    def assertSuccess(self, result):
+        self.assertEqual(result.returncode, 0,
+                         f"stderr: {result.stderr}\nstdout: {result.stdout}")
+
+    def test_version(self):
+        r = _run("--version")
+        self.assertSuccess(r)
+        self.assertIn("PMSaveDiskTool", r.stdout)
+
+    def test_list_saves(self):
+        r = _run("list-saves", _ADF)
+        self.assertSuccess(r)
+        self.assertIn("pm1.sav", r.stdout)
+
+    def test_list_players_team(self):
+        r = _run("list-players", _ADF, "--save", "pm1.sav", "--team", "0")
+        self.assertSuccess(r)
+        self.assertIn("MILAN", r.stdout)
+
+    def test_list_players_free_agents(self):
+        r = _run("list-players", _ADF, "--save", "pm1.sav", "--free-agents")
+        self.assertSuccess(r)
+        self.assertIn("Free Agents", r.stdout)
+
+    def test_show_player(self):
+        r = _run("show-player", _ADF, "--save", "pm1.sav", "--id", "0")
+        self.assertSuccess(r)
+        self.assertIn("Player #0", r.stdout)
+        self.assertIn("Skills:", r.stdout)
+
+    def test_young_talents(self):
+        r = _run("young-talents", _ADF, "--save", "pm1.sav")
+        self.assertSuccess(r)
+        self.assertIn("Young Talents", r.stdout)
+
+    def test_highlights(self):
+        r = _run("highlights", _ADF, "--save", "pm1.sav")
+        self.assertSuccess(r)
+        self.assertIn("Championship Highlights", r.stdout)
+
+    def test_best_xi_default(self):
+        r = _run("best-xi", _ADF, "--save", "pm1.sav")
+        self.assertSuccess(r)
+        self.assertIn("Best XI (4-4-2)", r.stdout)
+        self.assertIn("Goalkeeper", r.stdout)
+
+    def test_best_xi_with_filter_and_cap(self):
+        r = _run("best-xi", _ADF, "--save", "pm1.sav",
+                 "--formation", "4-3-3", "--filter", "young", "--max-per-team", "2")
+        self.assertSuccess(r)
+        self.assertIn("Best XI (4-3-3)", r.stdout)
+
+    def test_best_xi_market_only(self):
+        r = _run("best-xi", _ADF, "--save", "pm1.sav", "--market-only")
+        self.assertSuccess(r)
+        # Every listed player should be market-available (★ in the right column)
+        self.assertIn("Best XI", r.stdout)
+
+    def test_export_players_csv_stdout(self):
+        r = _run("export-players", _ADF, "--save", "pm1.sav",
+                 "--team", "0", "--format", "csv")
+        self.assertSuccess(r)
+        reader = csv.DictReader(io.StringIO(r.stdout))
+        rows = list(reader)
+        self.assertGreater(len(rows), 0)
+        self.assertIn("player_id", reader.fieldnames)
+        self.assertIn("total_skill", reader.fieldnames)
+
+    def test_export_players_json_file(self):
+        with tempfile.TemporaryDirectory() as td:
+            out = os.path.join(td, "players.json")
+            r = _run("export-players", _ADF, "--save", "pm1.sav",
+                     "--team", "0", "--format", "json", "--output", out)
+            self.assertSuccess(r)
+            with open(out) as f:
+                rows = json.load(f)
+            self.assertGreater(len(rows), 0)
+            self.assertIn("player_id", rows[0])
+
+    def test_edit_player_noop_writes_and_creates_backup(self):
+        with tempfile.TemporaryDirectory() as td:
+            adf_copy = os.path.join(td, "save.adf")
+            shutil.copy(_ADF, adf_copy)
+            original = open(adf_copy, "rb").read()
+            r = _run("edit-player", adf_copy, "--save", "pm1.sav",
+                     "--id", "0", "--age", "25")
+            self.assertSuccess(r)
+            self.assertTrue(os.path.isfile(adf_copy + ".bak"))
+            bak = open(adf_copy + ".bak", "rb").read()
+            self.assertEqual(original, bak,
+                             "backup must preserve the pre-edit bytes")
+
+    def test_unknown_subcommand_fails(self):
+        r = _run("not-a-command")
+        self.assertNotEqual(r.returncode, 0)
+
+
+if __name__ == "__main__":
+    unittest.main(verbosity=2)

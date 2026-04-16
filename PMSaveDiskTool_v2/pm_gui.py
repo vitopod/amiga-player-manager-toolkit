@@ -13,7 +13,7 @@ from tkinter import ttk, filedialog, messagebox
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from pm_core import __version__
-from pm_core.adf import ADF
+from pm_core.adf import ADF, ensure_backup
 from pm_core.save import SaveSlot
 from pm_core.player import SKILL_NAMES, POSITION_NAMES, PlayerRecord
 from pm_core.names import GameDisk
@@ -106,6 +106,16 @@ class PMSaveDiskToolGUI:
         # Left: Player list
         left = ttk.Frame(paned)
         paned.add(left, weight=1)
+
+        search_bar = ttk.Frame(left)
+        search_bar.pack(fill=tk.X, padx=0, pady=(0, 3))
+        ttk.Label(search_bar, text="Filter:").pack(side=tk.LEFT, padx=(2, 4))
+        self.search_var = tk.StringVar()
+        self.search_var.trace_add("write", lambda *_: self._refresh_player_list())
+        self.search_entry = ttk.Entry(search_bar, textvariable=self.search_var)
+        self.search_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 2))
+        ttk.Button(search_bar, text="×", width=2,
+                   command=lambda: self.search_var.set("")).pack(side=tk.LEFT)
 
         cols = ("id", "name", "age", "pos", "team", "total", "mkt")
         self.tree = ttk.Treeview(left, columns=cols, show="headings", selectmode="browse")
@@ -323,10 +333,15 @@ class PMSaveDiskToolGUI:
             self.tree.heading("total", text="Skill")
             score_fn = lambda p: p.total_skill
 
+        needle = self.search_var.get().strip().lower() if hasattr(self, "search_var") else ""
         for p in players:
             team = self.slot.get_team_name(p.team_index)
             name = (self.game_disk.player_full_name(p.rng_seed)
                     if self.game_disk and p.rng_seed else "")
+            if needle:
+                haystack = f"{p.player_id} {name} {team} {p.position_name}".lower()
+                if needle not in haystack:
+                    continue
             mkt = "★" if p.is_market_available else ""
             self.tree.insert("", "end", iid=str(p.player_id),
                              values=(p.player_id, name, p.age, p.position_name,
@@ -417,8 +432,12 @@ class PMSaveDiskToolGUI:
             messagebox.showwarning("Warning", "No ADF loaded.")
             return
         try:
+            bak = ensure_backup(self.adf_path)
             self.adf.save(self.adf_path)
-            self.status_var.set(f"Saved: {os.path.basename(self.adf_path)}")
+            msg = f"Saved: {os.path.basename(self.adf_path)}"
+            if bak:
+                msg += f"  (backup: {os.path.basename(bak)})"
+            self.status_var.set(msg)
         except OSError as e:
             messagebox.showerror("Error", f"Failed to save: {e}")
 

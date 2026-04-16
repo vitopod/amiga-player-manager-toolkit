@@ -226,6 +226,39 @@ class TestTransferListFlag(unittest.TestCase):
             self.assertTrue(p.is_market_available)
 
 
+class TestUnknownFieldObservations(unittest.TestCase):
+    """Regression tests for empirically-observed invariants in the unknown
+    bytes (see player.py docstrings for details). If a real counterexample
+    ever shows up, these tests will fire and the interpretation can be
+    refined.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(TEST_ADF):
+            raise unittest.SkipTest(f"Test ADF not found: {TEST_ADF}")
+        cls.adf = ADF.load(TEST_ADF)
+        cls.slot = SaveSlot(cls.adf, "pm1.sav")
+        cls.real = [p for p in cls.slot.players if SaveSlot._is_real_player(p)]
+
+    def test_reserved_byte_is_always_zero(self):
+        for p in self.real:
+            self.assertEqual(p.reserved, 0,
+                             f"player {p.player_id}: reserved != 0")
+
+    def test_mystery3_bit5_never_set(self):
+        for p in self.real:
+            self.assertEqual(p.mystery3 & 0x20, 0,
+                             f"player {p.player_id}: mystery3 bit 5 set "
+                             f"(0x{p.mystery3:02x})")
+
+    def test_last_byte_in_expected_range(self):
+        for p in self.real:
+            self.assertIn(p.last_byte, (1, 2, 3, 4, 5),
+                          f"player {p.player_id}: last_byte={p.last_byte} "
+                          "outside observed 1..5 range")
+
+
 class TestPlayerSerialization(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

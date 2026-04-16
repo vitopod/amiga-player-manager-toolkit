@@ -133,6 +133,88 @@ class SaveSlot:
             key=lambda p: (p.division, -p.goals_this_year),
         )
 
+    def diff_players(self, other: "SaveSlot") -> list[dict]:
+        """Return per-player diffs between this slot and another.
+
+        Each diff is a dict with player_id, a mapping of field -> (old, new)
+        for fields that changed, plus convenience aggregates:
+          - skill_delta: total_skill(new) - total_skill(old)
+          - age_delta:   age(new) - age(old)
+          - team_changed: bool
+        Only real players in either slot are considered; unreal entries produce
+        no diff entry.
+        """
+        import dataclasses as _dc
+        n = min(len(self.players), len(other.players))
+        results: list[dict] = []
+        for pid in range(n):
+            a = self.players[pid]
+            b = other.players[pid]
+            if not (self._is_real_player(a) or self._is_real_player(b)):
+                continue
+            changed = {}
+            for f in _dc.fields(a):
+                if f.name == "player_id":
+                    continue
+                va = getattr(a, f.name)
+                vb = getattr(b, f.name)
+                if va != vb:
+                    changed[f.name] = (va, vb)
+            if not changed:
+                continue
+            results.append({
+                "player_id": pid,
+                "changed": changed,
+                "skill_delta": b.total_skill - a.total_skill,
+                "age_delta": b.age - a.age,
+                "team_changed": a.team_index != b.team_index,
+                "old": a,
+                "new": b,
+            })
+        return results
+
+    def squad_summary(self, team_index: int) -> dict:
+        """Return a summary dict describing the squad of a single team.
+
+        Keys:
+            team_name, size, by_position (dict position_name->count),
+            avg_age, avg_skill, min_age, max_age, youngest, oldest, best,
+            on_market (int).
+        """
+        roster = [p for p in self.get_players_by_team(team_index)
+                  if self._is_real_player(p)]
+        by_pos = {"GK": 0, "DEF": 0, "MID": 0, "FWD": 0}
+        for p in roster:
+            if p.position_name in by_pos:
+                by_pos[p.position_name] += 1
+
+        def _safe(key, seq):
+            return key(seq) if seq else None
+
+        return {
+            "team_index": team_index,
+            "team_name": self.get_team_name(team_index),
+            "size": len(roster),
+            "by_position": by_pos,
+            "avg_age": (sum(p.age for p in roster) / len(roster)) if roster else 0.0,
+            "avg_skill": (sum(p.total_skill for p in roster) / len(roster)) if roster else 0.0,
+            "min_age": _safe(lambda s: min(p.age for p in s), roster),
+            "max_age": _safe(lambda s: max(p.age for p in s), roster),
+            "youngest": _safe(lambda s: min(s, key=lambda p: p.age), roster),
+            "oldest": _safe(lambda s: max(s, key=lambda p: p.age), roster),
+            "best": _safe(lambda s: max(s, key=lambda p: p.total_skill), roster),
+            "on_market": sum(1 for p in roster if p.is_market_available),
+        }
+
+    def all_squad_summaries(self) -> list[dict]:
+        """Summaries for every real team that has at least one player."""
+        summaries = []
+        for i in range(NUM_TEAMS):
+            s = self.squad_summary(i)
+            if s["size"] > 0:
+                summaries.append(s)
+        return summaries
+
     def best_xi(self, formation: str = "4-4-2", *,
                 filter_fn=None, max_per_team: int = None) -> list[PlayerRecord]:
         """Select the top XI for a given formation.

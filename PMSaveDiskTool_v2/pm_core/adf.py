@@ -5,8 +5,25 @@ AmigaDOS filesystem). The save disk stores a file table at block 2 with
 16-byte entries encoding filename, offset (×32 multiplier), and size.
 """
 
+import os
+import shutil
 import struct
 from dataclasses import dataclass
+
+
+def ensure_backup(path: str) -> str | None:
+    """Copy `path` to `path + '.bak'` if the backup does not already exist.
+
+    Returns the backup path if one was created, None otherwise. Idempotent:
+    never overwrites an existing backup, so the first-ever state is preserved.
+    """
+    if not path or not os.path.isfile(path):
+        return None
+    bak = path + ".bak"
+    if os.path.exists(bak):
+        return None
+    shutil.copy2(path, bak)
+    return bak
 
 ADF_SIZE = 901120  # Standard Amiga DD floppy: 2×80×11×512
 BLOCK_SIZE = 512
