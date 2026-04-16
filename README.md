@@ -56,8 +56,8 @@ python3 PMSaveDiskTool_v2/pm_cli.py list-players Save1_PM.adf --save pm1.sav --t
 - Works on Mac, Linux, and Windows
 
 The ★ market availability marker appears throughout: a player is marked if they are a free agent
-(team_index == 0xFF). The real "listed for transfer" flag is not yet identified — see
-`PMSaveDiskTool_v2/README.md`.
+(team_index == 0xFF) or on the in-game LISTA TRASFERIMENTI (high bit of the `mystery3` byte).
+See `PMSaveDiskTool_v2/README.md`.
 
 ## Temporarily Removed Features
 

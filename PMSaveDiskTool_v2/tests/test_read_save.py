@@ -196,6 +196,36 @@ class TestBestXI(unittest.TestCase):
             self.slot.best_xi("bogus")
 
 
+class TestTransferListFlag(unittest.TestCase):
+    """Verify mystery3 & 0x80 flags the in-game LISTA TRASFERIMENTI.
+
+    Nine player IDs confirmed visually in the in-game transfer-list screen
+    for Save1 pm1.sav. If the save-disk contents change, these IDs may need
+    to be refreshed.
+    """
+    KNOWN_LISTED_IDS = [125, 96, 327, 806, 22, 907, 884, 680, 465]
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(TEST_ADF):
+            raise unittest.SkipTest(f"Test ADF not found: {TEST_ADF}")
+        cls.adf = ADF.load(TEST_ADF)
+        cls.slot = SaveSlot(cls.adf, "pm1.sav")
+
+    def test_known_listed_players_have_flag(self):
+        for pid in self.KNOWN_LISTED_IDS:
+            p = self.slot.get_player(pid)
+            self.assertTrue(p.is_transfer_listed,
+                            f"player {pid} missing transfer-list flag "
+                            f"(mystery3=0x{p.mystery3:02x})")
+
+    def test_market_available_covers_free_agents_and_listed(self):
+        for pid in self.KNOWN_LISTED_IDS:
+            self.assertTrue(self.slot.get_player(pid).is_market_available)
+        for p in self.slot.get_free_agents():
+            self.assertTrue(p.is_market_available)
+
+
 class TestPlayerSerialization(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

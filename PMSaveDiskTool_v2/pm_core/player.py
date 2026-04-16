@@ -103,14 +103,21 @@ class PlayerRecord:
         return self.team_index == 0xFF
 
     @property
-    def is_market_available(self) -> bool:
-        """True if the player is a free agent (team_index == 0xFF).
+    def is_transfer_listed(self) -> bool:
+        """True if the player is on the in-game LISTA TRASFERIMENTI.
 
-        Previously also returned True for weeks_since_transfer > 0, but that
-        byte is a post-transfer cooldown, not a "listed for sale" flag. The
-        real transfer-list flag is not yet identified.
+        The high bit (0x80) of mystery3 (byte 0x1A) is set for all players
+        that appear on the in-game transfer list. Verified by cross-
+        referencing the 9 visible entries of LISTA TRASFERIMENTI against
+        the DB: all 9 have this bit set. The lower 7 bits of mystery3 vary
+        independently and are not yet identified.
         """
-        return self.is_free_agent
+        return bool(self.mystery3 & 0x80)
+
+    @property
+    def is_market_available(self) -> bool:
+        """True if the player can be acquired: free agent or on the transfer list."""
+        return self.is_free_agent or self.is_transfer_listed
 
     @property
     def skills(self) -> dict[str, int]:

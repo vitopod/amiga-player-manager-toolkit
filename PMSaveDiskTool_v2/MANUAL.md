@@ -312,7 +312,7 @@ ADF image by the player database: a 2-byte big-endian header, then 1536 player r
 | +09 | Weight (kg) |
 | +0A-13 | 10 skill attributes (0-200) |
 | +14 | Reserved |
-| +15-1A | Status fields (injury, disciplinary, morale, value, transfer, misc) |
+| +15-1A | Status fields (injury, disciplinary, morale, value, weeks-since-transfer, mystery3 where bit 0x80 = on transfer list) |
 | +1B-22 | Season statistics (injuries, display points, goals, matches) |
 | +23-29 | Career fields (div years, international, contract) |
 

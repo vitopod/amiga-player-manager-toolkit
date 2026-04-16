@@ -57,10 +57,10 @@ python3 pm_cli.py list-players Save1_PM.adf --save pm1.sav --team 0 \
 - Works on Mac, Linux, and Windows
 
 The ★ market availability marker appears throughout: a player is marked if they are a free agent
-(team_index == 0xFF). The byte originally assumed to flag transfer-listed players
-(`weeks_since_transfer`, formerly `transfer_weeks`) was empirically shown to be a post-transfer
-cooldown counter and does not match the in-game LISTA TRASFERIMENTI. The real transfer-list flag
-is not yet identified.
+(team_index == 0xFF) **or** on the in-game LISTA TRASFERIMENTI. The transfer-list flag is the high
+bit (0x80) of the `mystery3` byte (offset 0x1A), identified empirically by matching the 9 players
+visible in the in-game transfer screen against the DB. The lower 7 bits of `mystery3` remain
+unidentified.
 
 ## Temporarily Removed Features
 
