@@ -12,6 +12,7 @@ from tkinter import ttk, filedialog, messagebox
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from pm_core import __version__
 from pm_core.adf import ADF
 from pm_core.save import SaveSlot
 from pm_core.player import SKILL_NAMES, POSITION_NAMES, PlayerRecord
@@ -31,7 +32,7 @@ XI_ENTRIES = {
 class PMSaveDiskToolGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("PMSaveDiskTool v2")
+        self.root.title(f"PMSaveDiskTool v2 — {__version__}")
         self.root.geometry("1100x700")
         self.root.minsize(900, 600)
 
@@ -442,7 +443,7 @@ class PMSaveDiskToolGUI:
     def _show_about(self):
         messagebox.showinfo(
             "About PMSaveDiskTool v2",
-            "PMSaveDiskTool v2\n"
+            f"PMSaveDiskTool v2 — {__version__}\n"
             "Cross-platform Player Manager Save Disk Editor\n\n"
             "Compatible with the original PMSaveDiskTool by UltimateBinary.\n"
             "Supports Player Manager (Amiga, 1990).\n\n"

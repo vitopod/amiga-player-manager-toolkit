@@ -14,6 +14,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from pm_core import __version__
 from pm_core.adf import ADF
 from pm_core.save import SaveSlot, FORMATIONS
 from pm_core.player import SKILL_NAMES, POSITION_NAMES
@@ -287,8 +288,10 @@ def cmd_edit_player(args):
 def main():
     parser = argparse.ArgumentParser(
         prog="pm_cli",
-        description="PMSaveDiskTool v2 — Player Manager Save Disk Editor",
+        description=f"PMSaveDiskTool v2 {__version__} — Player Manager Save Disk Editor",
     )
+    parser.add_argument("--version", action="version",
+                        version=f"PMSaveDiskTool v2 {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     # list-saves
