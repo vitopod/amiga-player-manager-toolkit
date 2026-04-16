@@ -47,6 +47,22 @@ python3 pm_cli.py list-players Save1_PM.adf --save pm1.sav --team 0 \
 - Save changes back to ADF — byte-for-byte compatible with PMSaveDiskTool v1.2
 - Works on Mac, Linux, and Windows
 
+## Temporarily Removed Features
+
+This version is a ground-up rewrite focused on correctness and cross-platform support.
+Several features from the previous Mac version have been temporarily removed while they
+are reworked and re-validated. They are planned for a future release:
+
+- **Transfer Market** — move players between teams with full consistency (roster + player DB)
+- **Squad Analyst** — team composition breakdown by position and division
+- **Best By Position** — rank players per position across all teams
+- **Young Talents** — highlight high-potential young players
+- **Championship Highlights** — best performers per division at the end of a season
+- **League Stats** — view and edit team standings, division flags, and season records
+- **Patch Composer** — write copy-protection bypass and custom patches into the game disk
+
+Contributions to re-implement any of the above are welcome — see the License section below.
+
 ## Project Structure
 
 ```
@@ -76,6 +92,10 @@ python3 -m pytest tests/ -v
   The game that started it all.
 
 ## License
+
+Released under the [MIT License](../LICENSE). You are free to use, modify, and distribute
+this software. Contributions and improvements are welcome — open a pull request or issue
+on GitHub.
 
 This project is not affiliated with or endorsed by Anco Software or UltimateBinary.
 Reverse-engineering was performed for interoperability purposes only.
