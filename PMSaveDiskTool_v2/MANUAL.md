@@ -1,8 +1,8 @@
-# PMSaveDiskTool v2 — User Manual
+# PMSaveDiskToolkit — User Manual
 
 ## Overview
 
-PMSaveDiskTool v2 edits save disks for the Amiga game **Player Manager** (Anco, 1990).
+PMSaveDiskToolkit edits save disks for the Amiga game **Player Manager** (Anco, 1990).
 It reads standard ADF disk images, lets you view and modify player attributes, and writes
 the changes back. The modified ADF can then be loaded in an emulator (WinUAE, FS-UAE) or
 on real hardware (MiSTer FPGA, Gotek, real Amiga).
@@ -538,7 +538,7 @@ Flags: `--team N`, `--formation {4-4-2,4-3-3,3-5-2}`,
 1. Copy the save disk ADF from the MiSTer SD card to your Mac/PC
 2. **Make a backup copy before editing** — keep the original untouched
 3. Optionally copy the game disk ADF too (for player names)
-4. Edit players with PMSaveDiskTool v2 (GUI or CLI) on the copy
+4. Edit players with PMSaveDiskToolkit (GUI or CLI) on the copy
 5. Copy the modified save disk ADF back to the SD card
 6. Load it in the Minimig core as a second floppy (DF1)
 

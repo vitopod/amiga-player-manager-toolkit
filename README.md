@@ -1,4 +1,4 @@
-# PMSaveDiskTool v2
+# PMSaveDiskToolkit
 
 Cross-platform save disk editor and analytics workbench for **Player Manager**
 (Anco, 1990) on Amiga.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Command-line interface for PMSaveDiskTool v2.
+"""Command-line interface for PMSaveDiskToolkit.
 
 Usage:
     python pm_cli.py list-saves DISK.adf
@@ -604,10 +604,10 @@ def cmd_edit_player(args):
 def main():
     parser = argparse.ArgumentParser(
         prog="pm_cli",
-        description=f"PMSaveDiskTool v2 {__version__} — Player Manager Save Disk Editor",
+        description=f"PMSaveDiskToolkit {__version__} — Player Manager Save Disk Editor",
     )
     parser.add_argument("--version", action="version",
-                        version=f"PMSaveDiskTool v2 {__version__}")
+                        version=f"PMSaveDiskToolkit {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     # list-saves

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cross-platform tkinter GUI for PMSaveDiskTool v2.
+"""Cross-platform tkinter GUI for PMSaveDiskToolkit.
 
 Mirrors the workflow of the original Windows PMSaveDiskTool:
 Open ADF -> Select save slot -> Browse players by team -> Edit attributes -> Save.
@@ -1383,11 +1383,11 @@ class PMSaveDiskToolGUI:
 
     def _update_title(self):
         if self.adf_path:
-            base = f"PMSaveDiskTool v2 — {os.path.basename(self.adf_path)}"
+            base = f"PMSaveDiskToolkit — {os.path.basename(self.adf_path)}"
             if self.dirty:
                 base += " •"
         else:
-            base = f"PMSaveDiskTool v2 — {__version__}"
+            base = f"PMSaveDiskToolkit — {__version__}"
         self.root.title(base)
 
     def _set_dirty(self, flag: bool = True):
@@ -1510,7 +1510,7 @@ class PMSaveDiskToolGUI:
         body = ttk.Frame(top, padding=(24, 20, 24, 16))
         body.pack()
 
-        ttk.Label(body, text="PMSaveDiskTool v2",
+        ttk.Label(body, text="PMSaveDiskToolkit",
                   font=("TkDefaultFont", 14, "bold")).pack(anchor="w")
         ttk.Label(body, text=f"Version {__version__}",
                   foreground="gray30").pack(anchor="w", pady=(0, 12))
