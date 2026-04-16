@@ -41,20 +41,25 @@ Keep the original ADF safe and work on a copy.
 python3 PMSaveDiskTool_v2/pm_gui.py
 ```
 
+Then **File → Open Save Disk…** and pick your save disk ADF.
+
 **CLI:**
 
+> The examples below use `your_save.adf` and `your_game.adf` as
+> placeholders. Substitute the actual filenames of your own disks.
+
 ```
-python3 PMSaveDiskTool_v2/pm_cli.py list-saves Save1_PM.adf
-python3 PMSaveDiskTool_v2/pm_cli.py list-players Save1_PM.adf --save pm1.sav --team 0
-python3 PMSaveDiskTool_v2/pm_cli.py show-player Save1_PM.adf --save pm1.sav --id 42
-python3 PMSaveDiskTool_v2/pm_cli.py edit-player Save1_PM.adf --save pm1.sav --id 42 --age 20 --pace 200
+python3 PMSaveDiskTool_v2/pm_cli.py list-saves your_save.adf
+python3 PMSaveDiskTool_v2/pm_cli.py list-players your_save.adf --save pm1.sav --team 0
+python3 PMSaveDiskTool_v2/pm_cli.py show-player your_save.adf --save pm1.sav --id 42
+python3 PMSaveDiskTool_v2/pm_cli.py edit-player your_save.adf --save pm1.sav --id 42 --age 20 --pace 200
 ```
 
 With player names (requires game disk ADF):
 
 ```
-python3 PMSaveDiskTool_v2/pm_cli.py list-players Save1_PM.adf --save pm1.sav --team 0 \
-    --game-adf PlayerManagerITA.adf
+python3 PMSaveDiskTool_v2/pm_cli.py list-players your_save.adf --save pm1.sav --team 0 \
+    --game-adf your_game.adf
 ```
 
 ## Features

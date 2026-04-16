@@ -33,9 +33,10 @@ Player Manager ships on two separate floppies:
 loaded, every name column is blank — everything else works normally (editing,
 analysis, export). To load the game disk:
 
-- **GUI:** File → Open Game Disk… (Cmd/Ctrl+G), then pick `PlayerManagerITA.adf`
-  (or whichever game disk you have). Names appear immediately everywhere.
-- **CLI:** add `--game-adf PlayerManagerITA.adf` to any command that prints
+- **GUI:** File → Open Game Disk… (Cmd/Ctrl+G), then pick your game disk ADF
+  (e.g. `PlayerManagerITA.adf`, `PlayerManager.adf`, or whatever yours is called).
+  Names appear immediately everywhere.
+- **CLI:** add `--game-adf <your_game_disk.adf>` to any command that prints
   player details.
 
 The status bar in the GUI always shows which game disk is loaded (or "no game
@@ -338,7 +339,16 @@ python3 pm_cli.py --help
 python3 pm_cli.py --version
 ```
 
-**Adding player names to any command:** append `--game-adf PlayerManagerITA.adf`.
+> **About the filenames in these examples**
+> The examples below use `Save1_PM.adf` as the save disk and
+> `PlayerManagerITA.adf` as the game disk — these are the filenames from
+> the developer's own setup. **Replace them with whatever your files are
+> actually called.** Your save disk might be named `PM_Save.adf`,
+> `MySave.adf`, or anything else; your game disk might be
+> `PlayerManager.adf`, `PM_Game.adf`, etc. The tool doesn't care about
+> the name — it reads the file format, not the filename.
+
+**Adding player names to any command:** append `--game-adf <your_game_disk.adf>`.
 Without it, name columns are blank. Nothing else changes.
 
 ---
