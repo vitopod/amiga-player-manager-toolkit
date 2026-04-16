@@ -53,6 +53,9 @@ Use the **Team** dropdown to filter players:
 - **0: MILAN**, **1: SAMPDORIA**, etc. — players on a specific team
 - **— Young Talents (≤21)** — players aged 21 or under, sorted by total skill descending
 - **— Top Scorers** — all active players sorted by division, then goals this season descending
+- **— Top 11 (4-4-2)** / **— Top 11 (4-3-3)** — best XI of the championship in that formation
+- **— Young XI (≤21)** — best XI built from under-21s only
+- **— Free-Agent XI** — best XI you could assemble from free agents
 
 Click any player in the list to see their full details in the right panel.
 
@@ -168,7 +171,7 @@ python3 pm_cli.py edit-player Save1_PM.adf --save pm1.sav --id 42 \
 | `--disciplinary` | Disciplinary points | 0-255 |
 | `--morale` | Morale | 0-255 |
 | `--value` | Market value | 0-255 |
-| `--transfer-weeks` | Weeks on transfer list | 0-255 |
+| `--weeks-since-transfer` | Weeks since last transfer (post-transfer cooldown) | 0-255 |
 | `--goals-this-year` | Goals scored this season | 0-255 |
 | `--goals-last-year` | Goals scored last season | 0-255 |
 | `--matches-this-year` | Matches played this season | 0-255 |
@@ -198,6 +201,41 @@ python3 pm_cli.py young-talents Save1_PM.adf --save pm1.sav --max-age 23
 With player names (requires game disk ADF):
 ```
 python3 pm_cli.py young-talents Save1_PM.adf --save pm1.sav \
+    --game-adf PlayerManagerITA.adf
+```
+
+### Top 11
+
+Select the best XI of the championship in a chosen formation. Output is grouped by position
+(Goalkeeper → Defenders → Midfielders → Forwards) and players are sorted by total skill
+within each group. ★ marks players available on the market.
+
+```
+python3 pm_cli.py best-xi Save1_PM.adf --save pm1.sav
+```
+
+Pick a different formation:
+```
+python3 pm_cli.py best-xi Save1_PM.adf --save pm1.sav --formation 4-3-3
+python3 pm_cli.py best-xi Save1_PM.adf --save pm1.sav --formation 3-5-2
+```
+
+Cap the number of players per team (free agents are exempt from the cap):
+```
+python3 pm_cli.py best-xi Save1_PM.adf --save pm1.sav --max-per-team 2
+```
+
+Build companion XIs from a filtered pool:
+```
+python3 pm_cli.py best-xi Save1_PM.adf --save pm1.sav --filter young        # ≤21
+python3 pm_cli.py best-xi Save1_PM.adf --save pm1.sav --filter veteran      # ≥30
+python3 pm_cli.py best-xi Save1_PM.adf --save pm1.sav --filter free-agent   # only 0xFF
+python3 pm_cli.py best-xi Save1_PM.adf --save pm1.sav --filter market       # purchasable
+```
+
+With player names:
+```
+python3 pm_cli.py best-xi Save1_PM.adf --save pm1.sav \
     --game-adf PlayerManagerITA.adf
 ```
 

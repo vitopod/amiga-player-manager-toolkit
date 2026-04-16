@@ -15,9 +15,17 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from pm_core.adf import ADF
-from pm_core.save import SaveSlot
+from pm_core.save import SaveSlot, FORMATIONS
 from pm_core.player import SKILL_NAMES, POSITION_NAMES
 from pm_core.names import GameDisk
+
+
+XI_FILTERS = {
+    "young": lambda p: p.age <= 21,
+    "veteran": lambda p: p.age >= 30,
+    "free-agent": lambda p: p.is_free_agent,
+    "market": lambda p: p.is_market_available,
+}
 
 
 def _load_game_disk(path):
@@ -111,7 +119,7 @@ def cmd_show_player(args):
     print(f"  Disciplinary:        {p.disciplinary}")
     print(f"  Morale:              {p.morale}")
     print(f"  Value:               {p.value}")
-    print(f"  Transfer Weeks:      {p.transfer_weeks}")
+    print(f"  Weeks Since Transfer:{p.weeks_since_transfer}")
     print()
     print(f"  Injuries This Year:  {p.injuries_this_year}")
     print(f"  Injuries Last Year:  {p.injuries_last_year}")
@@ -199,6 +207,42 @@ def cmd_highlights(args):
         print()
 
 
+def cmd_best_xi(args):
+    adf = ADF.load(args.adf)
+    slot = SaveSlot(adf, args.save)
+    gd = _load_game_disk(getattr(args, 'game_adf', None))
+
+    filter_fn = XI_FILTERS.get(args.filter) if args.filter else None
+    xi = slot.best_xi(
+        args.formation,
+        filter_fn=filter_fn,
+        max_per_team=args.max_per_team,
+    )
+
+    label = f"Best XI ({args.formation})"
+    if args.filter:
+        label += f" — {args.filter}"
+    if args.max_per_team:
+        label += f", max {args.max_per_team}/team"
+    print(f"{label}  ({len(xi)} players)\n")
+
+    group_labels = {1: "Goalkeeper", 2: "Defenders", 3: "Midfielders", 4: "Forwards"}
+    current_pos = None
+    for p in xi:
+        if p.position != current_pos:
+            current_pos = p.position
+            print(f"— {group_labels[current_pos]} —")
+        team = slot.get_team_name(p.team_index)
+        mkt = "★" if p.is_market_available else " "
+        name = gd.player_full_name(p.rng_seed) if gd and p.rng_seed else ""
+        if gd:
+            print(f"  {p.player_id:>5} {name:<18} {p.age:>3}y {p.position_name:<3} "
+                  f"{team:<16} skill {p.total_skill:>4} {mkt}")
+        else:
+            print(f"  {p.player_id:>5} {p.age:>3}y {p.position_name:<3} "
+                  f"{team:<16} skill {p.total_skill:>4} {mkt}")
+
+
 def cmd_edit_player(args):
     adf = ADF.load(args.adf)
     slot = SaveSlot(adf, args.save)
@@ -207,7 +251,7 @@ def cmd_edit_player(args):
     editable = [
         "age", "position", "division", "team_index", "height", "weight",
         *SKILL_NAMES,
-        "injury_weeks", "disciplinary", "morale", "value", "transfer_weeks",
+        "injury_weeks", "disciplinary", "morale", "value", "weeks_since_transfer",
         "injuries_this_year", "injuries_last_year",
         "goals_this_year", "goals_last_year",
         "matches_this_year", "matches_last_year",
@@ -280,6 +324,18 @@ def main():
     p_hl.add_argument("--market-only", action="store_true", help="Show only players available on the market")
     p_hl.add_argument("--game-adf", metavar="PATH", help="Game disk ADF for player names")
 
+    # best-xi
+    p_xi = sub.add_parser("best-xi", help="Top XI of the championship by formation")
+    p_xi.add_argument("adf", help="Path to the ADF disk image")
+    p_xi.add_argument("--save", required=True, help="Save file name (e.g. pm1.sav)")
+    p_xi.add_argument("--formation", default="4-4-2", choices=list(FORMATIONS),
+                      help="Formation (default: 4-4-2)")
+    p_xi.add_argument("--max-per-team", type=int, metavar="N",
+                      help="Cap selections per team (free agents exempt)")
+    p_xi.add_argument("--filter", choices=list(XI_FILTERS),
+                      help="Pre-filter the pool")
+    p_xi.add_argument("--game-adf", metavar="PATH", help="Game disk ADF for player names")
+
     # edit-player
     p_ep = sub.add_parser("edit-player", help="Edit player attributes")
     p_ep.add_argument("adf", help="Path to the ADF disk image")
@@ -298,7 +354,7 @@ def main():
     p_ep.add_argument("--disciplinary", type=int)
     p_ep.add_argument("--morale", type=int)
     p_ep.add_argument("--value", type=int)
-    p_ep.add_argument("--transfer-weeks", type=int)
+    p_ep.add_argument("--weeks-since-transfer", type=int)
     p_ep.add_argument("--injuries-this-year", type=int)
     p_ep.add_argument("--injuries-last-year", type=int)
     p_ep.add_argument("--goals-this-year", type=int)
@@ -320,6 +376,7 @@ def main():
         "edit-player": cmd_edit_player,
         "young-talents": cmd_young_talents,
         "highlights": cmd_highlights,
+        "best-xi": cmd_best_xi,
     }
     commands[args.command](args)
 

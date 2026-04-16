@@ -13,7 +13,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from pm_core.adf import ADF
-from pm_core.save import SaveSlot
+from pm_core.save import SaveSlot, FORMATIONS
 from pm_core.player import parse_player, serialize_player, RECORD_SIZE
 
 # Path to the test ADF file
@@ -135,6 +135,65 @@ class TestSaveSlot(unittest.TestCase):
 
     def test_db_header(self):
         self.assertIn(self.slot.db_header, [1, 2, 3, 4])
+
+
+class TestBestXI(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(TEST_ADF):
+            raise unittest.SkipTest(f"Test ADF not found: {TEST_ADF}")
+        cls.adf = ADF.load(TEST_ADF)
+        cls.slot = SaveSlot(cls.adf, "pm1.sav")
+
+    def test_best_xi_442_counts(self):
+        xi = self.slot.best_xi("4-4-2")
+        self.assertEqual(len(xi), 11)
+        counts = {pos: sum(1 for p in xi if p.position == pos) for pos in (1, 2, 3, 4)}
+        self.assertEqual(counts, {1: 1, 2: 4, 3: 4, 4: 2})
+
+    def test_best_xi_433_counts(self):
+        xi = self.slot.best_xi("4-3-3")
+        counts = {pos: sum(1 for p in xi if p.position == pos) for pos in (1, 2, 3, 4)}
+        self.assertEqual(counts, {1: 1, 2: 4, 3: 3, 4: 3})
+
+    def test_best_xi_ordered_by_position(self):
+        xi = self.slot.best_xi("4-4-2")
+        positions = [p.position for p in xi]
+        self.assertEqual(positions, sorted(positions))
+
+    def test_best_xi_sorted_within_position(self):
+        xi = self.slot.best_xi("4-4-2")
+        for pos in (1, 2, 3, 4):
+            group = [p.total_skill for p in xi if p.position == pos]
+            self.assertEqual(group, sorted(group, reverse=True),
+                             f"position {pos} not sorted desc")
+
+    def test_best_xi_excludes_garbage(self):
+        xi = self.slot.best_xi("4-4-2")
+        for p in xi:
+            self.assertTrue(SaveSlot._is_real_player(p),
+                            f"player {p.player_id} failed real-player check")
+
+    def test_best_xi_young_filter(self):
+        xi = self.slot.best_xi("4-4-2", filter_fn=lambda p: p.age <= 21)
+        self.assertEqual(len(xi), 11)
+        for p in xi:
+            self.assertLessEqual(p.age, 21)
+
+    def test_best_xi_max_per_team_cap(self):
+        cap = 1
+        xi = self.slot.best_xi("4-4-2", max_per_team=cap)
+        team_counts = {}
+        for p in xi:
+            if p.team_index == 0xFF:
+                continue
+            team_counts[p.team_index] = team_counts.get(p.team_index, 0) + 1
+        for team, n in team_counts.items():
+            self.assertLessEqual(n, cap, f"team {team} has {n} players (cap {cap})")
+
+    def test_best_xi_unknown_formation_raises(self):
+        with self.assertRaises(ValueError):
+            self.slot.best_xi("bogus")
 
 
 class TestPlayerSerialization(unittest.TestCase):

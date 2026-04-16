@@ -16,6 +16,13 @@ NUM_TEAMS = 44
 TEAM_NAME_RECORD_SIZE = 20
 TEAM_NAMES_FILE = "PM1.nam"
 
+# Formations map position code (1=GK, 2=DEF, 3=MID, 4=FWD) to slot counts.
+FORMATIONS = {
+    "4-4-2": {1: 1, 2: 4, 3: 4, 4: 2},
+    "4-3-3": {1: 1, 2: 4, 3: 3, 4: 3},
+    "3-5-2": {1: 1, 2: 3, 3: 5, 4: 2},
+}
+
 
 class SaveSlot:
     """Represents one save slot with its player database.
@@ -125,3 +132,48 @@ class SaveSlot:
             [p for p in self.players if self._is_real_player(p)],
             key=lambda p: (p.division, -p.goals_this_year),
         )
+
+    def best_xi(self, formation: str = "4-4-2", *,
+                filter_fn=None, max_per_team: int = None) -> list[PlayerRecord]:
+        """Select the top XI for a given formation.
+
+        Returns players ordered GK → DEF → MID → FWD. Within each position,
+        players are sorted by total_skill descending, picked greedily while
+        respecting max_per_team (free agents are exempt from the cap).
+
+        Args:
+            formation: Key from FORMATIONS (e.g. "4-4-2").
+            filter_fn: Optional extra predicate applied on top of _is_real_player.
+            max_per_team: If set, cap selections per team_index (0xFF exempt).
+        """
+        if formation not in FORMATIONS:
+            raise ValueError(
+                f"Unknown formation {formation!r}. Available: {list(FORMATIONS)}"
+            )
+        slots = FORMATIONS[formation]
+
+        pool = [p for p in self.players if self._is_real_player(p)]
+        if filter_fn is not None:
+            pool = [p for p in pool if filter_fn(p)]
+
+        selected: list[PlayerRecord] = []
+        team_counts: dict[int, int] = {}
+        for pos in (1, 2, 3, 4):
+            need = slots[pos]
+            candidates = sorted(
+                (p for p in pool if p.position == pos),
+                key=lambda p: p.total_skill,
+                reverse=True,
+            )
+            picked = 0
+            for p in candidates:
+                if picked >= need:
+                    break
+                if (max_per_team is not None
+                        and p.team_index != 0xFF
+                        and team_counts.get(p.team_index, 0) >= max_per_team):
+                    continue
+                selected.append(p)
+                team_counts[p.team_index] = team_counts.get(p.team_index, 0) + 1
+                picked += 1
+        return selected

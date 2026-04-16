@@ -21,6 +21,7 @@ python3 PMSaveDiskTool_v2/pm_gui.py
 python3 PMSaveDiskTool_v2/pm_cli.py list-saves PMSaveDiskTool_v1.2/Save1_PM.adf
 python3 PMSaveDiskTool_v2/pm_cli.py young-talents PMSaveDiskTool_v1.2/Save1_PM.adf --save pm1.sav
 python3 PMSaveDiskTool_v2/pm_cli.py highlights PMSaveDiskTool_v1.2/Save1_PM.adf --save pm1.sav
+python3 PMSaveDiskTool_v2/pm_cli.py best-xi PMSaveDiskTool_v1.2/Save1_PM.adf --save pm1.sav --formation 4-3-3
 ```
 
 The test ADF is at `PMSaveDiskTool_v1.2/Save1_PM.adf` (gitignored personal file). Tests skip automatically if it is absent.
@@ -48,13 +49,15 @@ ADF file on disk
 
 **42-byte player record** — fully documented in `player.py`. Key fields: bytes 0–3 RNG seed, byte 4 age, byte 5 position (1=GK 2=DEF 3=MID 4=FWD), byte 7 team_index (0xFF = free agent), bytes 10–19 ten skills.
 
-**Real player filter** — `SaveSlot._is_real_player()` guards analytical views (Young Talents, Championship Highlights) against garbage sentinel records near the end of the DB. Criteria: `position in (1,2,3,4)` and `team_index <= 43 or team_index == 0xFF`.
+**Real player filter** — `SaveSlot._is_real_player()` guards analytical views (Young Talents, Championship Highlights, Best XI) against garbage sentinel records near the end of the DB. Criteria: `position in (1,2,3,4)` and `team_index <= 43 or team_index == 0xFF`.
 
-**Market availability** — `PlayerRecord.is_market_available` is True when `is_free_agent` (team_index == 0xFF) or `transfer_weeks > 0`. Shown as ★ in GUI and CLI.
+**Best XI** — `SaveSlot.best_xi(formation, filter_fn=, max_per_team=)` selects the top XI of the championship. `FORMATIONS` dict maps formation strings (`"4-4-2"`, `"4-3-3"`, `"3-5-2"`) to `{position: slot_count}`. Returns players ordered GK → DEF → MID → FWD, sorted by `total_skill` within each position, picked greedily while respecting `max_per_team` (free agents 0xFF are exempt from the cap). The CLI `best-xi` subcommand and GUI entries (`— Top 11 (4-4-2)`, `— Young XI (≤21)`, `— Free-Agent XI`) wrap this.
+
+**Market availability** — `PlayerRecord.is_market_available` is True only when `is_free_agent` (team_index == 0xFF). Shown as ★ in GUI and CLI. The `weeks_since_transfer` byte (previously `transfer_weeks`) was initially assumed to flag transfer-list players but was empirically disproven: 8 of 9 in-game LISTA TRASFERIMENTI players have `weeks_since_transfer == 0`, while 198 other players set it. It is a post-transfer cooldown counter. The real transfer-list flag is not yet identified — `mystery3` (byte 0x1A) and bits of `reserved` (byte 0x14) are the candidates.
 
 **Player names** — procedurally generated from the 4-byte RNG seed using a rolling-buffer hash (reversed from the original Windows binary). The 245-name surname table is inside the DEFAJAM-compressed `2507` executable on the game disk. Loading a game ADF is optional; all save editing works without it.
 
-**GUI** — single-window tkinter app (`pm_gui.py`). Team dropdown includes regular teams plus special entries "— Young Talents (≤21)" and "— Top Scorers" handled in `_refresh_player_list()`. The "Mkt" column (★) is always visible.
+**GUI** — single-window tkinter app (`pm_gui.py`). Team dropdown includes regular teams plus special entries "— Young Talents (≤21)", "— Top Scorers", and the XI entries defined in `XI_ENTRIES`, all handled in `_refresh_player_list()`. The "Mkt" column (★) is always visible.
 
 **Byte compatibility** — `serialize_player()` must produce byte-identical output to `parse_player()`. The round-trip test (`test_roundtrip_all_players`) enforces this. Never change the serialization order.
 

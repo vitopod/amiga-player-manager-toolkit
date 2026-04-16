@@ -18,6 +18,16 @@ from pm_core.player import SKILL_NAMES, POSITION_NAMES, PlayerRecord
 from pm_core.names import GameDisk
 
 
+XI_ENTRIES = {
+    "— Top 11 (4-4-2)":   {"formation": "4-4-2", "filter_fn": None},
+    "— Top 11 (4-3-3)":   {"formation": "4-3-3", "filter_fn": None},
+    "— Young XI (≤21)":  {"formation": "4-4-2",
+                           "filter_fn": lambda p: p.age <= 21},
+    "— Free-Agent XI":    {"formation": "4-4-2",
+                           "filter_fn": lambda p: p.is_free_agent},
+}
+
+
 class PMSaveDiskToolGUI:
     def __init__(self, root):
         self.root = root
@@ -177,7 +187,7 @@ class PMSaveDiskToolGUI:
         row = add_field("Disciplinary:", "disciplinary", row)
         row = add_field("Morale:", "morale", row)
         row = add_field("Value:", "value", row)
-        row = add_field("Transfer Wks:", "transfer_weeks", row)
+        row = add_field("Wks Since Transfer:", "weeks_since_transfer", row)
 
         row = add_section("Season Stats", row)
         row = add_field("Injuries This Yr:", "injuries_this_year", row)
@@ -270,6 +280,7 @@ class PMSaveDiskToolGUI:
             team_options.append(f"{i}: {name}")
         team_options.append("— Young Talents (≤21)")
         team_options.append("— Top Scorers")
+        team_options.extend(XI_ENTRIES.keys())
         self.team_combo["values"] = team_options
         self.team_combo.current(0)
         self._refresh_player_list()
@@ -292,6 +303,11 @@ class PMSaveDiskToolGUI:
             players = self.slot.get_top_scorers()
             self.tree.heading("total", text="Goals")
             score_fn = lambda p: p.goals_this_year
+        elif team_sel in XI_ENTRIES:
+            cfg = XI_ENTRIES[team_sel]
+            players = self.slot.best_xi(cfg["formation"], filter_fn=cfg["filter_fn"])
+            self.tree.heading("total", text="Skill")
+            score_fn = lambda p: p.total_skill
         elif team_sel == "Free Agents":
             players = self.slot.get_free_agents()
             self.tree.heading("total", text="Skill")
@@ -342,7 +358,7 @@ class PMSaveDiskToolGUI:
         self.fields["disciplinary"].set(str(p.disciplinary))
         self.fields["morale"].set(str(p.morale))
         self.fields["value"].set(str(p.value))
-        self.fields["transfer_weeks"].set(str(p.transfer_weeks))
+        self.fields["weeks_since_transfer"].set(str(p.weeks_since_transfer))
         self.fields["injuries_this_year"].set(str(p.injuries_this_year))
         self.fields["injuries_last_year"].set(str(p.injuries_last_year))
         self.fields["dsp_pts_this_year"].set(str(p.dsp_pts_this_year))
@@ -367,7 +383,7 @@ class PMSaveDiskToolGUI:
         editable_int_fields = [
             "age", "position", "division", "team_index", "height", "weight",
             *SKILL_NAMES,
-            "injury_weeks", "disciplinary", "morale", "value", "transfer_weeks",
+            "injury_weeks", "disciplinary", "morale", "value", "weeks_since_transfer",
             "injuries_this_year", "injuries_last_year",
             "dsp_pts_this_year", "dsp_pts_last_year",
             "goals_this_year", "goals_last_year",

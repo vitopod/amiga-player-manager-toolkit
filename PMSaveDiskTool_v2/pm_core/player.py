@@ -72,7 +72,7 @@ class PlayerRecord:
     disciplinary: int = 0
     morale: int = 0
     value: int = 0
-    transfer_weeks: int = 0
+    weeks_since_transfer: int = 0  # Originally "transfer_weeks" in UB's notes; empirical testing shows it is a post-transfer cooldown, NOT a "listed for sale" flag. The real transfer-list flag is not yet identified.
     mystery3: int = 0
 
     # Bytes +1B-22: Season stats
@@ -104,8 +104,13 @@ class PlayerRecord:
 
     @property
     def is_market_available(self) -> bool:
-        """True if the player can be purchased: free agent or listed for transfer."""
-        return self.is_free_agent or self.transfer_weeks > 0
+        """True if the player is a free agent (team_index == 0xFF).
+
+        Previously also returned True for weeks_since_transfer > 0, but that
+        byte is a post-transfer cooldown, not a "listed for sale" flag. The
+        real transfer-list flag is not yet identified.
+        """
+        return self.is_free_agent
 
     @property
     def skills(self) -> dict[str, int]:
@@ -150,7 +155,7 @@ def parse_player(data: bytes, player_id: int = 0) -> PlayerRecord:
         disciplinary=d[22],
         morale=d[23],
         value=d[24],
-        transfer_weeks=d[25],
+        weeks_since_transfer=d[25],
         mystery3=d[26],
         injuries_this_year=d[27],
         injuries_last_year=d[28],
@@ -196,7 +201,7 @@ def serialize_player(player: PlayerRecord) -> bytes:
             player.disciplinary,
             player.morale,
             player.value,
-            player.transfer_weeks,
+            player.weeks_since_transfer,
             player.mystery3,
             player.injuries_this_year,
             player.injuries_last_year,
