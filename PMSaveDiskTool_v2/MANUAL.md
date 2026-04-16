@@ -51,8 +51,16 @@ Use the **Team** dropdown to filter players:
 - **All Players** — every player with age > 0
 - **Free Agents** — unassigned players (team index 0xFF)
 - **0: MILAN**, **1: SAMPDORIA**, etc. — players on a specific team
+- **— Young Talents (≤21)** — players aged 21 or under, sorted by total skill descending
+- **— Top Scorers** — all active players sorted by division, then goals this season descending
 
 Click any player in the list to see their full details in the right panel.
+
+### Market availability (★)
+
+A **★** in the Mkt column means the player is currently purchasable — either a free agent
+or listed for transfer. The column is visible in all views. Use Young Talents or Top Scorers
+to quickly spot high-value targets you can actually sign.
 
 ### Editing a player
 
@@ -168,6 +176,49 @@ python3 pm_cli.py edit-player Save1_PM.adf --save pm1.sav --id 42 \
 | `--contract-years` | Contract length in years | 0-255 |
 | `--div1-years` .. `--div4-years` | Seasons spent in each division | 0-255 |
 | `--int-years` | International career seasons | 0-255 |
+
+### Young Talents
+
+List players aged ≤ 21, sorted by total skill descending. ★ marks players available on the market.
+
+```
+python3 pm_cli.py young-talents Save1_PM.adf --save pm1.sav
+```
+
+Show only players you can actually sign right now:
+```
+python3 pm_cli.py young-talents Save1_PM.adf --save pm1.sav --market-only
+```
+
+Raise the age cutoff:
+```
+python3 pm_cli.py young-talents Save1_PM.adf --save pm1.sav --max-age 23
+```
+
+With player names (requires game disk ADF):
+```
+python3 pm_cli.py young-talents Save1_PM.adf --save pm1.sav \
+    --game-adf PlayerManagerITA.adf
+```
+
+### Championship Highlights
+
+Top scorers for the current season, grouped by division. ★ marks players available on the market.
+
+```
+python3 pm_cli.py highlights Save1_PM.adf --save pm1.sav
+```
+
+Show only purchasable players:
+```
+python3 pm_cli.py highlights Save1_PM.adf --save pm1.sav --market-only
+```
+
+With player names:
+```
+python3 pm_cli.py highlights Save1_PM.adf --save pm1.sav \
+    --game-adf PlayerManagerITA.adf
+```
 
 ---
 
