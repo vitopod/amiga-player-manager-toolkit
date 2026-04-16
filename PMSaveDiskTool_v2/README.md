@@ -51,7 +51,7 @@ python3 pm_cli.py list-players Save1_PM.adf --save pm1.sav --team 0 \
 
 This version is a ground-up rewrite focused on correctness and cross-platform support.
 Several features from the previous Mac version have been temporarily removed while they
-are reworked and re-validated. They are planned for a future release:
+are reworked and re-validated. They are still planned for a future release (if feasible):
 
 - **Transfer Market** — move players between teams with full consistency (roster + player DB)
 - **Squad Analyst** — team composition breakdown by position and division
