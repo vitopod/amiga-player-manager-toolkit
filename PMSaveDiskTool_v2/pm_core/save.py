@@ -5,12 +5,31 @@ Immediately after the save file in the ADF image sits the player database:
 a 2-byte BE header followed by 1536 player records of 42 bytes each.
 """
 
+import dataclasses
 import struct
 from .adf import ADF, FileEntry
 from .player import (
     PlayerRecord, parse_player, serialize_player,
     RECORD_SIZE, PLAYER_DB_HEADER_SIZE, TOTAL_PLAYERS,
 )
+
+
+def player_to_row(p: PlayerRecord, slot: "SaveSlot", game_disk=None) -> dict:
+    """Flatten a PlayerRecord into a dict suitable for CSV/JSON export.
+
+    Includes every dataclass field plus derived convenience columns
+    (position_name, team_name, flags, total_skill, name).
+    """
+    row = {f.name: getattr(p, f.name) for f in dataclasses.fields(p)}
+    row["position_name"] = p.position_name
+    row["team_name"] = slot.get_team_name(p.team_index)
+    row["is_free_agent"] = p.is_free_agent
+    row["is_transfer_listed"] = p.is_transfer_listed
+    row["is_market_available"] = p.is_market_available
+    row["total_skill"] = p.total_skill
+    row["name"] = (game_disk.player_full_name(p.rng_seed)
+                   if game_disk and p.rng_seed else "")
+    return row
 
 NUM_TEAMS = 44
 TEAM_NAME_RECORD_SIZE = 20

@@ -123,6 +123,38 @@ class TestCLISmoke(unittest.TestCase):
             self.assertEqual(original, bak,
                              "backup must preserve the pre-edit bytes")
 
+    def test_squad_analyst_all_teams(self):
+        r = _run("squad-analyst", _ADF, "--save", "pm1.sav")
+        self.assertSuccess(r)
+        self.assertIn("MILAN", r.stdout)
+        self.assertIn("Size", r.stdout.replace("Sz", "Size"))
+
+    def test_squad_analyst_single_team(self):
+        r = _run("squad-analyst", _ADF, "--save", "pm1.sav", "--team", "0")
+        self.assertSuccess(r)
+        self.assertIn("MILAN", r.stdout)
+        self.assertIn("Youngest", r.stdout)
+        self.assertIn("Best", r.stdout)
+
+    def test_career_tracker_default(self):
+        r = _run("career-tracker", _ADF,
+                 "--save-a", "pm1.sav", "--save-b", "pm2.sav", "--limit", "3")
+        self.assertSuccess(r)
+        self.assertIn("Comparing A=pm1.sav -> B=pm2.sav", r.stdout)
+
+    def test_career_tracker_team_changes_only(self):
+        r = _run("career-tracker", _ADF,
+                 "--save-a", "pm1.sav", "--save-b", "pm2.sav",
+                 "--team-changes-only", "--limit", "5")
+        self.assertSuccess(r)
+
+    def test_career_tracker_same_slot_has_no_changes(self):
+        r = _run("career-tracker", _ADF,
+                 "--save-a", "pm1.sav", "--save-b", "pm1.sav")
+        self.assertSuccess(r)
+        # comparing a slot to itself should yield 0 changed players
+        self.assertIn("(0 players changed)", r.stdout)
+
     def test_unknown_subcommand_fails(self):
         r = _run("not-a-command")
         self.assertNotEqual(r.returncode, 0)

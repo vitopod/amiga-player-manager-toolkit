@@ -56,8 +56,13 @@ Use the **Team** dropdown to filter players:
 - **— Top 11 (4-4-2)** / **— Top 11 (4-3-3)** — best XI of the championship in that formation
 - **— Young XI (≤21)** — best XI built from under-21s only
 - **— Free-Agent XI** — best XI you could assemble from free agents
+- **— Squad Analyst (all teams)** — per-team composition breakdown:
+  roster size, GK/DEF/MID/FWD counts, average age and skill, and on-market count
 
 Click any player in the list to see their full details in the right panel.
+Squad Analyst rows are informational — selecting one does not populate the
+editor. The **Filter** box above the list narrows the visible rows by id, name,
+team, or position as you type.
 
 ### Market availability (★)
 
@@ -81,11 +86,51 @@ Use **File > Save ADF As** to write to a new file, keeping the original unmodifi
 This is the safest workflow: always keep an unedited backup of your save disk and use
 **Save ADF As** to produce modified copies.
 
+### Exporting the player database
+
+Use **File > Export Players...** to write the current view to CSV (default) or
+JSON. The file extension you pick drives the format (`.csv` or `.json`). The
+output uses the same column schema as the CLI `export-players` subcommand.
+
+### Per-team Squad Summary label
+
+When you pick a specific team from the Team dropdown, a one-line summary is
+shown above the roster — for example:
+
+```
+17 players  ·  avg 25.2y  ·  skill 1238  ·  2 on market
+```
+
+Switch to a different view (Young Talents, Free Agents, All Players, any XI,
+or the all-teams Squad Analyst) and the label clears.
+
+### Career Tracker window
+
+Open **Tools > Career Tracker...** to diff two save slots and see which
+players changed. Pick slot A and slot B from the drop-downs; by default both
+slots come from the same ADF. Click **Load side-B ADF...** to pull slot B from
+a different disk image (e.g. an older backup). Tick **Team changes only** to
+restrict the output to transfers. The table lists player id, name (if a game
+ADF is loaded), ages, total skills, skill delta, and team names for each
+side, sorted by skill delta descending.
+
+### Automatic `.bak` on first write
+
+The first time the GUI writes back to a loaded ADF it creates a sibling
+`<file>.adf.bak` containing the pre-edit bytes. Subsequent writes reuse the
+existing backup — the original first-known-good state is always recoverable
+without being silently overwritten later. The CLI `edit-player` subcommand
+follows the same rule.
+
 ---
 
 ## CLI Usage
 
 All CLI commands take the save disk ADF path as the first argument.
+Run `python3 pm_cli.py --version` to print the tool version, or
+`python3 pm_cli.py --help` for the list of subcommands. The CLI can also be
+invoked as a module: `python3 -m PMSaveDiskTool_v2.pm_cli …` (from the repo
+root) or `python3 -m pm_core` to launch the GUI.
 
 ### List save slots
 
@@ -257,6 +302,71 @@ With player names:
 python3 pm_cli.py highlights Save1_PM.adf --save pm1.sav \
     --game-adf PlayerManagerITA.adf
 ```
+
+`best-xi` also takes `--market-only` for the same effect on the starting XI.
+
+### Squad Analyst
+
+Per-team composition breakdown. Without `--team`, prints a one-row-per-team
+table covering all 44 clubs: roster size, position counts (GK/DEF/MID/FWD),
+average age and skill, youngest age, and number of players available on the
+market. With `--team N`, drills into a single team and prints the youngest,
+oldest, and highest-skill players with their ids.
+
+```
+python3 pm_cli.py squad-analyst Save1_PM.adf --save pm1.sav
+python3 pm_cli.py squad-analyst Save1_PM.adf --save pm1.sav --team 0
+```
+
+### Career Tracker
+
+Compare two save slots and surface per-player skill, age, and team changes. The
+two slots can be on the same ADF (e.g. pm1 vs pm2) or on different ADFs via
+`--adf-b`.
+
+```
+python3 pm_cli.py career-tracker Save1_PM.adf \
+    --save-a pm1.sav --save-b pm2.sav
+```
+
+Sort and limit:
+```
+python3 pm_cli.py career-tracker Save1_PM.adf \
+    --save-a pm1.sav --save-b pm2.sav \
+    --sort skill --limit 20
+```
+
+Compare across ADFs (e.g. an older backup vs. the current disk):
+```
+python3 pm_cli.py career-tracker Save1_PM.adf \
+    --adf-b Save1_PM_backup.adf \
+    --save-a pm1.sav --save-b pm1.sav
+```
+
+Show only players whose team changed:
+```
+python3 pm_cli.py career-tracker Save1_PM.adf \
+    --save-a pm1.sav --save-b pm2.sav --team-changes-only
+```
+
+### Export Players
+
+Dump the player database as CSV (default) or JSON, with the same filters as
+`list-players`. Use `--output` to write to a file; otherwise the data is
+written to stdout.
+
+```
+python3 pm_cli.py export-players Save1_PM.adf --save pm1.sav --format csv
+python3 pm_cli.py export-players Save1_PM.adf --save pm1.sav \
+    --format json --output players.json
+python3 pm_cli.py export-players Save1_PM.adf --save pm1.sav \
+    --team 0 --game-adf PlayerManagerITA.adf --output milan.csv
+```
+
+Each row includes the raw 42-byte fields plus synthetic conveniences:
+`position_name`, `team_name`, `total_skill`, `is_free_agent`,
+`is_transfer_listed`, `is_market_available`, and `name` (when a game ADF is
+supplied).
 
 ---
 

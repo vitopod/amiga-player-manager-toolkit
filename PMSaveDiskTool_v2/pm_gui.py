@@ -5,6 +5,8 @@ Mirrors the workflow of the original Windows PMSaveDiskTool:
 Open ADF -> Select save slot -> Browse players by team -> Edit attributes -> Save.
 """
 
+import csv
+import json
 import os
 import sys
 import tkinter as tk
@@ -14,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from pm_core import __version__
 from pm_core.adf import ADF, ensure_backup
-from pm_core.save import SaveSlot
+from pm_core.save import SaveSlot, player_to_row
 from pm_core.player import SKILL_NAMES, POSITION_NAMES, PlayerRecord
 from pm_core.names import GameDisk
 
@@ -27,6 +29,137 @@ XI_ENTRIES = {
     "— Free-Agent XI":    {"formation": "4-4-2",
                            "filter_fn": lambda p: p.is_free_agent},
 }
+
+
+class CareerTrackerWindow(tk.Toplevel):
+    """Modal-ish window that diffs two save slots and shows changed players.
+
+    Slot B may live on the same ADF as slot A or on a second ADF selected
+    via 'Load side-B ADF'. Output columns mirror the CLI career-tracker.
+    """
+
+    def __init__(self, parent, adf_a, adf_a_path, game_disk):
+        super().__init__(parent)
+        self.title("Career Tracker")
+        self.geometry("900x520")
+        self.minsize(700, 400)
+
+        self.adf_a = adf_a
+        self.adf_a_path = adf_a_path
+        self.adf_b = adf_a  # default: same ADF
+        self.adf_b_path = adf_a_path
+        self.game_disk = game_disk
+
+        ctrls = ttk.Frame(self)
+        ctrls.pack(fill=tk.X, padx=6, pady=6)
+
+        save_names = [e.name for e in adf_a.list_saves()]
+        ttk.Label(ctrls, text="Slot A:").pack(side=tk.LEFT, padx=(0, 2))
+        self.save_a_var = tk.StringVar(value=save_names[0] if save_names else "")
+        ttk.Combobox(ctrls, textvariable=self.save_a_var, values=save_names,
+                     state="readonly", width=10).pack(side=tk.LEFT, padx=2)
+
+        ttk.Label(ctrls, text="Slot B:").pack(side=tk.LEFT, padx=(10, 2))
+        self.save_b_var = tk.StringVar(
+            value=save_names[1] if len(save_names) > 1 else (save_names[0] if save_names else "")
+        )
+        self.save_b_combo = ttk.Combobox(ctrls, textvariable=self.save_b_var,
+                                         values=save_names, state="readonly", width=10)
+        self.save_b_combo.pack(side=tk.LEFT, padx=2)
+
+        self.adf_b_label = ttk.Label(ctrls, text="(same ADF)", foreground="gray")
+        self.adf_b_label.pack(side=tk.LEFT, padx=(10, 4))
+        ttk.Button(ctrls, text="Load side-B ADF...",
+                   command=self._load_adf_b).pack(side=tk.LEFT, padx=2)
+        ttk.Button(ctrls, text="Reset to same ADF",
+                   command=self._reset_adf_b).pack(side=tk.LEFT, padx=2)
+
+        self.team_changes_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(ctrls, text="Team changes only",
+                        variable=self.team_changes_var).pack(side=tk.LEFT, padx=(10, 2))
+
+        ttk.Button(ctrls, text="Compare", command=self._compare).pack(
+            side=tk.RIGHT, padx=2)
+
+        cols = ("id", "name", "age_a", "age_b", "skill_a", "skill_b",
+                "delta", "team_a", "team_b")
+        self.tree = ttk.Treeview(self, columns=cols, show="headings")
+        for c, text, w, anc in [
+            ("id", "ID", 50, "e"),
+            ("name", "Name", 140, "w"),
+            ("age_a", "Age A", 55, "e"),
+            ("age_b", "Age B", 55, "e"),
+            ("skill_a", "Skill A", 65, "e"),
+            ("skill_b", "Skill B", 65, "e"),
+            ("delta", "ΔSkill", 55, "e"),
+            ("team_a", "Team A", 130, "w"),
+            ("team_b", "Team B", 130, "w"),
+        ]:
+            self.tree.heading(c, text=text)
+            self.tree.column(c, width=w, anchor=anc)
+        scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL,
+                                  command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(6, 0), pady=(0, 6))
+        scrollbar.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 6), pady=(0, 6))
+
+        self.status_var = tk.StringVar(value="Ready.")
+        ttk.Label(self, textvariable=self.status_var, relief=tk.SUNKEN).pack(
+            fill=tk.X, side=tk.BOTTOM)
+
+    def _load_adf_b(self):
+        path = filedialog.askopenfilename(
+            parent=self, title="Open Side-B ADF",
+            filetypes=[("ADF Disk Images", "*.adf"), ("All Files", "*.*")],
+        )
+        if not path:
+            return
+        try:
+            self.adf_b = ADF.load(path)
+        except (ValueError, OSError) as e:
+            messagebox.showerror("Error", str(e), parent=self)
+            return
+        self.adf_b_path = path
+        self.adf_b_label.config(text=os.path.basename(path), foreground="black")
+        self.save_b_combo["values"] = [e.name for e in self.adf_b.list_saves()]
+
+    def _reset_adf_b(self):
+        self.adf_b = self.adf_a
+        self.adf_b_path = self.adf_a_path
+        self.adf_b_label.config(text="(same ADF)", foreground="gray")
+        self.save_b_combo["values"] = [e.name for e in self.adf_a.list_saves()]
+
+    def _compare(self):
+        if not self.save_a_var.get() or not self.save_b_var.get():
+            return
+        try:
+            slot_a = SaveSlot(self.adf_a, self.save_a_var.get())
+            slot_b = SaveSlot(self.adf_b, self.save_b_var.get())
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load slots: {e}", parent=self)
+            return
+
+        diffs = slot_a.diff_players(slot_b)
+        if self.team_changes_var.get():
+            diffs = [d for d in diffs if d["team_changed"]]
+        diffs.sort(key=lambda d: d["skill_delta"], reverse=True)
+
+        self.tree.delete(*self.tree.get_children())
+        for d in diffs:
+            a, b = d["old"], d["new"]
+            name = (self.game_disk.player_full_name(a.rng_seed)
+                    if self.game_disk and a.rng_seed else "")
+            self.tree.insert("", "end", values=(
+                d["player_id"], name, a.age, b.age,
+                a.total_skill, b.total_skill,
+                f"{d['skill_delta']:+d}",
+                slot_a.get_team_name(a.team_index),
+                slot_b.get_team_name(b.team_index),
+            ))
+        self.status_var.set(
+            f"{len(diffs)} players changed "
+            f"({self.save_a_var.get()} -> {self.save_b_var.get()})"
+        )
 
 
 class PMSaveDiskToolGUI:
@@ -57,8 +190,15 @@ class PMSaveDiskToolGUI:
         file_menu.add_command(label="Save ADF", command=self._save_adf, accelerator="Ctrl+S")
         file_menu.add_command(label="Save ADF As...", command=self._save_adf_as)
         file_menu.add_separator()
+        file_menu.add_command(label="Export Players...", command=self._export_players)
+        file_menu.add_separator()
         file_menu.add_command(label="Quit", command=self.root.quit, accelerator="Ctrl+Q")
         menubar.add_cascade(label="File", menu=file_menu)
+
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        tools_menu.add_command(label="Career Tracker...",
+                               command=self._open_career_tracker)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
 
         help_menu = tk.Menu(menubar, tearoff=0)
         help_menu.add_command(label="About", command=self._show_about)
@@ -106,6 +246,11 @@ class PMSaveDiskToolGUI:
         # Left: Player list
         left = ttk.Frame(paned)
         paned.add(left, weight=1)
+
+        self.summary_var = tk.StringVar(value="")
+        self.summary_label = ttk.Label(left, textvariable=self.summary_var,
+                                       anchor="w", foreground="gray30")
+        self.summary_label.pack(fill=tk.X, padx=3, pady=(0, 2))
 
         search_bar = ttk.Frame(left)
         search_bar.pack(fill=tk.X, padx=0, pady=(0, 3))
@@ -291,6 +436,7 @@ class PMSaveDiskToolGUI:
             team_options.append(f"{i}: {name}")
         team_options.append("— Young Talents (≤21)")
         team_options.append("— Top Scorers")
+        team_options.append("— Squad Analyst (all teams)")
         team_options.extend(XI_ENTRIES.keys())
         self.team_combo["values"] = team_options
         self.team_combo.current(0)
@@ -300,12 +446,28 @@ class PMSaveDiskToolGUI:
     def _on_team_selected(self, event):
         self._refresh_player_list()
 
+    _DEFAULT_TREE_HEADINGS = {
+        "id": "ID", "name": "Name", "age": "Age", "pos": "Pos",
+        "team": "Team", "total": "Skill", "mkt": "Mkt",
+    }
+
+    def _set_tree_headings(self, **overrides):
+        for col, text in self._DEFAULT_TREE_HEADINGS.items():
+            self.tree.heading(col, text=overrides.get(col, text))
+
     def _refresh_player_list(self):
         if not self.slot:
             return
         self.tree.delete(*self.tree.get_children())
+        self.summary_var.set("")
 
         team_sel = self.team_var.get()
+        if team_sel == "— Squad Analyst (all teams)":
+            self._populate_squad_analyst()
+            return
+
+        self._set_tree_headings()
+
         if team_sel == "— Young Talents (≤21)":
             players = self.slot.get_young_talents()
             self.tree.heading("total", text="Skill")
@@ -332,6 +494,12 @@ class PMSaveDiskToolGUI:
             players = self.slot.get_players_by_team(team_idx)
             self.tree.heading("total", text="Skill")
             score_fn = lambda p: p.total_skill
+            s = self.slot.squad_summary(team_idx)
+            if s["size"] > 0:
+                self.summary_var.set(
+                    f"{s['size']} players  ·  avg {s['avg_age']:.1f}y  ·  "
+                    f"skill {s['avg_skill']:.0f}  ·  {s['on_market']} on market"
+                )
 
         needle = self.search_var.get().strip().lower() if hasattr(self, "search_var") else ""
         for p in players:
@@ -347,9 +515,37 @@ class PMSaveDiskToolGUI:
                              values=(p.player_id, name, p.age, p.position_name,
                                      team, score_fn(p), mkt))
 
+    def _populate_squad_analyst(self):
+        """Render one row per team with composition summary columns.
+
+        Repurposes the existing tree: id=team_index, name=team_name,
+        age=avg_age, pos=size (roster count), team='GK/DEF/MID/FWD'
+        breakdown, total=avg_skill, mkt=on_market count.
+        """
+        self._set_tree_headings(
+            id="Tm", name="Team", age="AvgAge", pos="Size",
+            team="GK·DEF·MID·FWD", total="AvgSkl", mkt="Mkt",
+        )
+        needle = self.search_var.get().strip().lower() if hasattr(self, "search_var") else ""
+        for s in self.slot.all_squad_summaries():
+            team_name = s["team_name"]
+            if needle and needle not in f"{s['team_index']} {team_name}".lower():
+                continue
+            bp = s["by_position"]
+            breakdown = f"{bp['GK']}·{bp['DEF']}·{bp['MID']}·{bp['FWD']}"
+            self.tree.insert(
+                "", "end", iid=f"squad-{s['team_index']}",
+                values=(s["team_index"], team_name,
+                        f"{s['avg_age']:.1f}", s["size"], breakdown,
+                        f"{s['avg_skill']:.0f}", s["on_market"]),
+            )
+
     def _on_player_selected(self, event):
         sel = self.tree.selection()
         if not sel or not self.slot:
+            return
+        # Squad Analyst rows are not players — skip the detail-panel update.
+        if sel[0].startswith("squad-"):
             return
         player_id = int(sel[0])
         p = self.slot.get_player(player_id)
@@ -458,6 +654,52 @@ class PMSaveDiskToolGUI:
             self.status_var.set(f"Saved: {os.path.basename(path)}")
         except OSError as e:
             messagebox.showerror("Error", f"Failed to save: {e}")
+
+    def _export_players(self):
+        if not self.slot:
+            messagebox.showwarning("Warning", "No save loaded.")
+            return
+        path = filedialog.asksaveasfilename(
+            title="Export Players",
+            defaultextension=".csv",
+            filetypes=[("CSV", "*.csv"), ("JSON", "*.json")],
+        )
+        if not path:
+            return
+        fmt = "json" if path.lower().endswith(".json") else "csv"
+
+        team_sel = self.team_var.get()
+        if team_sel == "Free Agents":
+            players = self.slot.get_free_agents()
+        elif team_sel.startswith("— ") or team_sel.startswith("All"):
+            players = [p for p in self.slot.players if p.age > 0]
+        elif ":" in team_sel:
+            players = self.slot.get_players_by_team(int(team_sel.split(":")[0]))
+        else:
+            players = [p for p in self.slot.players if p.age > 0]
+
+        rows = [player_to_row(p, self.slot, self.game_disk) for p in players]
+        try:
+            with open(path, "w", newline="", encoding="utf-8") as out:
+                if fmt == "json":
+                    json.dump(rows, out, indent=2)
+                    out.write("\n")
+                elif rows:
+                    writer = csv.DictWriter(out, fieldnames=list(rows[0].keys()))
+                    writer.writeheader()
+                    writer.writerows(rows)
+        except OSError as e:
+            messagebox.showerror("Error", f"Failed to write: {e}")
+            return
+        self.status_var.set(
+            f"Exported {len(rows)} players to {os.path.basename(path)}"
+        )
+
+    def _open_career_tracker(self):
+        if not self.adf or not self.slot:
+            messagebox.showwarning("Warning", "Open a save disk first.")
+            return
+        CareerTrackerWindow(self.root, self.adf, self.adf_path, self.game_disk)
 
     def _show_about(self):
         messagebox.showinfo(

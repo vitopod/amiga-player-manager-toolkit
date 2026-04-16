@@ -10,7 +10,6 @@ Usage:
 
 import argparse
 import csv
-import dataclasses
 import json
 import sys
 import os
@@ -19,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from pm_core import __version__
 from pm_core.adf import ADF, ensure_backup
-from pm_core.save import SaveSlot, FORMATIONS
+from pm_core.save import SaveSlot, FORMATIONS, player_to_row
 from pm_core.player import SKILL_NAMES, POSITION_NAMES, PlayerRecord
 from pm_core.names import GameDisk
 
@@ -329,19 +328,6 @@ def cmd_squad_analyst(args):
               f"(skill {s['best'].total_skill}, {s['best'].position_name})")
 
 
-def _player_to_row(p: PlayerRecord, slot: SaveSlot, gd) -> dict:
-    row = {f.name: getattr(p, f.name) for f in dataclasses.fields(p)}
-    row["position_name"] = p.position_name
-    row["team_name"] = slot.get_team_name(p.team_index)
-    row["is_free_agent"] = p.is_free_agent
-    row["is_transfer_listed"] = p.is_transfer_listed
-    row["is_market_available"] = p.is_market_available
-    row["total_skill"] = p.total_skill
-    row["name"] = (gd.player_full_name(p.rng_seed)
-                   if gd and p.rng_seed else "")
-    return row
-
-
 def cmd_export_players(args):
     adf = ADF.load(args.adf)
     slot = SaveSlot(adf, args.save)
@@ -354,7 +340,7 @@ def cmd_export_players(args):
     else:
         players = [p for p in slot.players if p.age > 0]
 
-    rows = [_player_to_row(p, slot, gd) for p in players]
+    rows = [player_to_row(p, slot, gd) for p in players]
 
     out = open(args.output, "w", newline="", encoding="utf-8") if args.output else sys.stdout
     try:

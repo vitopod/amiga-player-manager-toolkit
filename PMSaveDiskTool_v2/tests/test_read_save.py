@@ -259,6 +259,115 @@ class TestUnknownFieldObservations(unittest.TestCase):
                           "outside observed 1..5 range")
 
 
+class TestSquadSummary(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(TEST_ADF):
+            raise unittest.SkipTest(f"Test ADF not found: {TEST_ADF}")
+        cls.adf = ADF.load(TEST_ADF)
+        cls.slot = SaveSlot(cls.adf, "pm1.sav")
+
+    def test_squad_summary_shape(self):
+        s = self.slot.squad_summary(0)
+        for key in ("team_index", "team_name", "size", "by_position",
+                    "avg_age", "avg_skill", "min_age", "max_age",
+                    "youngest", "oldest", "best", "on_market"):
+            self.assertIn(key, s)
+        self.assertEqual(s["team_index"], 0)
+        self.assertEqual(s["team_name"], "MILAN")
+
+    def test_squad_summary_counts_match_roster(self):
+        s = self.slot.squad_summary(0)
+        roster = [p for p in self.slot.get_players_by_team(0)
+                  if SaveSlot._is_real_player(p)]
+        self.assertEqual(s["size"], len(roster))
+        total_by_pos = sum(s["by_position"].values())
+        self.assertEqual(total_by_pos, s["size"])
+
+    def test_squad_summary_extremes_are_consistent(self):
+        s = self.slot.squad_summary(0)
+        self.assertEqual(s["youngest"].age, s["min_age"])
+        self.assertEqual(s["oldest"].age, s["max_age"])
+        # best has the highest total_skill in the roster
+        roster = [p for p in self.slot.get_players_by_team(0)
+                  if SaveSlot._is_real_player(p)]
+        self.assertEqual(s["best"].total_skill,
+                         max(p.total_skill for p in roster))
+
+    def test_squad_summary_averages_in_range(self):
+        s = self.slot.squad_summary(0)
+        self.assertGreaterEqual(s["avg_age"], s["min_age"])
+        self.assertLessEqual(s["avg_age"], s["max_age"])
+
+    def test_squad_summary_empty_team(self):
+        # Team index 43 ("OLBIA") exists; pick a definitely-empty-ish case
+        # by using a non-existent team index within the valid range.
+        # Instead, synthetically ask for a team with no members by choosing
+        # a team index that has zero real players. If none exists, skip.
+        empty_idx = None
+        for i in range(44):
+            roster = [p for p in self.slot.get_players_by_team(i)
+                      if SaveSlot._is_real_player(p)]
+            if not roster:
+                empty_idx = i
+                break
+        if empty_idx is None:
+            self.skipTest("no empty teams in pm1.sav")
+        s = self.slot.squad_summary(empty_idx)
+        self.assertEqual(s["size"], 0)
+        self.assertIsNone(s["youngest"])
+        self.assertIsNone(s["oldest"])
+        self.assertIsNone(s["best"])
+        self.assertEqual(s["avg_age"], 0.0)
+        self.assertEqual(s["avg_skill"], 0.0)
+
+    def test_all_squad_summaries_skip_empty_teams(self):
+        summaries = self.slot.all_squad_summaries()
+        self.assertGreater(len(summaries), 0)
+        for s in summaries:
+            self.assertGreater(s["size"], 0)
+
+
+class TestDiffPlayers(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(TEST_ADF):
+            raise unittest.SkipTest(f"Test ADF not found: {TEST_ADF}")
+        cls.adf = ADF.load(TEST_ADF)
+        cls.slot1 = SaveSlot(cls.adf, "pm1.sav")
+        cls.slot2 = SaveSlot(cls.adf, "pm2.sav")
+
+    def test_self_diff_is_empty(self):
+        self.assertEqual(self.slot1.diff_players(self.slot1), [])
+
+    def test_diff_shape(self):
+        diffs = self.slot1.diff_players(self.slot2)
+        if not diffs:
+            self.skipTest("pm1.sav and pm2.sav are byte-identical")
+        d = diffs[0]
+        for key in ("player_id", "changed", "skill_delta", "age_delta",
+                    "team_changed", "old", "new"):
+            self.assertIn(key, d)
+        self.assertIsInstance(d["changed"], dict)
+        self.assertGreater(len(d["changed"]), 0)
+
+    def test_diff_deltas_match_records(self):
+        diffs = self.slot1.diff_players(self.slot2)
+        if not diffs:
+            self.skipTest("pm1.sav and pm2.sav are byte-identical")
+        for d in diffs:
+            self.assertEqual(d["skill_delta"],
+                             d["new"].total_skill - d["old"].total_skill)
+            self.assertEqual(d["age_delta"], d["new"].age - d["old"].age)
+            self.assertEqual(d["team_changed"],
+                             d["old"].team_index != d["new"].team_index)
+
+    def test_diff_player_id_is_monotonic(self):
+        diffs = self.slot1.diff_players(self.slot2)
+        ids = [d["player_id"] for d in diffs]
+        self.assertEqual(ids, sorted(ids))
+
+
 class TestPlayerSerialization(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

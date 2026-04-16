@@ -52,7 +52,11 @@ python3 PMSaveDiskTool_v2/pm_cli.py list-players Save1_PM.adf --save pm1.sav --t
 - **Young Talents** — list players aged ≤ 21 sorted by skill; ★ marks who is available on the market
 - **Championship Highlights** — top scorers grouped by division; ★ marks who is available on the market
 - **Top 11** — the best XI of the championship in a chosen formation (4-4-2, 4-3-3, 3-5-2); includes Young XI (≤21) and Free-Agent XI variants, and an optional per-team cap
+- **Squad Analyst** — per-team composition breakdown (roster size, GK/DEF/MID/FWD counts, average age and skill, youngest/oldest/best, on-market count). Available in the GUI as "— Squad Analyst (all teams)", as a per-team summary label above the roster view, and via `pm_cli.py squad-analyst`.
+- **Career Tracker** — diff two save slots (same ADF or two ADFs) to surface skill, age, and team changes per player. Available in the GUI under **Tools → Career Tracker...** and via `pm_cli.py career-tracker`.
+- **Export** players as CSV or JSON for use in spreadsheets or external tools: GUI **File → Export Players...** or `pm_cli.py export-players --format csv|json`.
 - View and edit all player attributes: age, position, skills, career stats
+- **Automatic `.bak`** on first write — your original byte-for-byte state is always recoverable
 - Save changes back to ADF — byte-for-byte compatible with PMSaveDiskTool v1.2
 - Works on Mac, Linux, and Windows
 
@@ -67,7 +71,6 @@ Several features from the previous Mac version have been temporarily removed whi
 are reworked and re-validated. They are still planned for a future release (if feasible):
 
 - **Transfer Market** — move players between teams with full consistency (roster + player DB)
-- **Squad Analyst** — team composition breakdown by position and division
 - **League Stats** — view and edit team standings, division flags, and season records
 - **Patch Composer** — write copy-protection bypass and custom patches into the game disk
 

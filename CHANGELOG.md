@@ -4,6 +4,44 @@ All notable changes to PMSaveDiskTool v2 are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.99] — 2026-04-16
+
+### Added
+- **Squad Analyst in the GUI** — "— Squad Analyst (all teams)" entry in the
+  team dropdown, reusing the tree with repurposed column headings (Team, Age,
+  Size, GK·DEF·MID·FWD, AvgSkill, Mkt). Squad rows are non-selectable for
+  editing.
+- **Per-team Squad Summary label** above the roster whenever a specific team
+  is selected — `"17 players · avg 25.2y · skill 1238 · 2 on market"` — so
+  the roster view and the composition snapshot coexist.
+- **Career Tracker window** under a new Tools menu — diff any two save slots
+  on the current ADF or bring in a second ADF via "Load side-B ADF". Output
+  columns mirror the CLI (id, name, age A/B, skill A/B, Δ, team A/B), with a
+  "Team changes only" filter.
+- **File → Export Players...** — export the current view (all / free agents /
+  team) as CSV or JSON from the GUI. Uses the same schema as the CLI
+  `export-players` subcommand via the new `pm_core.save.player_to_row` helper.
+- **Live player filter** Entry above the tree (filter by id/name/team/position).
+- CLI smoke tests for `squad-analyst` and `career-tracker`
+  (`tests/test_cli.py`, now 19 tests).
+- Unit tests for `SaveSlot.squad_summary`, `SaveSlot.all_squad_summaries`,
+  and `SaveSlot.diff_players` (`tests/test_read_save.py::TestSquadSummary`,
+  `TestDiffPlayers`).
+- `MANUAL.md` sections for `squad-analyst`, `career-tracker`,
+  `export-players`, GUI Squad Analyst / filter / Tools menu / Export,
+  automatic `.bak` on first write, the `--version` flag, and `python -m`
+  entry points.
+
+### Changed
+- `pm_core.save.player_to_row` is the single source of truth for the export
+  row shape; `pm_cli` and the GUI both call it. (Previously duplicated as a
+  private helper in `pm_cli`.)
+
+### Fixed
+- 0.98 shipped the Squad Analyst CLI but neither a GUI entry nor updated
+  READMEs listing the feature. 0.99 closes that gap and adds Career Tracker
+  and Export parity between CLI and GUI.
+
 ## [0.98] — 2026-04-16
 
 ### Added
