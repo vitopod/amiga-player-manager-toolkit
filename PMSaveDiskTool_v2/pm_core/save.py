@@ -99,17 +99,28 @@ class SaveSlot:
         for i in range(len(self.players)):
             self.write_player(i)
 
+    @staticmethod
+    def _is_real_player(p: PlayerRecord) -> bool:
+        """Return True if the record looks like a genuine player.
+
+        Filters out garbage/sentinel records near the end of the database that
+        have age > 0 but invalid position or out-of-range team indices.
+        """
+        valid_team = p.team_index <= 43 or p.team_index == 0xFF
+        valid_position = p.position in (1, 2, 3, 4)
+        return p.age > 0 and valid_team and valid_position
+
     def get_young_talents(self, max_age: int = 21) -> list[PlayerRecord]:
-        """Players aged ≤ max_age with age > 0, sorted by total skill descending."""
+        """Players aged ≤ max_age, sorted by total skill descending."""
         return sorted(
-            [p for p in self.players if 0 < p.age <= max_age],
+            [p for p in self.players if self._is_real_player(p) and p.age <= max_age],
             key=lambda p: p.total_skill,
             reverse=True,
         )
 
     def get_top_scorers(self) -> list[PlayerRecord]:
-        """All active players sorted by division, then goals this year descending."""
+        """Real players sorted by division, then goals this year descending."""
         return sorted(
-            [p for p in self.players if p.age > 0],
+            [p for p in self.players if self._is_real_player(p)],
             key=lambda p: (p.division, -p.goals_this_year),
         )
