@@ -2232,6 +2232,7 @@ def _show_splash(root: tk.Tk) -> None:
 
     splash.bind("<Button-1>", _early)
     splash.bind("<Key>", _early)
+    lbl.bind("<Button-1>", _early)
     splash.focus_set()
 
 
