@@ -4,6 +4,28 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.5] — 2026-04-17
+
+### Fixed
+- **Skills tab** labels were in dim blue (`fg_label`) at 8 pt, making
+  STAMINA / PACE / AGGRESSION / … nearly invisible against the navy
+  background. Brought them in line with the other detail tabs:
+  amber `fg_data` at 10 pt bold.
+- **Notebook tabs** (Core / Skills / Status / Season / Career):
+  unselected tabs used `fg_dim` (#445588) on `bg_mid` (#111188) —
+  basically unreadable. Unselected is now `fg_label`; the selected
+  tab is now amber instead of white, matching PM's in-game convention
+  for highlighted text.
+- **Compare Players** window was riddled with low-contrast text:
+  PLAYER A / B / TEAM / PLAYER headers, the meta line, the radar
+  axis labels, the skill-bar middle labels, and losing values were
+  all brightened and enlarged. Bar row height, value font, and the
+  window width were bumped so the new labels fit.
+- **APPLY / REVERT / DONE** buttons rendered as green-on-green on
+  macOS (Aqua silently drops `bg` on native buttons). Switched the
+  foreground to white, added `highlightbackground` so macOS actually
+  paints the green, and replaced REVERT's dim grey with bold amber.
+
 ## [2.2.4] — 2026-04-17
 
 ### Added
