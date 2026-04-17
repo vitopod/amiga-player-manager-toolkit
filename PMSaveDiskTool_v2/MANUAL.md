@@ -844,6 +844,113 @@ original documentation.
 
 ---
 
+## Hints, Cheats and Suggestions
+
+### Tips from Ray Earle's Game Help
+
+*(Credit: Ray Earle's Game Help)*
+
+- **Young player investment.** Buy a few young, cheap players and keep them in
+  the squad for a whole season. Next year, their price will have increased and
+  you should have no trouble selling them for a huge profit.
+- **Agility is king.** Only buy players with very high agility ratings, as this
+  affects all their other attributes. If agility is high (about 200), expect
+  the player to become an excellent footballer, given a season or two.
+- **Sponsorship trick.** Remove 8 or 9 players from your team, then after 2 or
+  3 big defeats, you will receive sponsorship.
+
+---
+
+> **A note on what's verified.** Player Manager's match engine and AI were
+> never reverse-engineered — PMSaveDiskToolkit can tell you what bytes a
+> player record contains, but it cannot tell you exactly how the game *uses*
+> those bytes during play. The tips below that touch tool-verified mechanics
+> (free agents, transfer-list flag, save-file editing) are solid. Tips that
+> touch engine behaviour (how agility affects growth, how value is computed,
+> what morale threshold degrades performance) are best-effort received wisdom.
+> Where that's the case, it's flagged inline.
+
+---
+
+### General strategy
+
+**Agility first when scouting.** *(Received wisdom — Ray Earle's claim; engine
+behaviour unverified.)* Ray Earle claims agility amplifies every other
+attribute and drives long-term development. The PM engine wasn't
+reverse-engineered, so we can't confirm the mechanism from the bytes alone,
+but the tip is consistent with how the community played the game and with the
+existence of a dedicated agility attribute (byte 0x10). When scanning the
+Young Talents view, sort or scan by agility before overall skill — a
+17-year-old with 180 agility and mediocre other stats is the kind of prospect
+Ray Earle's advice points at.
+
+**Free agents cost nothing.** *(Verified — team_index 0xFF means no
+club.)* Free agents have no club to negotiate with, so the only cost is
+wages. The **Free-Agent XI** view (View → — Free-Agent XI) shows the best
+XI you could assemble right now at zero transfer fee. Worth checking at the
+start of every season; occasionally a top-quality player has been released.
+Cross-reference with the ★ column to find signable prospects.
+
+**Use the Mkt column to find active sellers.** *(Verified — ★ = transfer-
+listed OR free agent.)* In Squad Analyst, teams with a **high Mkt count** are
+the ones *themselves* offering players up. That is the signal that they're
+willing to deal — not squad size. A 20-player squad with 5 listed is a better
+target than a 13-player squad with 0 listed; the thin-squad team is
+*protecting* its players, not offloading them. Click into the team to see
+exactly who's available.
+
+**Track who is improving.** *(Verified — Career Tracker does exactly this
+diff.)* After each season, compare your current save against a backup from
+the previous season (Tools → Career Tracker… / Cmd/Ctrl+T). Sort by skill
+delta descending. Players who gained 20+ points in a season are keepers.
+Players who flatlined after two seasons of growth are candidates to sell
+while their market price still reflects the peak.
+
+**Morale matters.** *(Partially verified — field exists at byte 0x17, 0–255;
+exact in-engine threshold unknown.)* Low morale is widely reported to degrade
+match performance, but the toolkit can't tell you where the cliff is. If a
+signed player goes cold, check the Status tab and watch the morale value
+across a few saves. If it stays low, benching them briefly to break a bad run
+is the folklore remedy.
+
+---
+
+### Editor tips (PMSaveDiskToolkit)
+
+**Fix an injury instantly.** *(Verified byte; in-engine effect expected but
+untested.)* Set *Injury weeks* to 0 in the Status tab and save. The byte is
+the number of weeks remaining, so zeroing it should make the player available
+next match day. Useful for rescuing a season wrecked by a long-term injury.
+
+**Retrain a player's position.** *(Verified — Position byte is directly
+editable.)* The in-game UI rarely lets you convert a player's role. The
+editor lets you change the Position byte (Core tab: 1=GK, 2=DEF, 3=MID,
+4=FWD). A midfielder with high agility and shooting may be more dangerous as
+a forward. Open the Line-up Coach (Cmd/Ctrl+L) afterwards — the Reassignment
+suggestions panel scores the new role and tells you whether the skill profile
+actually fits.
+
+**Build a youngster at peak.** *(Byte-level verified; long-term in-engine
+behaviour — growth, decline, price — not reverse-engineered.)* Set skills to
+200 across the Skills tab and age to 17 in Core. On disk you now have a
+17-year-old at the skill ceiling. Whether the game then leaves them alone,
+re-rolls them, or applies age-based decline is not something the toolkit can
+tell you — try it and see. Keep a backup save.
+
+**Find hidden free agents mid-season.** *(Verified — views re-read the ADF
+whenever you open it.)* Reopening the save disk in the toolkit after any
+in-game transfer window surfaces newly-released players as free agents (★)
+immediately, including players the in-game transfer screen hasn't yet shown
+you.
+
+**On editing Value.** *(Field exists, but whether the game respects it is
+unverified.)* The Value byte (Status tab) is writable, but the match engine
+and AI may recompute value from skills/age whenever they consult it, in which
+case editing it is cosmetic. Untested — don't rely on inflated values for a
+quick sale until you've confirmed it sticks in your own copy of the game.
+
+---
+
 ## Credits
 
 - **PMSaveDiskTool v1.2** by **UltimateBinary** (http://www.ultimatebinary.com)
