@@ -1037,20 +1037,31 @@ class PMSaveDiskToolGUI:
         right = ttk.Frame(paned)
         paned.add(right, weight=1)
 
-        self.detail_header = ttk.Frame(right)
-        self.detail_header.pack(fill=tk.X, padx=6, pady=(6, 2))
+        self.detail_header = tk.Frame(right, bg=PAL["bg_mid"])
+        self.detail_header.pack(fill=tk.X)
 
         self.notebook = ttk.Notebook(right)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
 
-        footer = ttk.Frame(right)
-        footer.pack(fill=tk.X, side=tk.BOTTOM, padx=6, pady=(0, 6))
-        ttk.Separator(footer, orient="horizontal").pack(fill=tk.X, pady=(0, 4))
-        self.apply_button = ttk.Button(footer, text="Apply Changes",
-                                       command=self._apply_changes)
-        self.apply_button.pack(side=tk.RIGHT)
-        ttk.Button(footer, text="Revert",
-                   command=self._revert_player).pack(side=tk.RIGHT, padx=(0, 6))
+        footer = tk.Frame(right, bg=PAL["btn_go"])
+        footer.pack(fill=tk.X, side=tk.BOTTOM)
+        self.apply_button = tk.Button(
+            footer, text="APPLY",
+            bg=PAL["btn_go"], fg=PAL["btn_go_fg"],
+            font=("Courier New", 9, "bold"),
+            relief="flat", bd=0, padx=14, pady=4,
+            activebackground=PAL["selected"], activeforeground="#ffffff",
+            command=self._apply_changes,
+        )
+        self.apply_button.pack(side=tk.RIGHT, padx=(4, 6), pady=4)
+        tk.Button(
+            footer, text="REVERT",
+            bg=PAL["bg_mid"], fg=PAL["fg_dim"],
+            font=("Courier New", 9),
+            relief="flat", bd=0, padx=10, pady=4,
+            activebackground=PAL["selected"], activeforeground="#ffffff",
+            command=self._revert_player,
+        ).pack(side=tk.RIGHT, pady=4)
 
         self.fields = {}
         self._build_detail_fields()
@@ -1086,12 +1097,15 @@ class PMSaveDiskToolGUI:
         for i, (label, key) in enumerate(
             [("Player #", "player_id"), ("Name", "name"), ("Seed", "rng_seed")]
         ):
-            ttk.Label(self.detail_header, text=label, anchor="e").grid(
-                row=0, column=i * 2, sticky="e", padx=(0, 3))
+            tk.Label(self.detail_header, text=label.upper(), anchor="e",
+                     bg=PAL["bg_mid"], fg=PAL["fg_dim"],
+                     font=("Courier New", 8)).grid(
+                         row=0, column=i * 2, sticky="e", padx=(6, 3), pady=6)
             var = tk.StringVar()
-            entry = ttk.Entry(self.detail_header, textvariable=var,
-                              state="readonly", width=14)
-            entry.grid(row=0, column=i * 2 + 1, sticky="w", padx=(0, 10))
+            tk.Label(self.detail_header, textvariable=var,
+                     bg=PAL["bg_mid"], fg=PAL["fg_title"],
+                     font=("Courier New", 10, "bold"), anchor="w").grid(
+                         row=0, column=i * 2 + 1, sticky="w", padx=(0, 16), pady=6)
             self.fields[key] = var
 
         def add_field(parent, label, key, row):
