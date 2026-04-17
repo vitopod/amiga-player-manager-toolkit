@@ -26,6 +26,7 @@ PMSaveDiskTool_v1.2/
 # Screenshots and other personal files
 Screenshot*.png
 *.png
+!PMSaveDiskTool_v2/Loading_IMG.png
 
 # Editor / IDE
 .superpowers/

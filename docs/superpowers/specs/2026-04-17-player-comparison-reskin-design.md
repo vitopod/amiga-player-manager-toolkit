@@ -240,7 +240,34 @@ self.tree.bind("<Button-3>", self._on_tree_right_click)   # Windows/Linux
 
 ---
 
-## 9. Out of Scope
+## 9. Splash Screen
+
+### 9.1 Asset
+
+`Loading_IMG.jpg` (already in repo root) is converted once to `Loading_IMG.png` and committed alongside it. `tk.PhotoImage` supports PNG natively in Tk 8.6+ (Python 3.x standard) — no external libraries needed. The JPG is kept as the authoritative source; the PNG is the runtime asset.
+
+### 9.2 Behaviour
+
+- On launch, before `PMSaveDiskToolGUI.__init__`, a `_SplashScreen` function (or small class) runs:
+  1. `root.withdraw()` — main window invisible
+  2. Create borderless `tk.Toplevel` (`overrideredirect(True)`)
+  3. Load `Loading_IMG.png` via `tk.PhotoImage`, display in a `tk.Label` filling the toplevel
+  4. Centre the toplevel on screen using `winfo_screenwidth/height`
+  5. `root.after(3000, _dismiss)` — after 3 s, destroy toplevel + `root.deiconify()`
+  6. Bind `<Button-1>` and `<Key>` on the splash to also call `_dismiss` (early exit on click/keypress)
+
+### 9.3 Theming
+
+The splash is shown **before** `apply_theme` runs — it is intentionally raw: just the image, no chrome, no palette applied. The first themed surface the user sees is the main window appearing after the splash dismisses.
+
+### 9.4 Constraints
+
+- PNG must live in the same directory as `pm_gui.py` (`PMSaveDiskTool_v2/`)
+- If the file is missing at runtime, splash is skipped silently (no crash) — a `try/except` guards the `PhotoImage` load
+
+---
+
+## 10. Out of Scope
 
 - Comparing players across different save slots or ADFs (Career Tracker covers cross-slot diffs)
 - Saving/exporting a comparison as an image or CSV
