@@ -11,7 +11,8 @@ From there it grew into something broader: Mac / Linux / Windows support,
 a full command-line interface, player name generation from the game disk,
 and a stack of analytical views — Young Talents, Championship Highlights,
 Top 11 of the championship, Squad Analyst, Career Tracker, Byte Workbench,
-and Line-up Coach (BETA). The editor stays byte-for-byte compatible with v1.2.
+Line-up Coach (BETA), and a graphical **Compare Players** window. The editor
+stays byte-for-byte compatible with v1.2.
 
 ---
 
@@ -68,8 +69,11 @@ python3 PMSaveDiskTool_v2/pm_cli.py list-players your_save.adf --save pm1.sav --
 - **Career Tracker** — diff two save slots to track skill, age, and team changes per player. GUI: **Tools → Career Tracker...**. CLI: `pm_cli.py career-tracker`.
 - **Byte Workbench** — reverse-engineering tool for the player record: raw byte dump with field labels, value histogram, and bit-level diff between two player sets. GUI: **Tools → Byte Workbench...**. CLI: `pm_cli.py byte-stats`, `pm_cli.py byte-diff`.
 - **Line-up Coach (BETA)** — suggests a starting XI using a 12-role taxonomy layered on PM's skill fields; ranks formations by a composite of skill, role fit, morale, and form. BETA: scoring is a heuristic, not a reconstruction of PM's match engine. GUI: **Tools → Line-up Coach (BETA)...**. CLI: `pm_cli.py suggest-xi`.
+- **Compare Players** — graphical side-by-side comparison: radar chart (10-axis spider chart) + skill bars for any two players. Right-click any player in the list → **Send to Compare…**, or **Tools → Compare Players…** (Cmd/Ctrl+P).
 - **Export** players as CSV or JSON for use in spreadsheets or external tools. GUI: **File → Export Players...**. CLI: `pm_cli.py export-players --format csv|json`.
 - View and edit all player attributes: age, position, skills, career stats
+- **Live skill bars** — the Skills tab shows a colour-coded mini-bar next to each attribute that updates in real time as you edit values.
+- **Game-inspired visual theme** — deep navy / amber / cyan palette throughout the GUI, with a splash screen on launch.
 - **Automatic `.bak`** on first write — your original state is always recoverable
 - Byte-for-byte compatible with PMSaveDiskTool v1.2
 - Works on Mac, Linux, and Windows

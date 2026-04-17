@@ -79,7 +79,9 @@ are unaffected: `PM1.nam` still wins.
 python3 pm_gui.py
 ```
 
-Then: **File → Open Save Disk…** (Cmd/Ctrl+O) and pick your save disk ADF.
+A splash screen is shown briefly on launch (click or press any key to dismiss early). Then: **File → Open Save Disk…** (Cmd/Ctrl+O) and pick your save disk ADF.
+
+The GUI uses a game-inspired dark theme — deep navy background, amber data values, cyan accents — consistent across all windows.
 
 ### Layout
 
@@ -116,6 +118,7 @@ Then: **File → Open Save Disk…** (Cmd/Ctrl+O) and pick your save disk ADF.
 | Tools | Career Tracker… | Cmd/Ctrl+T |
 | Tools | Byte Workbench… | Cmd/Ctrl+B |
 | Tools | Line-up Coach (BETA)… | Cmd/Ctrl+L |
+| Tools | Compare Players… | Cmd/Ctrl+P |
 
 On macOS **About** lives in the apple menu and **Quit** is Cmd+Q.
 
@@ -155,6 +158,8 @@ approach.
    weight), **Skills** (the ten skill attributes), **Status** (injury, morale,
    discipline, value), **Season** (goals, matches, discipline points this/last
    year), **Career** (years in each division, international, contract).
+   In the Skills tab, a colour-coded bar next to each attribute updates live
+   as you type or spin the value.
 3. Change any value.
 4. Click **Apply Changes** (Cmd/Ctrl+Return) — this updates the in-memory
    image. The window title gains a **•** marker.
@@ -337,6 +342,42 @@ forward form for the selected XI.
 | TGT | Forward | Shooting, resilience — tall target |
 | WNG | Forward | Pace, flair — wide forward |
 | DLF | Forward | Passing, flair — deep-lying |
+
+---
+
+### Compare Players
+
+**What it does:** Opens a graphical window that places two players side by side —
+a radar chart (10-axis spider chart) on the left and a paired skill-bar chart on
+the right — so you can see at a glance who leads where.
+
+**How to open:**
+
+- **Right-click** any player row in the list → **Send to Compare…** (sets that
+  player as Player A and opens the window if it isn't already open).
+- **Tools → Compare Players…** (Cmd/Ctrl+P) — opens the window with no Player A
+  pre-selected.
+
+If the window is already open, right-clicking another player updates Player A
+without closing and reopening.
+
+**How to use:**
+
+1. Player A is set from the right-click. It is shown in the header row (read-only).
+2. Pick a **team** from the Team combo, then pick a **player** from the Player B
+   combo. The charts redraw immediately.
+3. Use **⇄** to swap A and B — Player A becomes B and vice versa, then the
+   charts redraw.
+4. The status line at the bottom shows **"A leads on N/10 skills"** (or B, or
+   "Tied") based on the raw skill counts.
+5. Click **Done** to close the window.
+
+**Reading the charts:**
+
+| Chart | What it shows |
+|-------|--------------|
+| Radar | Ten-spoke spider chart. Each spoke = one skill, scaled 0–200. Player A = blue; Player B = red. Both polygons are outline-only so they don't obscure each other. |
+| Bars | Side-by-side horizontal bars, one row per skill. Scale 0–200 — no skill can reach the end of a full bar at the game's maximum value. The winning value for each row is highlighted brighter. |
 
 ---
 
