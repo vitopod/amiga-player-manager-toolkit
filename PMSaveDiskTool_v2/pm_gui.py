@@ -1093,7 +1093,15 @@ class PlayerCompareWindow(tk.Toplevel):
         row_h = 24
         val_w = 26
         label_w = 58
-        half_bar = 200
+        half_bar = 200  # max bar length in pixels (full skill = 200px)
+        canvas_w = 540
+        # Centre the block: val_w + half_bar + label_w + half_bar + val_w
+        x0 = (canvas_w - val_w - half_bar - label_w - half_bar - val_w) // 2
+
+        bax1 = x0 + val_w          # bar A left edge
+        bax2 = bax1 + half_bar     # bar A right edge
+        bbx1 = bax2 + label_w      # bar B left edge
+        bbx2 = bbx1 + half_bar     # bar B right edge
 
         for idx, (skill_label, va, vb) in enumerate(
             zip(self._SKILL_LABELS, vals_a, vals_b)
@@ -1107,31 +1115,26 @@ class PlayerCompareWindow(tk.Toplevel):
             fg_a  = PAL["player_a"] if win_a else PAL["fg_dim"]
             fg_b  = PAL["player_b"] if win_b else PAL["fg_dim"]
 
-            x0 = 6
-            c.create_text(x0 + val_w, y + 8, text=str(va),
+            fill_a = int((va / self._MAX_SKILL) * half_bar)
+            fill_b = int((vb / self._MAX_SKILL) * half_bar)
+
+            c.create_text(bax1 - 3, y + 8, text=str(va),
                           fill=fg_a, font=("Courier New", 9, "bold" if win_a else "normal"),
                           anchor="e")
-            bax2 = x0 + val_w + half_bar
-            bax1 = x0 + val_w + 4
-            fill_a = int((va / self._MAX_SKILL) * (half_bar - 4))
             c.create_rectangle(bax1, y + 5, bax2, y + 11,
                                fill=PAL["bar_trough"], outline=PAL["border"])
             if fill_a:
                 c.create_rectangle(bax2 - fill_a, y + 5, bax2, y + 11,
                                    fill=col_a, outline="")
-            mid_x = bax2 + label_w // 2
-            c.create_text(mid_x, y + 8, text=skill_label,
+            c.create_text(bax2 + label_w // 2, y + 8, text=skill_label,
                           fill=PAL["fg_label"], font=("Courier New", 7),
                           anchor="center")
-            bbx1 = bax2 + label_w
-            bbx2 = bbx1 + half_bar - 4
-            fill_b = int((vb / self._MAX_SKILL) * (half_bar - 4))
             c.create_rectangle(bbx1, y + 5, bbx2, y + 11,
                                fill=PAL["bar_trough"], outline=PAL["border"])
             if fill_b:
                 c.create_rectangle(bbx1, y + 5, bbx1 + fill_b, y + 11,
                                    fill=col_b, outline="")
-            c.create_text(bbx2 + 4, y + 8, text=str(vb),
+            c.create_text(bbx2 + 3, y + 8, text=str(vb),
                           fill=fg_b, font=("Courier New", 9, "bold" if win_b else "normal"),
                           anchor="w")
 
