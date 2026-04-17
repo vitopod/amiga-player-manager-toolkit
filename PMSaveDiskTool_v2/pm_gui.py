@@ -165,11 +165,11 @@ def apply_theme(root: tk.Tk) -> None:
     style.map("Treeview.Heading",
               background=[("active", sel)])
     style.configure("TNotebook",     background=bg, borderwidth=0)
-    style.configure("TNotebook.Tab", background=bg_mid, foreground=fg_dim,
+    style.configure("TNotebook.Tab", background=bg_mid, foreground=fg_lbl,
                     padding=(10, 4), font=_retro(11, "bold"))
     style.map("TNotebook.Tab",
               background=[("selected", bg)],
-              foreground=[("selected", PAL["fg_white"])])
+              foreground=[("selected", PAL["fg_data"])])
     style.configure("TSeparator",    background=border)
     style.configure("TScrollbar",    background=bg_mid, troughcolor=bg,
                     arrowcolor=fg_lbl, borderwidth=0)
@@ -1539,9 +1539,9 @@ class PMSaveDiskToolGUI:
                 row = i - half
 
             tk.Label(skills_tab, text=f"{skill.upper()}:", anchor="e",
-                     bg=PAL["bg"], fg=PAL["fg_label"],
-                     font=("Courier New", 8)).grid(
-                         row=row, column=lc, sticky="e", padx=(8, 3), pady=3)
+                     bg=PAL["bg"], fg=PAL["fg_data"],
+                     font=("Courier New", 10, "bold")).grid(
+                         row=row, column=lc, sticky="e", padx=(8, 3), pady=4)
 
             var = tk.StringVar()
             tk.Entry(skills_tab, textvariable=var, width=5,
