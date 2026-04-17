@@ -7,6 +7,7 @@ Open ADF -> Select save slot -> Browse players by team -> Edit attributes -> Sav
 
 import csv
 import json
+import math
 import os
 import sys
 import tkinter as tk
@@ -82,6 +83,9 @@ PAL = {
     "border":     "#2244aa",
     "field":      "#000044",   # entry/combobox field background
     "fg_white":   "#ffffff",   # selected/active foreground
+    "radar_bg":   "#000055",   # radar canvas background (intentionally lighter than bg)
+    "bar_trough": "#111144",   # skill bar trough fill
+    "status_bar": "#000033",   # status bar frame background
 }
 
 
@@ -857,7 +861,7 @@ class PlayerCompareWindow(tk.Toplevel):
 
         tk.Button(row, text="⇄", bg=PAL["bg_mid"], fg=PAL["fg_dim"],
                   font=("Courier New", 14), relief="flat", bd=0,
-                  activebackground=PAL["selected"], activeforeground="#ffffff",
+                  activebackground=PAL["selected"], activeforeground=PAL["fg_white"],
                   command=self._swap).pack(side=tk.LEFT, padx=8)
 
         b_frame = tk.Frame(row, bg=PAL["bg_mid"])
@@ -899,10 +903,10 @@ class PlayerCompareWindow(tk.Toplevel):
         body.pack(fill=tk.BOTH, expand=True)
         tk.Frame(body, bg=PAL["border"], width=1).pack(side=tk.LEFT, fill=tk.Y)
 
-        radar_frame = tk.Frame(body, bg="#000055")
+        radar_frame = tk.Frame(body, bg=PAL["radar_bg"])
         radar_frame.pack(side=tk.LEFT, fill=tk.Y)
         self._radar_canvas = tk.Canvas(radar_frame, width=310, height=310,
-                                       bg="#000055", highlightthickness=0)
+                                       bg=PAL["radar_bg"], highlightthickness=0)
         self._radar_canvas.pack(padx=6, pady=6)
 
         tk.Frame(body, bg=PAL["border"], width=1).pack(side=tk.LEFT, fill=tk.Y)
@@ -937,7 +941,7 @@ class PlayerCompareWindow(tk.Toplevel):
         tk.Button(bar, text="DONE", bg=PAL["btn_go"], fg=PAL["btn_go_fg"],
                   font=("Courier New", 9, "bold"),
                   relief="flat", bd=0, padx=16, pady=3,
-                  activebackground=PAL["selected"], activeforeground="#ffffff",
+                  activebackground=PAL["selected"], activeforeground=PAL["fg_white"],
                   command=self.destroy).pack(side=tk.RIGHT, padx=8, pady=4)
 
     def _player_name(self, p) -> str:
@@ -1029,20 +1033,17 @@ class PlayerCompareWindow(tk.Toplevel):
         return [getattr(p, s) for s in SKILL_NAMES]
 
     def _radar_point(self, i: int, val: int) -> tuple[float, float]:
-        import math
         angle = (i * 2 * math.pi / self._N) - math.pi / 2
         ratio = max(0, min(val, self._MAX_SKILL)) / self._MAX_SKILL
         return (self._CX + ratio * self._R * math.cos(angle),
                 self._CY + ratio * self._R * math.sin(angle))
 
     def _axis_tip(self, i: int) -> tuple[float, float]:
-        import math
         angle = (i * 2 * math.pi / self._N) - math.pi / 2
         return (self._CX + self._R * math.cos(angle),
                 self._CY + self._R * math.sin(angle))
 
     def _draw_radar(self):
-        import math
         c = self._radar_canvas
         c.delete("all")
         cx, cy, r, n = self._CX, self._CY, self._R, self._N
@@ -1121,7 +1122,7 @@ class PlayerCompareWindow(tk.Toplevel):
             bax1 = x0 + val_w + 4
             fill_a = int((va / self._MAX_SKILL) * (half_bar - 4))
             c.create_rectangle(bax1, y + 5, bax2, y + 11,
-                               fill="#111144", outline=PAL["border"])
+                               fill=PAL["bar_trough"], outline=PAL["border"])
             if fill_a:
                 c.create_rectangle(bax2 - fill_a, y + 5, bax2, y + 11,
                                    fill=col_a, outline="")
@@ -1133,7 +1134,7 @@ class PlayerCompareWindow(tk.Toplevel):
             bbx2 = bbx1 + half_bar - 4
             fill_b = int((vb / self._MAX_SKILL) * (half_bar - 4))
             c.create_rectangle(bbx1, y + 5, bbx2, y + 11,
-                               fill="#111144", outline=PAL["border"])
+                               fill=PAL["bar_trough"], outline=PAL["border"])
             if fill_b:
                 c.create_rectangle(bbx1, y + 5, bbx1 + fill_b, y + 11,
                                    fill=col_b, outline="")
@@ -1415,7 +1416,7 @@ class PMSaveDiskToolGUI:
             bg=PAL["btn_go"], fg=PAL["btn_go_fg"],
             font=("Courier New", 9, "bold"),
             relief="flat", bd=0, padx=14, pady=4,
-            activebackground=PAL["selected"], activeforeground="#ffffff",
+            activebackground=PAL["selected"], activeforeground=PAL["fg_white"],
             command=self._apply_changes,
         )
         self.apply_button.pack(side=tk.RIGHT, padx=(4, 6), pady=4)
@@ -1424,7 +1425,7 @@ class PMSaveDiskToolGUI:
             bg=PAL["bg_mid"], fg=PAL["fg_dim"],
             font=("Courier New", 9),
             relief="flat", bd=0, padx=10, pady=4,
-            activebackground=PAL["selected"], activeforeground="#ffffff",
+            activebackground=PAL["selected"], activeforeground=PAL["fg_white"],
             command=self._revert_player,
         ).pack(side=tk.RIGHT, pady=4)
 
@@ -1528,18 +1529,18 @@ class PMSaveDiskToolGUI:
     # ── Status bar ────────────────────────────────────────────
 
     def _build_status_bar(self):
-        bar = tk.Frame(self.root, bg="#000033", height=22)
+        bar = tk.Frame(self.root, bg=PAL["status_bar"], height=22)
         bar.pack(fill=tk.X, side=tk.BOTTOM)
         bar.pack_propagate(False)
 
         self.status_var = tk.StringVar(value="Open a save disk to begin.")
         tk.Label(bar, textvariable=self.status_var, anchor="w",
-                 bg="#000033", fg=PAL["fg_dim"],
+                 bg=PAL["status_bar"], fg=PAL["fg_dim"],
                  font=("Courier New", 9)).pack(
                      side=tk.LEFT, fill=tk.X, expand=True, padx=6)
 
         self.game_label = tk.Label(bar, text="No game disk",
-                                   bg="#000033", fg=PAL["fg_dim"],
+                                   bg=PAL["status_bar"], fg=PAL["fg_dim"],
                                    font=("Courier New", 9), anchor="e")
         self.game_label.pack(side=tk.RIGHT, padx=6)
 
@@ -1798,7 +1799,7 @@ class PMSaveDiskToolGUI:
                 val = 0
             val = max(0, min(val, 99))
             fill_w = int(60 * val / 99)
-            bar.create_rectangle(0, 0, 60, 8, fill="#111144", outline=PAL["border"])
+            bar.create_rectangle(0, 0, 60, 8, fill=PAL["bar_trough"], outline=PAL["border"])
             if fill_w > 0:
                 bar.create_rectangle(0, 0, fill_w, 8,
                                      fill=PAL["fg_title"], outline="")
@@ -1814,7 +1815,7 @@ class PMSaveDiskToolGUI:
             val = 0
         val = max(0, min(val, 99))
         fill_w = int(60 * val / 99)
-        bar.create_rectangle(0, 0, 60, 8, fill="#111144", outline=PAL["border"])
+        bar.create_rectangle(0, 0, 60, 8, fill=PAL["bar_trough"], outline=PAL["border"])
         if fill_w > 0:
             bar.create_rectangle(0, 0, fill_w, 8, fill=PAL["fg_title"], outline="")
 
@@ -2203,6 +2204,7 @@ def _show_splash(root: tk.Tk) -> None:
     try:
         photo = tk.PhotoImage(file=img_path)
     except tk.TclError:
+        root.deiconify()
         return  # missing asset — skip splash silently
 
     splash = tk.Toplevel(root)
