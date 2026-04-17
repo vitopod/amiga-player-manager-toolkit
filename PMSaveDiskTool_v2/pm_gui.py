@@ -814,7 +814,7 @@ class PlayerCompareWindow(tk.Toplevel):
     def __init__(self, parent, slot, game_disk, player_a=None):
         super().__init__(parent)
         self.title("Compare Players")
-        self.geometry("760x540")
+        self.geometry("960x540")
         self.minsize(640, 460)
         self.configure(bg=PAL["bg"])
 
@@ -1099,7 +1099,7 @@ class PlayerCompareWindow(tk.Toplevel):
         bar_max = max(60, cw - 120)
         val_w = 26
         label_w = 58
-        half_bar = (bar_max - label_w) // 2
+        half_bar = min((bar_max - label_w) // 2, 200)
 
         for idx, (skill_label, va, vb) in enumerate(
             zip(self._SKILL_LABELS, vals_a, vals_b)
