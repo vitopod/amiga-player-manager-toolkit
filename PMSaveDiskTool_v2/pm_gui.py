@@ -65,6 +65,23 @@ RECENT_LIMIT = 5
 GITHUB_URL = "https://github.com/vitopod/amiga-player-manager-toolkit"
 LICENSE_URL = f"{GITHUB_URL}/blob/main/LICENSE"
 
+PAL = {
+    "bg":         "#000066",
+    "bg_mid":     "#111188",
+    "bg_header":  "#3355aa",
+    "fg_title":   "#00ddff",
+    "fg_data":    "#ffcc00",
+    "fg_label":   "#7799cc",
+    "fg_dim":     "#445588",
+    "player_a":   "#44ccff",
+    "player_b":   "#ff6666",
+    "free_agent": "#44cc44",
+    "btn_go":     "#006600",
+    "btn_go_fg":  "#44ff44",
+    "selected":   "#3344aa",
+    "border":     "#2244aa",
+}
+
 
 def _load_recent() -> list[str]:
     try:
@@ -82,6 +99,59 @@ def _save_recent(paths: list[str]) -> None:
             json.dump({"save_adfs": paths[:RECENT_LIMIT]}, f, indent=2)
     except OSError:
         pass  # recent list is best-effort
+
+
+def apply_theme(root: tk.Tk) -> None:
+    """Configure ttk.Style globally with the Player Manager palette."""
+    style = ttk.Style(root)
+    try:
+        style.theme_use("clam")
+    except tk.TclError:
+        pass
+
+    bg      = PAL["bg"]
+    bg_mid  = PAL["bg_mid"]
+    bg_hdr  = PAL["bg_header"]
+    fg_data = PAL["fg_data"]
+    fg_lbl  = PAL["fg_label"]
+    fg_dim  = PAL["fg_dim"]
+    sel     = PAL["selected"]
+    border  = PAL["border"]
+
+    style.configure("TFrame",        background=bg)
+    style.configure("TLabel",        background=bg,     foreground=fg_data)
+    style.configure("TButton",       background=bg_mid, foreground=fg_data,
+                    relief="flat",   borderwidth=1)
+    style.map("TButton",
+              background=[("active", sel)],
+              foreground=[("active", "#ffffff")])
+    style.configure("TEntry",        fieldbackground="#000044", foreground=fg_data,
+                    insertcolor=fg_data, bordercolor=border, selectbackground=sel)
+    style.configure("TCombobox",     fieldbackground="#000044", foreground=fg_data,
+                    selectbackground=sel, arrowcolor=fg_lbl)
+    style.map("TCombobox",
+              fieldbackground=[("readonly", "#000044")],
+              foreground=[("readonly", fg_data)])
+    style.configure("Treeview",      background=bg,  foreground=fg_data,
+                    fieldbackground=bg, rowheight=20)
+    style.map("Treeview",
+              background=[("selected", sel)],
+              foreground=[("selected", "#ffffff")])
+    style.configure("Treeview.Heading", background=bg_hdr, foreground=PAL["fg_title"],
+                    relief="flat")
+    style.map("Treeview.Heading",
+              background=[("active", sel)])
+    style.configure("TNotebook",     background=bg, borderwidth=0)
+    style.configure("TNotebook.Tab", background=bg_mid, foreground=fg_dim,
+                    padding=(8, 3))
+    style.map("TNotebook.Tab",
+              background=[("selected", bg)],
+              foreground=[("selected", fg_data)])
+    style.configure("TSeparator",    background=border)
+    style.configure("TScrollbar",    background=bg_mid, troughcolor=bg,
+                    arrowcolor=fg_lbl, borderwidth=0)
+
+    root.configure(bg=bg)
 
 
 class CareerTrackerWindow(tk.Toplevel):
@@ -1623,7 +1693,10 @@ class PMSaveDiskToolGUI:
 
 def main():
     root = tk.Tk()
+    root.withdraw()
+    apply_theme(root)
     app = PMSaveDiskToolGUI(root)
+    root.deiconify()
     root.mainloop()
 
 
