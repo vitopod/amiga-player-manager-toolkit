@@ -1694,7 +1694,6 @@ class PMSaveDiskToolGUI:
 
 
 def _show_splash(root: tk.Tk) -> None:
-    """Show a 3-second borderless splash screen, dismissable on click/key."""
     img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Loading_IMG.png")
     try:
         photo = tk.PhotoImage(file=img_path)
