@@ -4,6 +4,47 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] — 2026-04-17
+
+### Fixed
+- **Season & career fields were misaligned by one byte.** Everything from
+  offset `0x1B` onwards in the 42-byte player record was read one byte too
+  early, so (for example) *Matches Last Year* surfaced as *Div1 Years*,
+  *Contract Years* surfaced as an unidentified "last_byte", and every
+  other season/career stat was off by one slot. Verified against an
+  in-game career screen (Galassi, HURGADA: matches_last=5, div3=4, div4=1,
+  contract=3 all now match). The real layout is: reserved2 at `0x1B`
+  (zero for 1033/1035 real players), season stats at `0x1C..0x23`, career
+  years div1..4 + international at `0x24..0x28`, and `contract_years`
+  (1..5) at `0x29`.
+- **Aggression displayed the raw on-disk byte instead of the in-game
+  value.** The stat is stored *inverted* — raw disk byte = 200 − displayed.
+  A "calm" player (in-game aggression 28) was showing as 172 throughout
+  the GUI, CLI, Compare Players, Line-up Coach card-risk heuristic, and
+  CSV/JSON exports. `parse_player` / `serialize_player` now invert, so
+  `PlayerRecord.aggression` holds the in-game value; round-trip
+  serialization remains byte-identical.
+- Applies equally to Italian and English/BETA save disks — both builds
+  share the same 42-byte record format.
+
+### Changed
+- `PlayerRecord.last_byte` is gone; its byte (`0x29`) is now
+  `contract_years`. `PlayerRecord.reserved2` (new) holds `0x1B`.
+- CSV/JSON exports gain a `reserved2` column and drop `last_byte`; all
+  season/career columns now carry correct values.
+
+### Tests
+- Round-trip (`test_roundtrip_all_players`, `test_roundtrip_full_adf`)
+  still passes — byte-identical across parse → serialize.
+- Renamed `test_last_byte_in_expected_range` → `test_contract_years_in_expected_range`.
+- Added `test_reserved2_mostly_zero` documenting the 0x1B invariant.
+
+### Known remaining mystery
+- `injuries_last_year` (byte `0x1D`) for Galassi is `9` on disk but the
+  game displays `3`. Possibly a weeks-vs-events or scaling difference on
+  that single byte; unrelated to the alignment bug and worth a separate
+  investigation.
+
 ## [2.1.2] — 2026-04-17
 
 ### Fixed
