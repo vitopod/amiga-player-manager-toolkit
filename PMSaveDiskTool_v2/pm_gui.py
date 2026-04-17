@@ -1693,12 +1693,52 @@ class PMSaveDiskToolGUI:
         top.grab_set()
 
 
+def _show_splash(root: tk.Tk) -> None:
+    """Show a 3-second borderless splash screen, dismissable on click/key."""
+    img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Loading_IMG.png")
+    try:
+        photo = tk.PhotoImage(file=img_path)
+    except tk.TclError:
+        return  # missing asset — skip splash silently
+
+    splash = tk.Toplevel(root)
+    splash.overrideredirect(True)
+
+    w, h = photo.width(), photo.height()
+    sw = root.winfo_screenwidth()
+    sh = root.winfo_screenheight()
+    x = (sw - w) // 2
+    y = (sh - h) // 2
+    splash.geometry(f"{w}x{h}+{x}+{y}")
+
+    lbl = tk.Label(splash, image=photo, bd=0)
+    lbl.pack()
+    lbl.image = photo  # prevent GC
+
+    def _dismiss():
+        try:
+            splash.destroy()
+        except tk.TclError:
+            pass
+        root.deiconify()
+
+    _id = root.after(3000, _dismiss)
+
+    def _early(event=None):
+        root.after_cancel(_id)
+        _dismiss()
+
+    splash.bind("<Button-1>", _early)
+    splash.bind("<Key>", _early)
+    splash.focus_set()
+
+
 def main():
     root = tk.Tk()
-    root.withdraw()
-    apply_theme(root)
+    root.withdraw()          # hide while splash shows
+    _show_splash(root)
+    apply_theme(root)        # theme before main window builds
     app = PMSaveDiskToolGUI(root)
-    root.deiconify()
     root.mainloop()
 
 
