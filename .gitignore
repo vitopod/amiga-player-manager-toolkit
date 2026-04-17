@@ -33,6 +33,7 @@ Screenshot*.png
 
 # Superpowers plans and specs (local dev artefacts)
 docs/superpowers/
+.github/workflows/
 
 # Editor / IDE
 .superpowers/
