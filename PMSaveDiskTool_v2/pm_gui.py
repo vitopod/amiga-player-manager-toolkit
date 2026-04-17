@@ -26,6 +26,7 @@ from pm_core.player import (
 from pm_core.names import GameDisk
 from pm_core import workbench
 from pm_core import lineup
+from pm_core import updates
 
 # Preset filters shared by the Byte Workbench tabs. "Real players" uses the
 # same garbage-record guard as the Young Talents / Best XI views.
@@ -87,25 +88,6 @@ PAL = {
     "bar_trough": "#111144",   # skill bar trough fill
     "status_bar": "#000033",   # status bar frame background
 }
-
-
-def _version_tuple(v: str) -> tuple[int, ...]:
-    """Parse a dotted version string into an int tuple for ordering.
-
-    Stops at the first non-digit inside each component, so ``"2.2.1-rc1"``
-    compares as ``(2, 2, 1)`` — good enough for the Help → Check for
-    Updates comparison; we never ship pre-release tags.
-    """
-    parts: list[int] = []
-    for chunk in v.split("."):
-        digits = ""
-        for ch in chunk:
-            if ch.isdigit():
-                digits += ch
-            else:
-                break
-        parts.append(int(digits) if digits else 0)
-    return tuple(parts)
 
 
 def _load_recent() -> list[str]:
@@ -1197,6 +1179,11 @@ class PMSaveDiskToolGUI:
         if sys.platform == "darwin":
             self.root.createcommand("tk::mac::Quit", self._on_quit)
 
+        # Fire the daily update check after the window has mapped and the
+        # splash screen has had a moment to settle. 800 ms is enough for
+        # both on every OS the toolkit targets.
+        self.root.after(800, self._schedule_startup_update_check)
+
     # ── Title band ────────────────────────────────────────────
 
     def _build_title_band(self):
@@ -1210,6 +1197,16 @@ class PMSaveDiskToolGUI:
             font=("Courier New", 12, "bold"),
         )
         self._title_left.pack(side=tk.LEFT, padx=10)
+
+        # Update banner sits next to the title; hidden until the
+        # background or manual check finds a newer release on GitHub.
+        self._title_banner = tk.Label(
+            band, text="",
+            bg=PAL["fg_data"], fg=PAL["bg_header"],
+            font=("Courier New", 9, "bold"),
+            cursor="hand2",
+        )
+        # intentionally not packed here — shown later via _show_update_banner
 
         self._title_right = tk.Label(
             band, text="",
@@ -1320,6 +1317,8 @@ class PMSaveDiskToolGUI:
         help_menu.add_command(label="Open Manual", command=self._open_manual)
         help_menu.add_command(label="Check for Updates…",
                               command=self._check_for_updates)
+        help_menu.add_command(label="Preferences…",
+                              command=self._show_preferences)
         if not is_mac:
             help_menu.add_separator()
             help_menu.add_command(label="About", command=self._show_about)
@@ -2183,44 +2182,21 @@ class PMSaveDiskToolGUI:
         manual = os.path.join(os.path.dirname(os.path.abspath(__file__)), "MANUAL.md")
         webbrowser.open(f"file://{manual}")
 
-    # Hits the public GitHub Releases API with no auth — 60 requests/hr/IP
-    # is plenty for on-demand checks. If we ever add an automatic check on
-    # launch this needs caching (e.g. skip if checked in the last 24 h).
-    _UPDATE_CHECK_URL = (
-        "https://api.github.com/repos/vitopod/"
-        "amiga-player-manager-toolkit/releases/latest"
-    )
-    _RELEASES_PAGE_URL = (
-        "https://github.com/vitopod/amiga-player-manager-toolkit/releases"
-    )
-
     def _check_for_updates(self):
-        import urllib.request
-        import urllib.error
-        req = urllib.request.Request(
-            self._UPDATE_CHECK_URL,
-            headers={"Accept": "application/vnd.github+json"},
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-        except (urllib.error.URLError, TimeoutError, OSError) as e:
+        """Help → Check for Updates… — synchronous, user-driven path."""
+        result = updates.fetch_latest()
+        if result is None:
             messagebox.showerror(
                 "Check for Updates",
-                f"Could not reach GitHub.\n\n{e}",
+                "Could not reach GitHub. Check your internet connection "
+                "and try again.",
                 parent=self.root,
             )
             return
-        latest = str(data.get("tag_name", "")).lstrip("v").strip()
-        if not latest:
-            messagebox.showerror(
-                "Check for Updates",
-                "GitHub returned no release information.",
-                parent=self.root,
-            )
-            return
-        if _version_tuple(latest) > _version_tuple(__version__):
-            url = data.get("html_url") or self._RELEASES_PAGE_URL
+        latest, url = result
+        self._persist_latest_result(latest, url)
+        if updates.is_newer(latest, __version__):
+            self._show_update_banner(latest, url)
             if messagebox.askyesno(
                 "Update available",
                 f"A newer version is available.\n\n"
@@ -2231,11 +2207,131 @@ class PMSaveDiskToolGUI:
             ):
                 webbrowser.open(url)
         else:
+            self._hide_update_banner()
             messagebox.showinfo(
                 "Up to date",
                 f"You're running the latest version ({__version__}).",
                 parent=self.root,
             )
+
+    # ── Automatic (opt-in, daily) update check ─────────────────
+
+    def _schedule_startup_update_check(self):
+        """Run after the main window is mapped — never blocks startup.
+
+        First launch shows a yes/no opt-in; subsequent launches only hit
+        the network when the 24 h cache window has elapsed. The actual
+        fetch runs in a daemon thread; the result is marshalled back to
+        the Tk thread via ``root.after``.
+        """
+        state = updates.load_state()
+        if state.get("opted_in") is None:
+            self._prompt_update_optin(state)
+            state = updates.load_state()
+        if not updates.should_check(state):
+            # Still surface a previously-cached update, if any.
+            latest = state.get("latest_version") or ""
+            if latest and updates.is_newer(latest, __version__):
+                self._show_update_banner(latest,
+                                         state.get("release_url") or
+                                         updates.RELEASES_PAGE_URL)
+            return
+        import threading
+        threading.Thread(target=self._bg_fetch_update,
+                         daemon=True).start()
+
+    def _prompt_update_optin(self, state: dict):
+        answer = messagebox.askyesno(
+            "Check for updates?",
+            "Should PMSaveDiskToolkit check GitHub once a day for new "
+            "releases?\n\n"
+            "It never sends anything about you or your save files — just a "
+            "single HTTPS request to the public release feed.\n\n"
+            "You can change this any time in Help → Preferences.",
+            parent=self.root,
+        )
+        state["opted_in"] = bool(answer)
+        updates.save_state(state)
+
+    def _bg_fetch_update(self):
+        result = updates.fetch_latest()
+        self.root.after(0, self._apply_bg_update_result, result)
+
+    def _apply_bg_update_result(self, result):
+        if result is None:
+            return  # silent on network failure; retry next launch
+        latest, url = result
+        self._persist_latest_result(latest, url)
+        if updates.is_newer(latest, __version__):
+            self._show_update_banner(latest, url)
+
+    def _persist_latest_result(self, latest: str, url: str):
+        import time
+        state = updates.load_state()
+        state["last_check_at"] = time.time()
+        state["latest_version"] = latest
+        state["release_url"] = url
+        updates.save_state(state)
+
+    # ── Update banner (inline next to the title) ───────────────
+
+    def _show_update_banner(self, latest: str, url: str):
+        if not hasattr(self, "_title_banner"):
+            return
+        self._title_banner.configure(
+            text=f"  Update available: v{latest} ▸  "
+        )
+        self._title_banner.bind(
+            "<Button-1>", lambda _e: webbrowser.open(url)
+        )
+        if not self._title_banner.winfo_ismapped():
+            self._title_banner.pack(side=tk.LEFT, padx=(8, 0))
+
+    def _hide_update_banner(self):
+        if hasattr(self, "_title_banner") \
+                and self._title_banner.winfo_ismapped():
+            self._title_banner.pack_forget()
+
+    # ── Preferences ───────────────────────────────────────────
+
+    def _show_preferences(self):
+        top = tk.Toplevel(self.root)
+        top.title("Preferences")
+        top.resizable(False, False)
+        top.transient(self.root)
+
+        body = ttk.Frame(top, padding=(18, 16, 18, 12))
+        body.pack()
+
+        state = updates.load_state()
+        auto_var = tk.BooleanVar(value=bool(state.get("opted_in")))
+        ttk.Checkbutton(
+            body,
+            text="Check GitHub for updates once a day",
+            variable=auto_var,
+        ).pack(anchor="w")
+        ttk.Label(
+            body,
+            text="When enabled, a small “Update available” banner appears "
+                 "next to\nthe title whenever a newer release is published.",
+            foreground="#888",
+            justify=tk.LEFT,
+        ).pack(anchor="w", pady=(4, 0))
+
+        btns = ttk.Frame(body)
+        btns.pack(fill=tk.X, pady=(14, 0))
+
+        def _save_and_close():
+            state["opted_in"] = bool(auto_var.get())
+            updates.save_state(state)
+            top.destroy()
+
+        ttk.Button(btns, text="Cancel",
+                   command=top.destroy).pack(side=tk.RIGHT)
+        ttk.Button(btns, text="Save",
+                   command=_save_and_close).pack(side=tk.RIGHT, padx=(0, 8))
+
+        top.grab_set()
 
     def _show_about(self):
         top = tk.Toplevel(self.root)

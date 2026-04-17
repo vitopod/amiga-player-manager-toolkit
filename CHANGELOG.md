@@ -4,6 +4,33 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.3] — 2026-04-17
+
+### Added
+- **Automatic daily update check (opt-in).** First launch asks once
+  whether the toolkit may check GitHub once a day for new releases.
+  Subsequent launches run the check in a background thread (never blocks
+  startup), throttled by a 24 h cache. When a newer release is found, a
+  small amber *“Update available: vX.Y.Z ▸”* banner appears next to the
+  title bar; clicking it opens the release page.
+- **Help → Preferences…** — one checkbox to toggle the automatic check
+  on or off without touching any files.
+- State persists in `~/.pmsavedisktool/update_check.json` (next to
+  `recent.json`), so the opt-in choice, cache timestamp, and last-seen
+  release all survive reinstalling or upgrading the toolkit. A test
+  pins `STATE_DIR` under the home directory to prevent a future
+  refactor from accidentally moving it into the source tree.
+
+### Changed
+- Help → Check for Updates… now shares the same module as the automatic
+  path, so both update the banner and the cache in one place.
+
+### Tests
+- 24 new unit tests covering version parsing, newer-than logic, cache
+  windowing, state file round-trip / malformed JSON / partial JSON, the
+  home-directory invariant, and the network error paths for
+  `fetch_latest`.
+
 ## [2.2.2] — 2026-04-17
 
 ### Added
