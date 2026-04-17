@@ -1298,7 +1298,9 @@ class PMSaveDiskToolGUI:
 
         # Help
         help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="Open Manual", command=self._open_manual)
         if not is_mac:
+            help_menu.add_separator()
             help_menu.add_command(label="About", command=self._show_about)
         menubar.add_cascade(label="Help", menu=help_menu)
 
@@ -2155,6 +2157,10 @@ class PMSaveDiskToolGUI:
             menu.tk_popup(event.x_root, event.y_root)
         finally:
             menu.grab_release()
+
+    def _open_manual(self):
+        manual = os.path.join(os.path.dirname(os.path.abspath(__file__)), "MANUAL.md")
+        webbrowser.open(f"file://{manual}")
 
     def _show_about(self):
         top = tk.Toplevel(self.root)

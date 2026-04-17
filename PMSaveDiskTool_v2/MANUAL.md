@@ -119,6 +119,7 @@ The GUI uses a game-inspired dark theme — deep navy background, amber data val
 | Tools | Byte Workbench… | Cmd/Ctrl+B |
 | Tools | Line-up Coach (BETA)… | Cmd/Ctrl+L |
 | Tools | Compare Players… | Cmd/Ctrl+P |
+| Help | Open Manual | — |
 
 On macOS **About** lives in the apple menu and **Quit** is Cmd+Q.
 
