@@ -31,6 +31,9 @@ Screenshot*.png
 # Git worktrees
 .worktrees/
 
+# Superpowers plans and specs (local dev artefacts)
+docs/superpowers/
+
 # Editor / IDE
 .superpowers/
 .vscode/
