@@ -814,8 +814,8 @@ class PlayerCompareWindow(tk.Toplevel):
     def __init__(self, parent, slot, game_disk, player_a=None):
         super().__init__(parent)
         self.title("Compare Players")
-        self.geometry("960x540")
-        self.minsize(640, 460)
+        self.geometry("900x540")
+        self.minsize(900, 460)
         self.configure(bg=PAL["bg"])
 
         self._slot = slot
@@ -912,12 +912,10 @@ class PlayerCompareWindow(tk.Toplevel):
         tk.Frame(body, bg=PAL["border"], width=1).pack(side=tk.LEFT, fill=tk.Y)
 
         bars_frame = tk.Frame(body, bg=PAL["bg"])
-        bars_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        bars_frame.pack(side=tk.LEFT, fill=tk.Y)
         self._bars_canvas = tk.Canvas(bars_frame, bg=PAL["bg"],
-                                      highlightthickness=0)
-        self._bars_canvas.pack(fill=tk.BOTH, expand=True, padx=8, pady=6)
-        self._bars_canvas.bind("<Configure>", lambda e: self._draw_bars()
-                               if self._player_a and self._player_b else None)
+                                      width=540, highlightthickness=0)
+        self._bars_canvas.pack(padx=8, pady=6, fill=tk.Y)
 
     def _build_legend_row(self):
         leg = tk.Frame(self, bg=PAL["bg_mid"])
@@ -1088,18 +1086,14 @@ class PlayerCompareWindow(tk.Toplevel):
     def _draw_bars(self):
         c = self._bars_canvas
         c.delete("all")
-        cw = c.winfo_width()
-        if cw < 20:
-            return  # not yet laid out — <Configure> will redraw once sized
 
         vals_a = self._skill_values(self._player_a)
         vals_b = self._skill_values(self._player_b)
 
         row_h = 24
-        bar_max = max(60, cw - 120)
         val_w = 26
         label_w = 58
-        half_bar = min((bar_max - label_w) // 2, 200)
+        half_bar = 200
 
         for idx, (skill_label, va, vb) in enumerate(
             zip(self._SKILL_LABELS, vals_a, vals_b)
