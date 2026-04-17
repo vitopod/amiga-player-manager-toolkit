@@ -1294,6 +1294,9 @@ class PMSaveDiskToolGUI:
         tools_menu.add_command(label="Line-up Coach (BETA)…",
                                command=self._open_lineup_coach,
                                accelerator=f"{MOD_LABEL}+L")
+        tools_menu.add_command(label="Compare Players…",
+                               command=self._open_compare,
+                               accelerator=f"{MOD_LABEL}+P")
         menubar.add_cascade(label="Tools", menu=tools_menu)
 
         # Help
@@ -1315,6 +1318,7 @@ class PMSaveDiskToolGUI:
         bind(f"<{MOD}-t>", lambda e: self._open_career_tracker())
         bind(f"<{MOD}-b>", lambda e: self._open_byte_workbench())
         bind(f"<{MOD}-l>", lambda e: self._open_lineup_coach())
+        bind(f"<{MOD}-p>", lambda e: self._open_compare())
         bind(f"<{MOD}-y>", lambda e: self._set_view("— Young Talents (≤21)"))
         bind(f"<{MOD}-Return>", lambda e: self._apply_changes())
         bind("<Escape>", lambda e: self._on_escape())
@@ -1388,6 +1392,8 @@ class PMSaveDiskToolGUI:
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.tree.bind("<<TreeviewSelect>>", self._on_player_selected)
+        self.tree.bind("<Button-2>", self._on_tree_right_click)   # macOS
+        self.tree.bind("<Button-3>", self._on_tree_right_click)   # Windows/Linux
         self.tree.tag_configure("free", foreground=PAL["free_agent"])
 
         # Right: header (identity) + notebook (editable fields) + sticky footer (Apply)
@@ -2111,6 +2117,45 @@ class PMSaveDiskToolGUI:
             messagebox.showwarning("Warning", "Open a save disk first.")
             return
         LineupCoachWindow(self.root, self.slot, self.game_disk)
+
+    def _open_compare(self, player=None):
+        if not self.slot:
+            messagebox.showwarning("Warning", "Open a save disk first.")
+            return
+        if hasattr(self, "_compare_win") and self._compare_win.winfo_exists():
+            self._compare_win.lift()
+            if player:
+                self._compare_win.set_player_a(player)
+        else:
+            self._compare_win = PlayerCompareWindow(
+                self.root, self.slot, self.game_disk, player_a=player
+            )
+
+    def _on_tree_right_click(self, event):
+        row = self.tree.identify_row(event.y)
+        if not row or row.startswith("squad-") or not self.slot:
+            return
+        self.tree.selection_set(row)
+        try:
+            player = self.slot.get_player(int(row))
+        except (ValueError, KeyError):
+            return
+
+        menu = tk.Menu(self.root, tearoff=0)
+        menu.add_command(
+            label="Send to Compare…",
+            command=lambda: self._open_compare(player),
+        )
+        menu.add_separator()
+        menu.add_command(
+            label=f"Copy ID #{player.player_id}",
+            command=lambda: (self.root.clipboard_clear(),
+                             self.root.clipboard_append(str(player.player_id))),
+        )
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
 
     def _show_about(self):
         top = tk.Toplevel(self.root)
