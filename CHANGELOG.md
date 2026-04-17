@@ -4,6 +4,15 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.2] — 2026-04-17
+
+### Added
+- **Help → Check for Updates…** — on-demand check against the GitHub
+  Releases API. Compares the latest `tag_name` to the running version and
+  either confirms you're up to date or offers to open the release page in
+  your browser. Uses `urllib.request` only (zero new dependencies) with a
+  5-second timeout; does nothing automatically on launch.
+
 ## [2.2.1] — 2026-04-17
 
 ### Fixed

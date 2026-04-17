@@ -89,6 +89,25 @@ PAL = {
 }
 
 
+def _version_tuple(v: str) -> tuple[int, ...]:
+    """Parse a dotted version string into an int tuple for ordering.
+
+    Stops at the first non-digit inside each component, so ``"2.2.1-rc1"``
+    compares as ``(2, 2, 1)`` — good enough for the Help → Check for
+    Updates comparison; we never ship pre-release tags.
+    """
+    parts: list[int] = []
+    for chunk in v.split("."):
+        digits = ""
+        for ch in chunk:
+            if ch.isdigit():
+                digits += ch
+            else:
+                break
+        parts.append(int(digits) if digits else 0)
+    return tuple(parts)
+
+
 def _load_recent() -> list[str]:
     try:
         with open(RECENT_FILE) as f:
@@ -1299,6 +1318,8 @@ class PMSaveDiskToolGUI:
         # Help
         help_menu = tk.Menu(menubar, tearoff=0)
         help_menu.add_command(label="Open Manual", command=self._open_manual)
+        help_menu.add_command(label="Check for Updates…",
+                              command=self._check_for_updates)
         if not is_mac:
             help_menu.add_separator()
             help_menu.add_command(label="About", command=self._show_about)
@@ -2161,6 +2182,60 @@ class PMSaveDiskToolGUI:
     def _open_manual(self):
         manual = os.path.join(os.path.dirname(os.path.abspath(__file__)), "MANUAL.md")
         webbrowser.open(f"file://{manual}")
+
+    # Hits the public GitHub Releases API with no auth — 60 requests/hr/IP
+    # is plenty for on-demand checks. If we ever add an automatic check on
+    # launch this needs caching (e.g. skip if checked in the last 24 h).
+    _UPDATE_CHECK_URL = (
+        "https://api.github.com/repos/vitopod/"
+        "amiga-player-manager-toolkit/releases/latest"
+    )
+    _RELEASES_PAGE_URL = (
+        "https://github.com/vitopod/amiga-player-manager-toolkit/releases"
+    )
+
+    def _check_for_updates(self):
+        import urllib.request
+        import urllib.error
+        req = urllib.request.Request(
+            self._UPDATE_CHECK_URL,
+            headers={"Accept": "application/vnd.github+json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except (urllib.error.URLError, TimeoutError, OSError) as e:
+            messagebox.showerror(
+                "Check for Updates",
+                f"Could not reach GitHub.\n\n{e}",
+                parent=self.root,
+            )
+            return
+        latest = str(data.get("tag_name", "")).lstrip("v").strip()
+        if not latest:
+            messagebox.showerror(
+                "Check for Updates",
+                "GitHub returned no release information.",
+                parent=self.root,
+            )
+            return
+        if _version_tuple(latest) > _version_tuple(__version__):
+            url = data.get("html_url") or self._RELEASES_PAGE_URL
+            if messagebox.askyesno(
+                "Update available",
+                f"A newer version is available.\n\n"
+                f"Current:  {__version__}\n"
+                f"Latest:   {latest}\n\n"
+                f"Open the release page in your browser?",
+                parent=self.root,
+            ):
+                webbrowser.open(url)
+        else:
+            messagebox.showinfo(
+                "Up to date",
+                f"You're running the latest version ({__version__}).",
+                parent=self.root,
+            )
 
     def _show_about(self):
         top = tk.Toplevel(self.root)
