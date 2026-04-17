@@ -65,7 +65,12 @@ def _resolve_filter(name: str):
     return BYTE_FILTERS[name]
 
 
-def _load_game_disk(path):
+def _load_game_disk(path, slot=None):
+    """Load a game ADF and, when the save disk has no PM1.nam, copy the
+    game disk's team names into the slot so CLI output shows real team
+    names instead of 'Team 0'..'Team 43'. Returns None if no path given
+    or the load fails.
+    """
     if not path:
         return None
     try:
@@ -88,6 +93,13 @@ def _load_game_disk(path):
             "the game.",
             file=sys.stderr,
         )
+    if slot is not None and gd.team_names:
+        if slot.apply_team_name_fallback(gd.team_names):
+            print(
+                f"Note: save disk has no PM1.nam — using team names from "
+                f"game disk ({sum(1 for n in gd.team_names if n)} teams).",
+                file=sys.stderr,
+            )
     return gd
 
 
@@ -106,7 +118,7 @@ def cmd_list_saves(args):
 def cmd_list_players(args):
     adf = ADF.load(args.adf)
     slot = SaveSlot(adf, args.save)
-    gd = _load_game_disk(getattr(args, 'game_adf', None))
+    gd = _load_game_disk(getattr(args, 'game_adf', None), slot)
 
     if args.team is not None:
         players = slot.get_players_by_team(args.team)
@@ -194,7 +206,7 @@ def cmd_show_player(args):
 def cmd_young_talents(args):
     adf = ADF.load(args.adf)
     slot = SaveSlot(adf, args.save)
-    gd = _load_game_disk(getattr(args, 'game_adf', None))
+    gd = _load_game_disk(getattr(args, 'game_adf', None), slot)
     max_age = args.max_age
 
     players = slot.get_young_talents(max_age)
@@ -224,7 +236,7 @@ def cmd_young_talents(args):
 def cmd_highlights(args):
     adf = ADF.load(args.adf)
     slot = SaveSlot(adf, args.save)
-    gd = _load_game_disk(getattr(args, 'game_adf', None))
+    gd = _load_game_disk(getattr(args, 'game_adf', None), slot)
 
     all_players = slot.get_top_scorers()  # sorted by division, then goals desc
     if args.market_only:
@@ -263,7 +275,7 @@ def cmd_highlights(args):
 def cmd_best_xi(args):
     adf = ADF.load(args.adf)
     slot = SaveSlot(adf, args.save)
-    gd = _load_game_disk(getattr(args, 'game_adf', None))
+    gd = _load_game_disk(getattr(args, 'game_adf', None), slot)
 
     named_filter = XI_FILTERS.get(args.filter) if args.filter else None
     if args.market_only and named_filter:
@@ -307,7 +319,9 @@ def cmd_career_tracker(args):
     adf_b = ADF.load(args.adf_b) if args.adf_b else adf_a
     slot_a = SaveSlot(adf_a, args.save_a)
     slot_b = SaveSlot(adf_b, args.save_b)
-    gd = _load_game_disk(getattr(args, "game_adf", None))
+    gd = _load_game_disk(getattr(args, "game_adf", None), slot_a)
+    if gd and gd.team_names:
+        slot_b.apply_team_name_fallback(gd.team_names)
 
     diffs = slot_a.diff_players(slot_b)
     if args.team_changes_only:
@@ -381,7 +395,7 @@ def cmd_squad_analyst(args):
 def cmd_export_players(args):
     adf = ADF.load(args.adf)
     slot = SaveSlot(adf, args.save)
-    gd = _load_game_disk(getattr(args, "game_adf", None))
+    gd = _load_game_disk(getattr(args, "game_adf", None), slot)
 
     if args.team is not None:
         players = slot.get_players_by_team(args.team)
@@ -465,7 +479,7 @@ def cmd_suggest_xi(args):
     """
     adf = ADF.load(args.adf)
     slot = SaveSlot(adf, args.save)
-    gd = _load_game_disk(getattr(args, "game_adf", None))
+    gd = _load_game_disk(getattr(args, "game_adf", None), slot)
 
     if args.team is None:
         pool = [p for p in slot.players if SaveSlot._is_real_player(p)]

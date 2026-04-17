@@ -222,6 +222,51 @@ class TestEnglishGameDiskBeta(unittest.TestCase):
                                   f"initial {c!r} from seed {seed:#x} ({full!r}) "
                                   "outside allowed charsets")
 
+    def test_team_names_extracted(self):
+        # start.dat on the English game disk has 44 slots; slot 43 is
+        # unused template data. Expect exactly 43 real names.
+        self.assertEqual(len(self.gd.team_names), 44)
+        self.assertEqual(sum(1 for n in self.gd.team_names if n), 43)
+
+    def test_team_names_known_clubs(self):
+        # Spot-check a few 1990 top-flight fixtures.
+        self.assertEqual(self.gd.team_names[0], "CHELSEA")
+        self.assertEqual(self.gd.team_names[3], "LIVERPOOL")
+        self.assertIn("TOTTENHAM", self.gd.team_names)
+        self.assertIn("WEST HAM", self.gd.team_names)
+        self.assertIn("ANCO UNITED", self.gd.team_names)
+
+    def test_team_names_all_upper_alpha_or_space(self):
+        for name in self.gd.team_names:
+            if name:
+                self.assertTrue(
+                    all(c.isalpha() or c == " " for c in name),
+                    f"bad team name {name!r}",
+                )
+
+
+class TestGameDiskTeamNamesNoDisk(unittest.TestCase):
+    """Team-name extraction should degrade gracefully when start.dat is
+    missing or malformed. Doesn't require a real game ADF."""
+
+    def test_missing_start_dat_returns_empty(self):
+        from pm_core.names import GameDisk
+        # Not a PM custom-file-table disk at all.
+        self.assertEqual(GameDisk._extract_start_dat_team_names(b"\x00" * 8192), [])
+
+    def test_wrong_size_start_dat_returns_empty(self):
+        # Build a minimal PM custom-file-table disk with a truncated start.dat.
+        import struct
+        BLOCK = 512
+        adf = bytearray(BLOCK * 10)
+        # File table at block 2: one entry for start.dat, size 100 (wrong).
+        name = b"start.dat".ljust(12, b"\x00")
+        offset_blocks = 8 * BLOCK // 32  # points at block 8
+        entry = name + struct.pack(">H", offset_blocks) + struct.pack(">H", 100)
+        adf[2 * BLOCK : 2 * BLOCK + 16] = entry
+        from pm_core.names import GameDisk
+        self.assertEqual(GameDisk._extract_start_dat_team_names(bytes(adf)), [])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

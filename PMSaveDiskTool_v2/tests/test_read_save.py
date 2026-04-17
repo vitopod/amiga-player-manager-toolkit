@@ -22,6 +22,14 @@ TEST_ADF = os.path.join(
     "PMSaveDiskTool_v1.2", "Save1_PM.adf"
 )
 
+# Optional English/BETA paths — tests gated on their existence.
+_EN_SAVE_ADF = os.environ.get("PM_EN_SAVE_ADF",
+                              "/Users/simone/Downloads/20101112.adf")
+_EN_GAME_ADF = os.environ.get(
+    "PM_EN_GAME_ADF",
+    "/Users/simone/Downloads/Player Manager (1990)(Anco)[cr OCL] EN.adf",
+)
+
 
 class TestADF(unittest.TestCase):
     @classmethod
@@ -133,8 +141,53 @@ class TestSaveSlot(unittest.TestCase):
         self.assertEqual(self.slot.get_team_name(0), "MILAN")
         self.assertEqual(self.slot.get_team_name(0xFF), "Free Agent")
 
+    def test_team_names_from_save_is_true_when_pm1_nam_present(self):
+        # The Italian save has PM1.nam; flag must reflect that so the
+        # game-disk fallback stays a no-op.
+        self.assertTrue(self.slot.team_names_from_save)
+
+    def test_apply_team_name_fallback_is_noop_when_save_has_names(self):
+        before = list(self.slot.team_names)
+        changed = self.slot.apply_team_name_fallback(
+            ["OVERRIDE"] * 44
+        )
+        self.assertFalse(changed)
+        self.assertEqual(self.slot.team_names, before)
+
     def test_db_header(self):
         self.assertIn(self.slot.db_header, [1, 2, 3, 4])
+
+
+@unittest.skipUnless(os.path.isfile(_EN_SAVE_ADF) and os.path.isfile(_EN_GAME_ADF),
+                     "English save or game ADF not available")
+class TestEnglishSaveTeamNameFallback(unittest.TestCase):
+    """When PM1.nam is missing on the save disk (English/BETA builds),
+    loading a game disk must fill in team names from start.dat."""
+
+    @classmethod
+    def setUpClass(cls):
+        from pm_core.names import GameDisk
+        cls.adf = ADF.load(_EN_SAVE_ADF)
+        # Pick the first save slot on the disk.
+        save_name = cls.adf.list_saves()[0].name
+        cls.slot = SaveSlot(cls.adf, save_name)
+        cls.gd = GameDisk.load(_EN_GAME_ADF)
+
+    def test_save_has_no_pm1_nam(self):
+        self.assertFalse(self.slot.team_names_from_save)
+
+    def test_default_names_are_placeholders(self):
+        # Before any fallback, names are "Team N".
+        for i, name in enumerate(self.slot.team_names):
+            self.assertEqual(name, f"Team {i}")
+
+    def test_fallback_applies_game_disk_names(self):
+        changed = self.slot.apply_team_name_fallback(self.gd.team_names)
+        self.assertTrue(changed)
+        self.assertEqual(self.slot.team_names[0], "CHELSEA")
+        self.assertEqual(self.slot.team_names[3], "LIVERPOOL")
+        # Slot 43 is unused template data; placeholder retained.
+        self.assertEqual(self.slot.team_names[43], "Team 43")
 
 
 class TestBestXI(unittest.TestCase):

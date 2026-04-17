@@ -4,6 +4,54 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1] — 2026-04-17
+
+### Added
+- **Team-name fallback for English / BETA save disks.** English save
+  disks don't ship `PM1.nam`, so team names previously showed as
+  `"Team 0".."Team 43"` placeholders. When a game disk is loaded the
+  toolkit now extracts real team names from `start.dat` on the game
+  disk (44 × 100-byte team records; NUL-terminated name at sub-offset
+  0x3C) and fills them in everywhere — roster, Squad Analyst, Best XI,
+  Career Tracker, CSV/JSON export, Line-up Coach. Italian saves are
+  unaffected: `PM1.nam` still wins.
+- `GameDisk.team_names` (list of 44 strings, empty for unused slots) and
+  `GameDisk.team_names_available` on any PM custom-file-table game disk
+  where `start.dat` parses cleanly.
+- `SaveSlot.apply_team_name_fallback(team_names)` — no-op when the save
+  already had real names; returns `True` if anything changed.
+- `SaveSlot.team_names_from_save` flag indicating whether names came
+  from `PM1.nam` (True) or the placeholder path (False).
+- Tests: 5 new (English start.dat extraction, malformed-disk fallback,
+  save-slot fallback applied + no-op when PM1.nam present).
+
+### Changed
+- CLI `_load_game_disk` now takes an optional `slot` argument and
+  applies the team-name fallback automatically when it runs. The GUI
+  applies it in both directions (save-then-game or game-then-save).
+
+## [2.1.0] — 2026-04-17
+
+### Added
+- **English game disk support (BETA).** The game-disk loader now accepts
+  English (Anco 1990) disks in addition to the Italian build. 183 English
+  surnames are extracted by anchor-scan on `Adams\0Adcock\0Addison\0
+  Aldridge\0Alexander\0` out of a PM-custom-file-table disk; the Italian
+  initials charsets (ADJR / CEGMS / BFHILNTW / O) are reused. Surnames
+  and initials verified against a real in-game roster screen on
+  2026-04-17. BETA because the full seed → displayed-name mapping is not
+  yet locked against a known seed; individual resolutions could in
+  principle drift.
+- `GameDisk.build`, `GameDisk.names_available`, `GameDisk.is_beta`
+  exposed so callers can adapt their UI. GUI shows an amber BETA pill
+  and a one-time warning dialog for BETA builds; CLI prints a stderr
+  `Note:` on BETA loads.
+- The loader is deliberately lenient: any disk that looks PM-shaped is
+  accepted. Unknown builds load with `surnames=[]` so save editing still
+  works; names stay blank rather than erroring.
+- Tests: 8 new tests in `TestEnglishGameDiskBeta`
+  (`tests/test_names.py`), gated on `PM_EN_GAME_ADF`.
+
 ## [2.0.0] — 2026-04-16
 
 ### Added

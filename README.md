@@ -65,7 +65,8 @@ python3 PMSaveDiskTool_v2/pm_cli.py list-players your_save.adf --save pm1.sav --
 ## Features
 
 - Open any Player Manager save disk ADF image
-- **Load game ADF to show player names** (decompressed from game executable; compatible with Italian version and potentially others)
+- **Load game ADF to show player names**. Italian build is stable (245 surnames). English build is **BETA** (183 surnames, anchor-scan extraction, initials charsets reused from the Italian build). Other PM-shaped disks load with names blank rather than failing.
+- **Team names for English / BETA save disks** — English save disks don't ship `PM1.nam`, so team names default to `"Team 0".."Team 43"`. When a game disk is loaded, the toolkit fills them in from `start.dat` on the game disk (CHELSEA, LIVERPOOL, TOTTENHAM, …). Italian saves are unaffected.
 - Browse players by team, view all players, or view free agents
 - **Young Talents** — list players aged ≤ 21 sorted by skill; ★ marks who is available on the market
 - **Championship Highlights** — top scorers grouped by division; ★ marks who is available on the market

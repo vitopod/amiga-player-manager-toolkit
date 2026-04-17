@@ -59,21 +59,38 @@ class SaveSlot:
     def __init__(self, adf: ADF, save_name: str):
         self.adf = adf
         self.entry = adf.find_file(save_name)
-        self.team_names = self._load_team_names()
+        self.team_names, self.team_names_from_save = self._load_team_names()
         self.db_header, self.players = self._load_player_db()
 
-    def _load_team_names(self) -> list[str]:
-        """Load 44 team names from PM1.nam."""
+    def _load_team_names(self) -> tuple[list[str], bool]:
+        """Load 44 team names from PM1.nam. Second element is True if the
+        names came from the save disk, False if we fell back to placeholders
+        (which callers may later overwrite via apply_team_name_fallback)."""
         try:
             nam_data = self.adf.read_file(TEAM_NAMES_FILE)
         except FileNotFoundError:
-            return [f"Team {i}" for i in range(NUM_TEAMS)]
+            return [f"Team {i}" for i in range(NUM_TEAMS)], False
         names = []
         for i in range(NUM_TEAMS):
             rec = nam_data[i * TEAM_NAME_RECORD_SIZE:(i + 1) * TEAM_NAME_RECORD_SIZE]
             null_pos = rec.index(0) if 0 in rec else TEAM_NAME_RECORD_SIZE
             names.append(rec[:null_pos].decode("latin-1", errors="replace"))
-        return names
+        return names, True
+
+    def apply_team_name_fallback(self, team_names: list[str]) -> bool:
+        """When PM1.nam is absent on the save disk (English/BETA builds),
+        callers may supply team names from the game disk. Replaces any
+        placeholder entries with the provided names. No-op when the save
+        disk already had real team names. Returns True if anything changed.
+        """
+        if self.team_names_from_save or not team_names:
+            return False
+        changed = False
+        for i in range(min(NUM_TEAMS, len(team_names))):
+            if team_names[i] and self.team_names[i] != team_names[i]:
+                self.team_names[i] = team_names[i]
+                changed = True
+        return changed
 
     @property
     def _db_offset(self) -> int:

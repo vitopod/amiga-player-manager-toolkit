@@ -1133,9 +1133,29 @@ class PMSaveDiskToolGUI:
                 "(rosters, editing, Best XI, Line-up Coach, exports) work "
                 "normally.",
             )
+        # Apply team-name fallback for saves without PM1.nam (English/BETA).
+        if self.slot and gd.team_names:
+            self.slot.apply_team_name_fallback(gd.team_names)
         # Refresh list if a save is already open
         if self.slot:
+            self._refresh_team_combo()
             self._refresh_player_list()
+
+    def _refresh_team_combo(self):
+        """Rebuild the team filter combo from the current slot."""
+        team_options = ["All Players", "Free Agents"]
+        for i, name in enumerate(self.slot.team_names):
+            team_options.append(f"{i}: {name}")
+        team_options.append("— Young Talents (≤21)")
+        team_options.append("— Top Scorers")
+        team_options.append("— Squad Analyst (all teams)")
+        team_options.extend(XI_ENTRIES.keys())
+        current = self.team_combo.get()
+        self.team_combo["values"] = team_options
+        if current in team_options:
+            self.team_combo.set(current)
+        else:
+            self.team_combo.current(0)
 
     def _on_save_selected(self, event):
         save_name = self.save_var.get()
@@ -1146,6 +1166,10 @@ class PMSaveDiskToolGUI:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load save: {e}")
             return
+
+        # If a game disk is already loaded, apply its team-name fallback.
+        if self.game_disk and self.game_disk.team_names:
+            self.slot.apply_team_name_fallback(self.game_disk.team_names)
 
         # Populate team filter
         team_options = ["All Players", "Free Agents"]

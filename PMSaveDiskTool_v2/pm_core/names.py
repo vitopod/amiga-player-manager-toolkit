@@ -294,19 +294,19 @@ def _name_from_seed(rng_seed: int, surnames: list[str]) -> str:
 
 # ── PM custom file table reader (same format as save disks) ─────────────────
 
-def _pm_custom_file_table_names(adf_data: bytes) -> list[str]:
-    """Read filenames from PM's custom 16-byte file table at block 2 (0x400).
+def _pm_custom_file_table_entries(adf_data: bytes) -> list[tuple[str, int, int]]:
+    """Read (name, byte_offset, size) entries from PM's custom 16-byte file
+    table at block 2 (0x400). Each entry is 12 bytes name + 2 bytes offset
+    (×32 multiplier) + 2 bytes size.
 
     Returns [] if the layout doesn't look like a PM custom file table.
-    Used to detect non-Italian game disks (e.g. English cracked builds store
-    their files via this table, not AmigaDOS OFS).
     """
     BLOCK = 512
     ENTRY = 16
     FT_OFFSET = 2 * BLOCK
     if len(adf_data) < FT_OFFSET + BLOCK:
         return []
-    names = []
+    entries = []
     for i in range(BLOCK // ENTRY):
         raw = adf_data[FT_OFFSET + i * ENTRY : FT_OFFSET + (i + 1) * ENTRY]
         if raw[0] == 0:
@@ -318,8 +318,25 @@ def _pm_custom_file_table_names(adf_data: bytes) -> list[str]:
             return []
         if not all(0x20 <= b < 0x7f for b in raw[:null_pos]):
             return []
-        names.append(name)
-    return names
+        byte_off = struct.unpack_from('>H', raw, 12)[0] * 32
+        size     = struct.unpack_from('>H', raw, 14)[0]
+        entries.append((name, byte_off, size))
+    return entries
+
+
+def _pm_custom_file_table_names(adf_data: bytes) -> list[str]:
+    return [name for name, _, _ in _pm_custom_file_table_entries(adf_data)]
+
+
+def _pm_read_file(adf_data: bytes, filename: str) -> bytes | None:
+    """Read a named file from a PM custom-file-table disk. Returns None if
+    not found or the referenced region is out of bounds."""
+    for name, off, sz in _pm_custom_file_table_entries(adf_data):
+        if name == filename:
+            if off < 0 or off + sz > len(adf_data):
+                return None
+            return adf_data[off:off + sz]
+    return None
 
 
 # Known PM game-disk executable names, per build.
@@ -374,9 +391,11 @@ class GameDisk:
     _NAME_START = 0x15B02
     _NAME_END   = 0x162E6
 
-    def __init__(self, surnames: list[str], build: str = "italian"):
+    def __init__(self, surnames: list[str], build: str = "italian",
+                 team_names: list[str] | None = None):
         self.surnames = surnames
         self.build = build
+        self.team_names = team_names or []
 
     @classmethod
     def load(cls, path: str) -> "GameDisk":
@@ -396,14 +415,19 @@ class GameDisk:
             )
 
         if build == "italian":
+            # Italian save disks carry team names in PM1.nam; nothing to
+            # extract from the game disk.
             return cls(cls._extract_italian_surnames(adf_data), build="italian")
         if build == "english":
             surnames = cls._extract_english_surnames(adf_data)
+            team_names = cls._extract_start_dat_team_names(adf_data)
             # If the anchor scan misses (non-standard crack), downgrade to
             # "loaded but no names" rather than hard-failing.
-            return cls(surnames, build="english")
-        # Recognised as PM-ish but we don't know how to extract names.
-        return cls(surnames=[], build=build)
+            return cls(surnames, build="english", team_names=team_names)
+        # Recognised as PM-ish but no known surname layout. Team names may
+        # still be present in start.dat, so try anyway.
+        return cls(surnames=[], build=build,
+                   team_names=cls._extract_start_dat_team_names(adf_data))
 
     @classmethod
     def _extract_italian_surnames(cls, adf_data: bytes) -> list[str]:
@@ -495,9 +519,55 @@ class GameDisk:
                 surnames.append(text)
         return surnames
 
+    # start.dat on PM custom-file-table game disks: 8-byte header + 44
+    # team records × 100 bytes. Team name is NUL-terminated ASCII at
+    # offset 0x3C within each record. Slot 43 is unused template garbage
+    # on the English disk; filtered by the isalpha check below.
+    _START_DAT_SIZE = 4408
+    _START_DAT_HEADER = 8
+    _START_DAT_SLOT = 100
+    _START_DAT_NAME_OFFSET = 0x3C
+    _START_DAT_TEAM_COUNT = 44
+
+    @classmethod
+    def _extract_start_dat_team_names(cls, adf_data: bytes) -> list[str]:
+        """Pull team names out of start.dat on a PM custom-file-table game disk.
+
+        Returns [] if start.dat is missing, the wrong size, or the slot at
+        offset 0x3C doesn't look like printable ASCII. Filters out template
+        garbage (unused slot 43 on the English disk) by requiring each
+        name to be alphabetic/space-only and at least 2 chars.
+        """
+        data = _pm_read_file(adf_data, "start.dat")
+        if data is None or len(data) != cls._START_DAT_SIZE:
+            return []
+        names = []
+        for i in range(cls._START_DAT_TEAM_COUNT):
+            slot_start = cls._START_DAT_HEADER + i * cls._START_DAT_SLOT
+            raw = data[slot_start + cls._START_DAT_NAME_OFFSET
+                       : slot_start + cls._START_DAT_SLOT]
+            end = raw.index(0) if 0 in raw else len(raw)
+            try:
+                text = raw[:end].decode("ascii")
+            except UnicodeDecodeError:
+                names.append("")
+                continue
+            # Accept A–Z plus space; drop anything else as unused/garbage.
+            if (len(text) >= 2
+                    and all(c.isalpha() or c == " " for c in text)
+                    and text[0].isalpha()):
+                names.append(text)
+            else:
+                names.append("")
+        return names
+
     @property
     def surname_count(self) -> int:
         return len(self.surnames)
+
+    @property
+    def team_names_available(self) -> bool:
+        return any(self.team_names)
 
     @property
     def names_available(self) -> bool:

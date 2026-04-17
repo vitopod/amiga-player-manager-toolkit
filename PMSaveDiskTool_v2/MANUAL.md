@@ -42,6 +42,33 @@ analysis, export). To load the game disk:
 The status bar in the GUI always shows which game disk is loaded (or "no game
 disk" if none).
 
+**Game disk builds.** The loader accepts any recognisable Player Manager
+game disk and reports which build it detected:
+
+- **Italian (stable)** — AmigaDOS OFS disk, `2507` executable, 245 surnames
+  decompressed from the DEFAJAM-packed image. Names verified against the
+  live game.
+- **English (BETA)** — PM custom-file-table disk (the same 16-byte layout
+  as a save disk), 183 surnames extracted by anchor-scan. Surnames and the
+  reused Italian initials charsets were cross-checked against a real in-game
+  roster screen — every observed name matched. What's still BETA is the
+  exact seed → displayed-name mapping: individual players could in principle
+  resolve to a slightly different name than the live game shows. The GUI
+  shows an amber BETA pill and a one-time warning dialog; the CLI prints a
+  stderr `Note:`.
+- **Other PM-shaped disks** load with names blank rather than failing —
+  save editing still works in full.
+
+**Team names for English / BETA save disks.** Italian save disks carry team
+names inside a file called `PM1.nam`. English (BETA) save disks don't have
+that file — on its own the save shows generic `"Team 0".."Team 43"`
+placeholders. When an English game disk is loaded, the toolkit extracts
+real team names from `start.dat` on the game disk (CHELSEA, LIVERPOOL,
+TOTTENHAM, …) and swaps them in everywhere — roster view, Squad Analyst,
+Best XI, Career Tracker, CSV/JSON export, Line-up Coach. One slot is
+reserved/unused on the English disk and stays a placeholder. Italian saves
+are unaffected: `PM1.nam` still wins.
+
 ---
 
 ## GUI
