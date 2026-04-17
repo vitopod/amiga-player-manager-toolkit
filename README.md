@@ -27,6 +27,45 @@ stays byte-for-byte compatible with v1.2.
 The tool writes changes directly to the file. If something goes wrong, there is no undo.
 Keep the original ADF safe and work on a copy.
 
+## Upgrading from a previous version
+
+The toolkit is distributed as a plain folder of Python files — there is no
+installer or pip package. You upgrade by replacing the folder.
+
+**If you cloned the repository with git:**
+
+```
+git pull
+```
+
+Or to pin to a specific tag:
+
+```
+git checkout v2.2.3
+```
+
+**If you downloaded a release zip:**
+
+1. Download the latest zip from
+   https://github.com/vitopod/amiga-player-manager-toolkit/releases
+2. Unpack it and replace the previous folder with the new one.
+
+Your settings and history survive the upgrade. Recent files and the
+update-check preferences live in `~/.pmsavedisktool/`, which sits outside
+the source tree and is never touched by the upgrade. Save disks themselves
+are byte-compatible across all releases, so no migration is needed — but
+the "always work on copies" rule still holds.
+
+**Which version are you on?** Check `Help → About…` in the GUI, or run
+`python3 PMSaveDiskTool_v2/pm_cli.py --version`. The in-app
+`Help → Check for Updates…` compares against the latest GitHub release.
+
+**Users on 2.2.0 or earlier should upgrade.** Release 2.2.1 fixed a
+byte-alignment bug in the player record (matches-last-year and
+career-division years were reading one byte low) and corrected the
+aggression field, which is stored inverted on disk. Later releases
+layered the update-check UI on top but depend on the 2.2.1 fix.
+
 ## Quick Start
 
 **GUI:**

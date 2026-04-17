@@ -71,6 +71,46 @@ are unaffected: `PM1.nam` still wins.
 
 ---
 
+## Upgrading from a previous version
+
+PMSaveDiskToolkit is distributed as a folder of Python files — no
+installer, no pip package. Upgrading means replacing the folder.
+
+**If you cloned with git:**
+
+```
+git pull                 # latest on main
+git checkout v2.2.3      # or any tagged release
+```
+
+**If you downloaded a release zip:**
+
+1. Grab the newest zip from
+   <https://github.com/vitopod/amiga-player-manager-toolkit/releases>.
+2. Unpack it and overwrite the previous folder.
+
+**What survives an upgrade.** Your recent-files list and the update-check
+preference live in `~/.pmsavedisktool/`, outside the source tree. They are
+untouched by replacing the folder. Save disks themselves are
+byte-compatible across every release of the toolkit — no migration is
+ever needed — but keep working on copies regardless.
+
+**Finding out which version you have.** `Help → About…` in the GUI, or
+`python3 pm_cli.py --version` from the command line. In-app,
+`Help → Check for Updates…` compares your version against the latest
+GitHub release and opens the releases page if a newer tag is out.
+`Help → Preferences…` toggles the once-a-day background check.
+
+**If you're on 2.2.0 or earlier, please upgrade.** Release 2.2.1 fixed a
+real byte-alignment bug — matches-last-year and the career year counters
+(div 1–4, Int) were all reading one byte low, and the aggression value
+was displayed as `200 − actual` because it's stored inverted on disk.
+2.2.2 added the manual update-check menu item; 2.2.3 added the opt-in
+daily background check and the "Update available" banner next to the
+title. None of these later additions change save-disk bytes.
+
+---
+
 ## GUI
 
 ### Starting the GUI
