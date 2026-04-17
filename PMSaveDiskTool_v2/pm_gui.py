@@ -1031,6 +1031,7 @@ class PMSaveDiskToolGUI:
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.tree.bind("<<TreeviewSelect>>", self._on_player_selected)
+        self.tree.tag_configure("free", foreground=PAL["free_agent"])
 
         # Right: header (identity) + notebook (editable fields) + sticky footer (Apply)
         right = ttk.Frame(paned)
@@ -1130,21 +1131,24 @@ class PMSaveDiskToolGUI:
     # ── Status bar ────────────────────────────────────────────
 
     def _build_status_bar(self):
-        bar = ttk.Frame(self.root, relief=tk.SUNKEN, borderwidth=1)
-        bar.pack(fill=tk.X, side=tk.BOTTOM, padx=5, pady=2)
+        bar = tk.Frame(self.root, bg="#000033", height=22)
+        bar.pack(fill=tk.X, side=tk.BOTTOM)
+        bar.pack_propagate(False)
 
         self.status_var = tk.StringVar(value="Open a save disk to begin.")
-        ttk.Label(bar, textvariable=self.status_var,
-                  anchor="w").pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+        tk.Label(bar, textvariable=self.status_var, anchor="w",
+                 bg="#000033", fg=PAL["fg_dim"],
+                 font=("Courier New", 9)).pack(
+                     side=tk.LEFT, fill=tk.X, expand=True, padx=6)
 
-        self.game_label = ttk.Label(bar, text="No game disk",
-                                    foreground="gray", anchor="e")
-        self.game_label.pack(side=tk.RIGHT, padx=4)
+        self.game_label = tk.Label(bar, text="No game disk",
+                                   bg="#000033", fg=PAL["fg_dim"],
+                                   font=("Courier New", 9), anchor="e")
+        self.game_label.pack(side=tk.RIGHT, padx=6)
 
-        # Persistent BETA pill. Shown only when a non-verified build is loaded.
         self.beta_pill = tk.Label(
             bar, text=" BETA ",
-            bg="#b36b00", fg="white", font=("TkDefaultFont", 9, "bold"),
+            bg="#b36b00", fg="white", font=("Courier New", 9, "bold"),
             padx=4,
         )
 
@@ -1183,7 +1187,7 @@ class PMSaveDiskToolGUI:
         if gd.names_available and not gd.is_beta:
             self.game_label.config(
                 text=f"{fname} ({gd.surname_count} names)",
-                foreground="green",
+                foreground=PAL["free_agent"],
             )
             self.status_var.set(
                 f"Game ADF loaded: {gd.surname_count} Italian surnames available"
@@ -1346,9 +1350,10 @@ class PMSaveDiskToolGUI:
                 if needle not in haystack:
                     continue
             mkt = "★" if p.is_market_available else ""
+            tags = ("free",) if p.is_free_agent else ()
             self.tree.insert("", "end", iid=str(p.player_id),
                              values=(p.player_id, name, p.age, p.position_name,
-                                     team, score_fn(p), mkt))
+                                     team, score_fn(p), mkt), tags=tags)
 
     def _populate_squad_analyst(self):
         """Render one row per team with composition summary columns.
