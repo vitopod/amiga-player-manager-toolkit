@@ -954,10 +954,11 @@ class PlayerCompareWindow(tk.Toplevel):
         return f"{pos} · age {p.age} · {team}{mkt} · skill {p.total_skill}"
 
     def _populate_team_combo(self):
-        teams = ["★ Free Agents"] + [
+        team_names = sorted(
             self._slot.get_team_name(i)
             for i in range(1, len(self._slot.team_names))
-        ]
+        )
+        teams = ["★ Free Agents"] + team_names
         self._team_combo["values"] = teams
 
     def _on_team_selected(self, event=None):
