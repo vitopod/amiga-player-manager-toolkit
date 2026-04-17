@@ -916,6 +916,8 @@ class PlayerCompareWindow(tk.Toplevel):
         self._bars_canvas = tk.Canvas(bars_frame, bg=PAL["bg"],
                                       highlightthickness=0)
         self._bars_canvas.pack(fill=tk.BOTH, expand=True, padx=8, pady=6)
+        self._bars_canvas.bind("<Configure>", lambda e: self._draw_bars()
+                               if self._player_a and self._player_b else None)
 
     def _build_legend_row(self):
         leg = tk.Frame(self, bg=PAL["bg_mid"])
@@ -1070,15 +1072,13 @@ class PlayerCompareWindow(tk.Toplevel):
         for i, v in enumerate(self._skill_values(self._player_b)):
             x, y = self._radar_point(i, v)
             pts_b += [x, y]
-        c.create_polygon(pts_b, outline=PAL["player_b"], fill=PAL["player_b"],
-                         stipple="gray12", width=2)
+        c.create_polygon(pts_b, outline=PAL["player_b"], fill="", width=2)
 
         pts_a = []
         for i, v in enumerate(self._skill_values(self._player_a)):
             x, y = self._radar_point(i, v)
             pts_a += [x, y]
-        c.create_polygon(pts_a, outline=PAL["player_a"], fill=PAL["player_a"],
-                         stipple="gray12", width=2)
+        c.create_polygon(pts_a, outline=PAL["player_a"], fill="", width=2)
 
         for pts, col in [(pts_b, PAL["player_b"]), (pts_a, PAL["player_a"])]:
             for i in range(0, len(pts), 2):
@@ -1087,11 +1087,10 @@ class PlayerCompareWindow(tk.Toplevel):
 
     def _draw_bars(self):
         c = self._bars_canvas
-        c.update_idletasks()
         c.delete("all")
         cw = c.winfo_width()
-        if cw < 10:
-            cw = 340
+        if cw < 20:
+            return  # not yet laid out — <Configure> will redraw once sized
 
         vals_a = self._skill_values(self._player_a)
         vals_b = self._skill_values(self._player_b)
