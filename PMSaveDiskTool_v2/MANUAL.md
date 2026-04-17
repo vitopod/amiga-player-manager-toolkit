@@ -844,6 +844,124 @@ original documentation.
 
 ---
 
+## From the original game manual
+
+The rules and mechanics below are summarised from Anco's own Amiga
+docs/manual for Player Manager. They are game behaviour, not toolkit
+behaviour — useful context for understanding what the bytes you're editing
+actually do in-game.
+
+### Starting position
+
+You begin as the newly-appointed player-manager of a **third-division club**.
+The manager himself is an international-class player. He plays at
+international class **only** in his designated position; in any other
+position he takes on the attributes of whichever player would have worn
+that shirt.
+
+### Play mode (chosen when starting a new game)
+
+- **Play in Position** — the manager plays only in his assigned role. The
+  manual calls this "the right and best way to play".
+- **Play as a Team** — the manager controls whichever player is nearest the
+  ball. The engine **deliberately handicaps this mode** to offset the
+  versatility of a human switching between outfielders.
+
+### Rating scale
+
+In-game ratings use **100 as the league average**, on an absolute scale —
+a player rated 400 for pace is objectively four times as fast as an
+average player. On save disk the raw skill bytes live in the 0–200 range;
+how that maps onto the displayed in-game rating has not been
+reverse-engineered. **Exception:** in the transfer-market browser, ability
+figures are shown *relative to the division average*, not on the absolute
+scale — useful when scouting but not directly comparable across divisions.
+
+### Squad and transfers
+
+- **Maximum squad size: 24 players.**
+- **Two transfer bids per week.** Bidding is ask-price / your-offer: either
+  the seller lowers, or you raise. The deal closes when the numbers match;
+  otherwise the seller may quit the negotiation.
+- Overseas players appear in the browser tagged **INT.** under the club
+  column.
+- **Contract ending = FREE transfer.** If you let a contract run out
+  without renewing, the player leaves for nothing. Even before expiry the
+  club "is likely to get only a fraction of their valuation" for a player
+  allowed to run down his deal. The manager can offer a new contract
+  **once per week per player**, choosing duration but not cost. Longer
+  contracts are more expensive and the lump sum comes straight out of the
+  transfer budget.
+- **Revalue.** The manager can set a selling price higher than the board's
+  valuation (to discourage offers for a player requesting transfer) or
+  lower (to shift a player who won't sell). Independent of the board's own
+  valuation.
+- **Transfer requests.** A player may ask to leave. The manager's response
+  — ignore / persuade to withdraw / deny — **affects the player's
+  performance afterwards.**
+- **The board** sets the available transfer budget and may also demand
+  that the manager sell players to raise cash. Ignore the board at your
+  peril — your job security rests with them.
+
+### Discipline
+
+- **Yellow card = 4 disciplinary points.**
+- **Red card = 10 points *and* an automatic 2-match suspension.**
+- **10+ points accumulated** also triggers a 2-match suspension.
+
+This matters when editing `disciplinary_points` (byte 0x16): a value of
+10 or more will cause a ban at the next check.
+
+### Training and the coach
+
+- **Squad training** assigns each player a training position. A player
+  "acquires the skills associated with that category" over time by
+  training (and playing) there — this is the in-engine basis for the
+  "hidden talent" suggestion in the manual: *"his talents may lie
+  elsewhere. The manager may experiment by training a player in a
+  different position."* Line-up Coach's Reassignment suggestions are this
+  same idea, applied statically to the current skill profile.
+- **Tactical training** — only **4 tactics are active in any given week**,
+  and only **1 can be swapped** per week.
+- **Extra training** improves performance; the manual advises against
+  overuse.
+- **Have a break** — a team-morale booster, available only at the start of
+  the week. Blocks all activity that week except the match itself.
+
+### The match
+
+- **Five minutes per half.**
+- **Thirteen players selected per match day** (starting XI + two subs).
+- **Pitch conditions** alter physics:
+  - **Normal** — baseline.
+  - **Wet** — faster, further-travelling ball; increased injury risk.
+  - **Soggy** — low bounce, reduced ball travel, reduced player pace and
+    stamina.
+  - **Hard** — more bounce, more speed, more travel.
+- **Wind direction and strength** are shown before the toss; the toss
+  winner picks ends.
+- Tactics change only at half time or during a substitution. Substitutions
+  only while the ball is out of play (or at half time).
+- **Cup ties** settle by penalty shoot-out — five kicks each, then sudden
+  death.
+
+### Injuries
+
+- **Injury Report** gives the expected absence.
+- A player on **light training** after a serious injury can be picked, but
+  playing him **risks aggravating the injury**. Relevant when editing
+  `injury_weeks` to 0 — the in-game state machine may still treat the
+  player as fragile if he was recently injured.
+
+### Morale
+
+The manual states outright that **morale affects both individual-player
+and team performance**, tracked per-player and aggregated in the **Coach
+Report**. No threshold or formula is given. This is the engine backing for
+the Line-up Coach's morale weighting.
+
+---
+
 ## Hints, Cheats and Suggestions
 
 ### Tips from Ray Earle's Game Help
@@ -906,12 +1024,27 @@ delta descending. Players who gained 20+ points in a season are keepers.
 Players who flatlined after two seasons of growth are candidates to sell
 while their market price still reflects the peak.
 
-**Morale matters.** *(Partially verified — field exists at byte 0x17, 0–255;
-exact in-engine threshold unknown.)* Low morale is widely reported to degrade
-match performance, but the toolkit can't tell you where the cliff is. If a
-signed player goes cold, check the Status tab and watch the morale value
-across a few saves. If it stays low, benching them briefly to break a bad run
+**Morale matters.** *(Verified by the original manual — exact threshold not
+given.)* Anco's manual states outright that morale affects individual and
+team performance; the Coach Report is where the game itself reports on it.
+The toolkit can't tell you where the performance cliff is, but the field is
+real and worth watching. If a signed player goes cold, check the Status tab
+and see whether morale has dropped; benching them briefly to break a bad run
 is the folklore remedy.
+
+**Renew contracts early.** *(Verified by the original manual.)* A player
+whose contract expires without renewal leaves as a **free agent** and the
+club gets nothing. Even before expiry, the manual warns the club will "only
+get a fraction of their valuation" for a player allowed to run his deal
+down. Use the Career tab (contract_years field) to spot anyone entering
+their final season and renew before rivals swoop. Renewal comes out of your
+transfer budget, so plan ahead — and you can only offer a new contract
+**once per week per player**.
+
+**Don't let the squad exceed 24.** *(Verified — hard game limit.)* Buying
+when you're already at 24 requires selling first. The Squad Analyst view
+shows every team's size at a glance, including your own — check before
+each transfer window.
 
 ---
 
@@ -921,6 +1054,9 @@ is the folklore remedy.
 untested.)* Set *Injury weeks* to 0 in the Status tab and save. The byte is
 the number of weeks remaining, so zeroing it should make the player available
 next match day. Useful for rescuing a season wrecked by a long-term injury.
+Caveat from the original manual: a player "on light training after a
+serious injury" runs the risk of aggravating it — zeroing the byte may not
+zero that residual fragility if the engine tracks it elsewhere.
 
 **Retrain a player's position.** *(Verified — Position byte is directly
 editable.)* The in-game UI rarely lets you convert a player's role. The
