@@ -41,7 +41,7 @@ git pull
 Or to pin to a specific tag:
 
 ```
-git checkout v2.2.3
+git checkout v2.2.4
 ```
 
 **If you downloaded a release zip:**

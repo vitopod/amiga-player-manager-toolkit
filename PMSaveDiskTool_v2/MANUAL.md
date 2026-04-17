@@ -80,7 +80,7 @@ installer, no pip package. Upgrading means replacing the folder.
 
 ```
 git pull                 # latest on main
-git checkout v2.2.3      # or any tagged release
+git checkout v2.2.4      # or any tagged release
 ```
 
 **If you downloaded a release zip:**
