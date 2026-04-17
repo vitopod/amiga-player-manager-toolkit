@@ -1126,17 +1126,35 @@ class PMSaveDiskToolGUI:
         add_tab("Core", self._CORE_FIELDS)
 
         # Skills tab: two columns so all 10 fit without scrolling.
-        skills_tab = ttk.Frame(self.notebook)
+        skills_tab = tk.Frame(self.notebook, bg=PAL["bg"])
         self.notebook.add(skills_tab, text="Skills")
+        self._skill_bars: dict[str, tk.Canvas] = {}
         half = (len(SKILL_NAMES) + 1) // 2
         for i, skill in enumerate(SKILL_NAMES):
-            col_block, row = (0, i) if i < half else (2, i - half)
-            ttk.Label(skills_tab, text=f"{skill.capitalize()}:").grid(
-                row=row, column=col_block, sticky="e", padx=(6, 3), pady=2)
+            if i < half:
+                lc, ec, bc = 0, 1, 2
+                row = i
+            else:
+                lc, ec, bc = 3, 4, 5
+                row = i - half
+
+            tk.Label(skills_tab, text=f"{skill.upper()}:", anchor="e",
+                     bg=PAL["bg"], fg=PAL["fg_label"],
+                     font=("Courier New", 8)).grid(
+                         row=row, column=lc, sticky="e", padx=(8, 3), pady=3)
+
             var = tk.StringVar()
-            ttk.Entry(skills_tab, textvariable=var, width=8).grid(
-                row=row, column=col_block + 1, sticky="w", padx=(3, 16), pady=2)
+            tk.Entry(skills_tab, textvariable=var, width=5,
+                     bg="#000044", fg=PAL["fg_data"], insertbackground=PAL["fg_data"],
+                     relief="flat", bd=1, font=("Courier New", 10)).grid(
+                         row=row, column=ec, sticky="w", padx=(2, 4), pady=3)
             self.fields[skill] = var
+            var.trace_add("write", lambda *_, s=skill: self._redraw_skill_bar_single(s))
+
+            bar = tk.Canvas(skills_tab, width=60, height=8,
+                            bg=PAL["bg"], highlightthickness=0)
+            bar.grid(row=row, column=bc, sticky="w", padx=(0, 10), pady=3)
+            self._skill_bars[skill] = bar
 
         add_tab("Status", self._STATUS_FIELDS)
         add_tab("Season", self._SEASON_FIELDS)
@@ -1406,6 +1424,35 @@ class PMSaveDiskToolGUI:
         self.current_player = p
         self._populate_fields(p)
 
+    def _redraw_skill_bars(self) -> None:
+        for skill, bar in self._skill_bars.items():
+            bar.delete("all")
+            try:
+                val = int(self.fields[skill].get())
+            except ValueError:
+                val = 0
+            val = max(0, min(val, 99))
+            fill_w = int(60 * val / 99)
+            bar.create_rectangle(0, 0, 60, 8, fill="#111144", outline=PAL["border"])
+            if fill_w > 0:
+                bar.create_rectangle(0, 0, fill_w, 8,
+                                     fill=PAL["fg_title"], outline="")
+
+    def _redraw_skill_bar_single(self, skill: str) -> None:
+        bar = self._skill_bars.get(skill)
+        if bar is None:
+            return
+        bar.delete("all")
+        try:
+            val = int(self.fields[skill].get())
+        except ValueError:
+            val = 0
+        val = max(0, min(val, 99))
+        fill_w = int(60 * val / 99)
+        bar.create_rectangle(0, 0, 60, 8, fill="#111144", outline=PAL["border"])
+        if fill_w > 0:
+            bar.create_rectangle(0, 0, fill_w, 8, fill=PAL["fg_title"], outline="")
+
     def _populate_fields(self, p: PlayerRecord):
         self.fields["player_id"].set(str(p.player_id))
         name = (self.game_disk.player_full_name(p.rng_seed)
@@ -1439,6 +1486,7 @@ class PMSaveDiskToolGUI:
         self.fields["div4_years"].set(str(p.div4_years))
         self.fields["int_years"].set(str(p.int_years))
         self.fields["contract_years"].set(str(p.contract_years))
+        self._redraw_skill_bars()
 
     def _apply_changes(self):
         if not self.current_player or not self.slot:
