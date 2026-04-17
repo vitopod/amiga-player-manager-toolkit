@@ -95,7 +95,7 @@ PAL = {
     "player_b":   "#ff6666",
     "free_agent": "#44cc44",
     "btn_go":     "#006600",
-    "btn_go_fg":  "#44ff44",
+    "btn_go_fg":  "#ffffff",
     "selected":   "#3344aa",
     "border":     "#2244aa",
     "field":      "#000044",   # entry/combobox field background
@@ -831,8 +831,8 @@ class PlayerCompareWindow(tk.Toplevel):
     def __init__(self, parent, slot, game_disk, player_a=None):
         super().__init__(parent)
         self.title("Compare Players")
-        self.geometry("900x540")
-        self.minsize(900, 460)
+        self.geometry("980x560")
+        self.minsize(960, 480)
         self.configure(bg=PAL["bg"])
 
         self._slot = slot
@@ -866,40 +866,40 @@ class PlayerCompareWindow(tk.Toplevel):
         a_frame = tk.Frame(row, bg=PAL["bg_mid"])
         a_frame.pack(side=tk.LEFT, padx=10, pady=6)
         tk.Label(a_frame, text="PLAYER A", bg=PAL["bg_mid"],
-                 fg=PAL["fg_dim"], font=("Courier New", 8)).pack(anchor="w")
+                 fg=PAL["fg_label"], font=("Courier New", 9, "bold")).pack(anchor="w")
         self._a_name_lbl = tk.Label(a_frame, text="—",
                                     bg=PAL["bg_mid"], fg=PAL["player_a"],
-                                    font=("Courier New", 11, "bold"))
+                                    font=("Courier New", 12, "bold"))
         self._a_name_lbl.pack(anchor="w")
         self._a_meta_lbl = tk.Label(a_frame, text="",
-                                    bg=PAL["bg_mid"], fg=PAL["fg_label"],
-                                    font=("Courier New", 8))
+                                    bg=PAL["bg_mid"], fg=PAL["fg_data"],
+                                    font=("Courier New", 9))
         self._a_meta_lbl.pack(anchor="w")
 
-        tk.Button(row, text="⇄", bg=PAL["bg_mid"], fg=PAL["fg_dim"],
-                  font=("Courier New", 14), relief="flat", bd=0,
+        tk.Button(row, text="⇄", bg=PAL["bg_mid"], fg=PAL["fg_data"],
+                  font=("Courier New", 16, "bold"), relief="flat", bd=0,
                   activebackground=PAL["selected"], activeforeground=PAL["fg_white"],
                   command=self._swap).pack(side=tk.LEFT, padx=8)
 
         b_frame = tk.Frame(row, bg=PAL["bg_mid"])
         b_frame.pack(side=tk.LEFT, padx=10, pady=6)
         tk.Label(b_frame, text="PLAYER B", bg=PAL["bg_mid"],
-                 fg=PAL["fg_dim"], font=("Courier New", 8)).pack(anchor="w")
+                 fg=PAL["fg_label"], font=("Courier New", 9, "bold")).pack(anchor="w")
         self._b_name_lbl = tk.Label(b_frame, text="—",
                                     bg=PAL["bg_mid"], fg=PAL["player_b"],
-                                    font=("Courier New", 11, "bold"))
+                                    font=("Courier New", 12, "bold"))
         self._b_name_lbl.pack(anchor="w")
         self._b_meta_lbl = tk.Label(b_frame, text="",
-                                    bg=PAL["bg_mid"], fg=PAL["fg_label"],
-                                    font=("Courier New", 8))
+                                    bg=PAL["bg_mid"], fg=PAL["fg_data"],
+                                    font=("Courier New", 9))
         self._b_meta_lbl.pack(anchor="w")
 
         pick_frame = tk.Frame(row, bg=PAL["bg_mid"])
         pick_frame.pack(side=tk.RIGHT, padx=10, pady=6)
 
         tk.Label(pick_frame, text="TEAM", bg=PAL["bg_mid"],
-                 fg=PAL["fg_dim"], font=("Courier New", 8)).grid(
-                     row=0, column=0, sticky="w")
+                 fg=PAL["fg_label"], font=("Courier New", 9, "bold")).grid(
+                     row=0, column=0, sticky="w", padx=(0, 4))
         self._team_var = tk.StringVar()
         self._team_combo = ttk.Combobox(pick_frame, textvariable=self._team_var,
                                         state="readonly", width=18)
@@ -907,8 +907,8 @@ class PlayerCompareWindow(tk.Toplevel):
         self._team_combo.bind("<<ComboboxSelected>>", self._on_team_selected)
 
         tk.Label(pick_frame, text="PLAYER", bg=PAL["bg_mid"],
-                 fg=PAL["fg_dim"], font=("Courier New", 8)).grid(
-                     row=1, column=0, sticky="w")
+                 fg=PAL["fg_label"], font=("Courier New", 9, "bold")).grid(
+                     row=1, column=0, sticky="w", padx=(0, 4))
         self._player_var = tk.StringVar()
         self._player_combo = ttk.Combobox(pick_frame, textvariable=self._player_var,
                                           state="readonly", width=18)
@@ -931,7 +931,7 @@ class PlayerCompareWindow(tk.Toplevel):
         bars_frame = tk.Frame(body, bg=PAL["bg"])
         bars_frame.pack(side=tk.LEFT, fill=tk.Y)
         self._bars_canvas = tk.Canvas(bars_frame, bg=PAL["bg"],
-                                      width=540, highlightthickness=0)
+                                      width=600, highlightthickness=0)
         self._bars_canvas.pack(padx=8, pady=6, fill=tk.Y)
 
     def _build_legend_row(self):
@@ -953,11 +953,12 @@ class PlayerCompareWindow(tk.Toplevel):
         bar.pack(fill=tk.X, side=tk.BOTTOM)
         self._status_lbl = tk.Label(bar, text="Select two players to compare.",
                                     bg=PAL["btn_go"], fg=PAL["btn_go_fg"],
-                                    font=("Courier New", 9))
+                                    font=("Courier New", 10, "bold"))
         self._status_lbl.pack(side=tk.LEFT, padx=10, pady=5)
         tk.Button(bar, text="DONE", bg=PAL["btn_go"], fg=PAL["btn_go_fg"],
-                  font=("Courier New", 9, "bold"),
-                  relief="flat", bd=0, padx=16, pady=3,
+                  highlightbackground=PAL["btn_go"], highlightthickness=0,
+                  font=("Courier New", 10, "bold"),
+                  relief="flat", bd=0, padx=18, pady=4,
                   activebackground=PAL["selected"], activeforeground=PAL["fg_white"],
                   command=self.destroy).pack(side=tk.RIGHT, padx=8, pady=4)
 
@@ -1078,10 +1079,10 @@ class PlayerCompareWindow(tk.Toplevel):
         for i, label in enumerate(self._SKILL_LABELS):
             tx, ty = self._axis_tip(i)
             c.create_line(cx, cy, tx, ty, fill=PAL["border"], width=0.8)
-            lx = cx + (r + 14) * math.cos((i * 2 * math.pi / n) - math.pi / 2)
-            ly = cy + (r + 14) * math.sin((i * 2 * math.pi / n) - math.pi / 2)
+            lx = cx + (r + 18) * math.cos((i * 2 * math.pi / n) - math.pi / 2)
+            ly = cy + (r + 18) * math.sin((i * 2 * math.pi / n) - math.pi / 2)
             c.create_text(lx, ly, text=label, fill=PAL["fg_data"],
-                          font=("Courier New", 7), anchor="center")
+                          font=("Courier New", 9, "bold"), anchor="center")
 
         pts_b = []
         for i, v in enumerate(self._skill_values(self._player_b)):
@@ -1107,11 +1108,11 @@ class PlayerCompareWindow(tk.Toplevel):
         vals_a = self._skill_values(self._player_a)
         vals_b = self._skill_values(self._player_b)
 
-        row_h = 24
-        val_w = 26
-        label_w = 58
+        row_h = 28
+        val_w = 30
+        label_w = 90
         half_bar = 200  # max bar length in pixels (full skill = 200px)
-        canvas_w = 540
+        canvas_w = 600
         # Centre the block: val_w + half_bar + label_w + half_bar + val_w
         x0 = (canvas_w - val_w - half_bar - label_w - half_bar - val_w) // 2
 
@@ -1129,14 +1130,17 @@ class PlayerCompareWindow(tk.Toplevel):
 
             col_a = PAL["player_a"] if win_a else "#223344"
             col_b = PAL["player_b"] if win_b else "#331111"
-            fg_a  = PAL["player_a"] if win_a else PAL["fg_dim"]
-            fg_b  = PAL["player_b"] if win_b else PAL["fg_dim"]
+            # Losers still need to be legible; fg_label (mid blue) stays
+            # clearly readable against the navy background while leaving
+            # the winner's bright team color as the visual emphasis.
+            fg_a  = PAL["player_a"] if win_a else PAL["fg_label"]
+            fg_b  = PAL["player_b"] if win_b else PAL["fg_label"]
 
             fill_a = int((va / 200) * half_bar)
             fill_b = int((vb / 200) * half_bar)
 
             c.create_text(bax1 - 3, y + 8, text=str(va),
-                          fill=fg_a, font=("Courier New", 9, "bold" if win_a else "normal"),
+                          fill=fg_a, font=("Courier New", 10, "bold" if win_a else "normal"),
                           anchor="e")
             c.create_rectangle(bax1, y + 5, bax2, y + 11,
                                fill=PAL["bar_trough"], outline=PAL["border"])
@@ -1144,7 +1148,7 @@ class PlayerCompareWindow(tk.Toplevel):
                 c.create_rectangle(bax2 - fill_a, y + 5, bax2, y + 11,
                                    fill=col_a, outline="")
             c.create_text(bax2 + label_w // 2, y + 8, text=skill_label,
-                          fill=PAL["fg_label"], font=("Courier New", 7),
+                          fill=PAL["fg_data"], font=("Courier New", 9, "bold"),
                           anchor="center")
             c.create_rectangle(bbx1, y + 5, bbx2, y + 11,
                                fill=PAL["bar_trough"], outline=PAL["border"])
@@ -1152,7 +1156,7 @@ class PlayerCompareWindow(tk.Toplevel):
                 c.create_rectangle(bbx1, y + 5, bbx1 + fill_b, y + 11,
                                    fill=col_b, outline="")
             c.create_text(bbx2 + 3, y + 8, text=str(vb),
-                          fill=fg_b, font=("Courier New", 9, "bold" if win_b else "normal"),
+                          fill=fg_b, font=("Courier New", 10, "bold" if win_b else "normal"),
                           anchor="w")
 
     def _update_status(self):
@@ -1448,17 +1452,21 @@ class PMSaveDiskToolGUI:
         self.apply_button = tk.Button(
             footer, text="APPLY",
             bg=PAL["btn_go"], fg=PAL["btn_go_fg"],
-            font=("Courier New", 9, "bold"),
-            relief="flat", bd=0, padx=14, pady=4,
+            # highlightbackground is what macOS Aqua actually paints; bg
+            # alone is ignored on native buttons there.
+            highlightbackground=PAL["btn_go"], highlightthickness=0,
+            font=("Courier New", 10, "bold"),
+            relief="flat", bd=0, padx=16, pady=5,
             activebackground=PAL["selected"], activeforeground=PAL["fg_white"],
             command=self._apply_changes,
         )
         self.apply_button.pack(side=tk.RIGHT, padx=(4, 6), pady=4)
         tk.Button(
             footer, text="REVERT",
-            bg=PAL["bg_mid"], fg=PAL["fg_dim"],
-            font=("Courier New", 9),
-            relief="flat", bd=0, padx=10, pady=4,
+            bg=PAL["bg_mid"], fg=PAL["fg_data"],
+            highlightbackground=PAL["btn_go"], highlightthickness=0,
+            font=("Courier New", 10, "bold"),
+            relief="flat", bd=0, padx=12, pady=5,
             activebackground=PAL["selected"], activeforeground=PAL["fg_white"],
             command=self._revert_player,
         ).pack(side=tk.RIGHT, pady=4)
