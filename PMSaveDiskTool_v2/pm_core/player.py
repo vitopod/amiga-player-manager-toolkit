@@ -37,7 +37,7 @@ FIELD_LAYOUT: list[tuple[int, int, str, str]] = [
     (0x0B, 1, "resilience", ""),
     (0x0C, 1, "pace", ""),
     (0x0D, 1, "agility", ""),
-    (0x0E, 1, "aggression", ""),
+    (0x0E, 1, "aggression", "Stored inverted on disk: raw = 200 - displayed"),
     (0x0F, 1, "flair", ""),
     (0x10, 1, "passing", ""),
     (0x11, 1, "shooting", ""),
@@ -50,21 +50,21 @@ FIELD_LAYOUT: list[tuple[int, int, str, str]] = [
     (0x18, 1, "value", ""),
     (0x19, 1, "weeks_since_transfer", "Post-transfer cooldown, not a listed flag"),
     (0x1A, 1, "mystery3", "bit 0x80 = is_transfer_listed; lower 7 bits TBD"),
-    (0x1B, 1, "injuries_this_year", ""),
-    (0x1C, 1, "injuries_last_year", ""),
-    (0x1D, 1, "dsp_pts_this_year", ""),
-    (0x1E, 1, "dsp_pts_last_year", ""),
-    (0x1F, 1, "goals_this_year", ""),
-    (0x20, 1, "goals_last_year", ""),
-    (0x21, 1, "matches_this_year", ""),
-    (0x22, 1, "matches_last_year", ""),
-    (0x23, 1, "div1_years", ""),
-    (0x24, 1, "div2_years", ""),
-    (0x25, 1, "div3_years", ""),
-    (0x26, 1, "div4_years", ""),
-    (0x27, 1, "int_years", ""),
-    (0x28, 1, "contract_years", ""),
-    (0x29, 1, "last_byte", "Observed 1..5; semantics TBD"),
+    (0x1B, 1, "reserved2", "Nearly always 0 (1033/1035 observed)"),
+    (0x1C, 1, "injuries_this_year", ""),
+    (0x1D, 1, "injuries_last_year", ""),
+    (0x1E, 1, "dsp_pts_this_year", ""),
+    (0x1F, 1, "dsp_pts_last_year", ""),
+    (0x20, 1, "goals_this_year", ""),
+    (0x21, 1, "goals_last_year", ""),
+    (0x22, 1, "matches_this_year", ""),
+    (0x23, 1, "matches_last_year", ""),
+    (0x24, 1, "div1_years", ""),
+    (0x25, 1, "div2_years", ""),
+    (0x26, 1, "div3_years", ""),
+    (0x27, 1, "div4_years", ""),
+    (0x28, 1, "int_years", ""),
+    (0x29, 1, "contract_years", "Observed 1..5"),
 ]
 
 
@@ -111,7 +111,11 @@ class PlayerRecord:
     height: int = 0
     weight: int = 0
 
-    # Bytes +0A-13: Skills (0-200)
+    # Bytes +0A-13: Skills (0-200).
+    # NOTE: aggression is stored INVERTED on disk — the raw byte at 0x0E is
+    # 200 - displayed. The dataclass holds the displayed (in-game) value; the
+    # parse/serialize functions perform the inversion. This matches what the
+    # game shows in the stats screen (low = calm, high = aggressive).
     stamina: int = 0
     resilience: int = 0
     pace: int = 0
@@ -144,7 +148,11 @@ class PlayerRecord:
     # Treat the whole byte as opaque except for the known 0x80 flag.
     mystery3: int = 0
 
-    # Bytes +1B-22: Season stats
+    # Byte +1B: Second reserved byte. Observed to be 0 for 1033/1035 real
+    # players in Save1_PM. Preserved in round-trip serialization.
+    reserved2: int = 0
+
+    # Bytes +1C-23: Season stats
     injuries_this_year: int = 0
     injuries_last_year: int = 0
     dsp_pts_this_year: int = 0
@@ -154,19 +162,14 @@ class PlayerRecord:
     matches_this_year: int = 0
     matches_last_year: int = 0
 
-    # Bytes +23-29: Career
+    # Bytes +24-29: Career (years played per division, internationals, and
+    # remaining contract length). Verified against in-game career screen.
     div1_years: int = 0
     div2_years: int = 0
     div3_years: int = 0
     div4_years: int = 0
     int_years: int = 0
     contract_years: int = 0
-    # Byte +29: observed values 1..5 in Save1_PM (n=1031). Skew: v=3 (51%),
-    # v=2 (32%), v=4 (8%), v=5 (5%), v=1 (4%). Players with v=4 have the
-    # highest average total_skill; players with v=5 are the youngest cohort.
-    # Likely a 1–5 rating (preferred foot / personality / scout grade);
-    # semantics not definitively identified.
-    last_byte: int = 0
 
     @property
     def position_name(self) -> str:
@@ -225,7 +228,8 @@ def parse_player(data: bytes, player_id: int = 0) -> PlayerRecord:
         resilience=d[11],
         pace=d[12],
         agility=d[13],
-        aggression=d[14],
+        # Aggression is inverted on disk: displayed = 200 - raw byte.
+        aggression=200 - d[14],
         flair=d[15],
         passing=d[16],
         shooting=d[17],
@@ -238,26 +242,30 @@ def parse_player(data: bytes, player_id: int = 0) -> PlayerRecord:
         value=d[24],
         weeks_since_transfer=d[25],
         mystery3=d[26],
-        injuries_this_year=d[27],
-        injuries_last_year=d[28],
-        dsp_pts_this_year=d[29],
-        dsp_pts_last_year=d[30],
-        goals_this_year=d[31],
-        goals_last_year=d[32],
-        matches_this_year=d[33],
-        matches_last_year=d[34],
-        div1_years=d[35],
-        div2_years=d[36],
-        div3_years=d[37],
-        div4_years=d[38],
-        int_years=d[39],
-        contract_years=d[40],
-        last_byte=d[41],
+        reserved2=d[27],
+        injuries_this_year=d[28],
+        injuries_last_year=d[29],
+        dsp_pts_this_year=d[30],
+        dsp_pts_last_year=d[31],
+        goals_this_year=d[32],
+        goals_last_year=d[33],
+        matches_this_year=d[34],
+        matches_last_year=d[35],
+        div1_years=d[36],
+        div2_years=d[37],
+        div3_years=d[38],
+        div4_years=d[39],
+        int_years=d[40],
+        contract_years=d[41],
     )
 
 
 def serialize_player(player: PlayerRecord) -> bytes:
-    """Serialize a PlayerRecord back to 42 bytes."""
+    """Serialize a PlayerRecord back to 42 bytes.
+
+    Round-trip with parse_player is byte-identical: aggression is inverted
+    (raw = 200 - displayed) to cancel the inversion done on parse.
+    """
     return (
         struct.pack(">I", player.rng_seed)
         + bytes([
@@ -271,7 +279,7 @@ def serialize_player(player: PlayerRecord) -> bytes:
             player.resilience,
             player.pace,
             player.agility,
-            player.aggression,
+            (200 - player.aggression) & 0xFF,
             player.flair,
             player.passing,
             player.shooting,
@@ -284,6 +292,7 @@ def serialize_player(player: PlayerRecord) -> bytes:
             player.value,
             player.weeks_since_transfer,
             player.mystery3,
+            player.reserved2,
             player.injuries_this_year,
             player.injuries_last_year,
             player.dsp_pts_this_year,
@@ -298,6 +307,5 @@ def serialize_player(player: PlayerRecord) -> bytes:
             player.div4_years,
             player.int_years,
             player.contract_years,
-            player.last_byte,
         ])
     )

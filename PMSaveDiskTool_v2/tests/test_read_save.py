@@ -344,11 +344,19 @@ class TestUnknownFieldObservations(unittest.TestCase):
                              f"player {p.player_id}: mystery3 bit 5 set "
                              f"(0x{p.mystery3:02x})")
 
-    def test_last_byte_in_expected_range(self):
+    def test_contract_years_in_expected_range(self):
         for p in self.real:
-            self.assertIn(p.last_byte, (1, 2, 3, 4, 5),
-                          f"player {p.player_id}: last_byte={p.last_byte} "
+            self.assertIn(p.contract_years, (1, 2, 3, 4, 5),
+                          f"player {p.player_id}: contract_years={p.contract_years} "
                           "outside observed 1..5 range")
+
+    def test_reserved2_mostly_zero(self):
+        # Byte 0x1B is zero for the vast majority of real players. Allow a
+        # few outliers; we only assert at least 95% are zero so the test
+        # documents the invariant without being brittle.
+        zeros = sum(1 for p in self.real if p.reserved2 == 0)
+        self.assertGreater(zeros / len(self.real), 0.95,
+                           f"reserved2 zero fraction too low: {zeros}/{len(self.real)}")
 
 
 class TestSquadSummary(unittest.TestCase):

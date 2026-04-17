@@ -46,7 +46,7 @@ class TestFieldLayout(unittest.TestCase):
 
     def test_field_at_offset_finds_single_byte_fields(self):
         self.assertEqual(field_at_offset(0x1A)[0], "mystery3")
-        self.assertEqual(field_at_offset(0x29)[0], "last_byte")
+        self.assertEqual(field_at_offset(0x29)[0], "contract_years")
 
     def test_field_at_offset_rejects_out_of_range(self):
         with self.assertRaises(IndexError):
@@ -180,7 +180,7 @@ class TestQuery(unittest.TestCase):
 class TestRawBytesConsistency(unittest.TestCase):
     def test_raw_bytes_matches_serialize(self):
         from pm_core.workbench import raw_bytes
-        p = _p(age=27, mystery3=0x80, last_byte=3)
+        p = _p(age=27, mystery3=0x80, contract_years=3)
         self.assertEqual(raw_bytes(p), serialize_player(p))
 
 

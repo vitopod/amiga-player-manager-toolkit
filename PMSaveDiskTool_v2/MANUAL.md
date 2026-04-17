@@ -857,7 +857,7 @@ in the ADF by the player database: a 2-byte big-endian header, then
 | +07 | Team index (0xFF = free agent) |
 | +08 | Height (cm) |
 | +09 | Weight (kg) |
-| +0A–13 | Ten skill attributes (0–200 each) |
+| +0A–13 | Ten skill attributes (0–200 each). Aggression (+0E) is stored **inverted**: raw byte = 200 − in-game value. |
 | +14 | Reserved (always 0) |
 | +15 | Injury weeks |
 | +16 | Disciplinary points |
@@ -865,9 +865,10 @@ in the ADF by the player database: a 2-byte big-endian header, then
 | +18 | Value |
 | +19 | Weeks since last transfer (cooldown counter) |
 | +1A | mystery3 — bit 0x80 = on transfer list; lower 7 bits unknown |
-| +1B–22 | Season stats: injuries, discipline pts, goals, matches (this/last year) |
-| +23–29 | Career: seasons in div1/2/3/4, international, contract years |
-| +2A | last_byte — values 1–5 observed, meaning unknown |
+| +1B | Reserved2 (0 in 1033/1035 observed real players) |
+| +1C–23 | Season stats: injuries, discipline pts, goals, matches (this/last year) |
+| +24–28 | Career: seasons in div1/2/3/4, international |
+| +29 | Contract years remaining (1–5) |
 
 ### Player names
 
