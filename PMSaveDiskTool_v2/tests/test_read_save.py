@@ -158,36 +158,75 @@ class TestSaveSlot(unittest.TestCase):
         self.assertIn(self.slot.db_header, [1, 2, 3, 4])
 
 
+class TestTeamNameStandingsShift(unittest.TestCase):
+    """player.team_index is 1-based against the save's own standings
+    records: team_index N references save record[N-1]. Across the season
+    teams promote/relegate and records re-sort, so PM1.nam (which is the
+    initial/static order) goes stale for saves past pm1. HURGADA is at
+    record[19] in pm1 (team_index 20), but at record[6] in pm6/pm7
+    (team_index 7). The lookup must follow the save's current layout.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        if not os.path.exists(TEST_ADF):
+            raise unittest.SkipTest(f"Test ADF not found: {TEST_ADF}")
+        cls.adf = ADF.load(TEST_ADF)
+
+    def _find_team_index(self, slot, name):
+        return next((i for i, n in enumerate(slot.team_names) if n == name),
+                    None)
+
+    def test_hurgada_moves_between_saves(self):
+        # All seven saves were manager-played on the same season, so HURGADA
+        # should still exist but at a different team_index in each save.
+        slots = {n: SaveSlot(self.adf, n)
+                 for n in [f"pm{i}.sav" for i in range(1, 8)]}
+        indices = {name: self._find_team_index(s, "HURGADA")
+                   for name, s in slots.items()}
+        for name, idx in indices.items():
+            self.assertIsNotNone(idx, f"{name}: HURGADA not found")
+        # pm1 keeps the initial PM1.nam position; later saves differ.
+        self.assertEqual(indices["pm1.sav"], 20)
+        self.assertNotEqual(indices["pm6.sav"], 20)
+        self.assertNotEqual(indices["pm7.sav"], 20)
+
+    def test_team_index_0_is_user_team_placeholder(self):
+        slot = SaveSlot(self.adf, "pm6.sav")
+        # Italian save keeps PM1.nam for the user's team label.
+        self.assertEqual(slot.team_names[0], "MILAN")
+
+
 @unittest.skipUnless(os.path.isfile(_EN_SAVE_ADF) and os.path.isfile(_EN_GAME_ADF),
                      "English save or game ADF not available")
-class TestEnglishSaveTeamNameFallback(unittest.TestCase):
-    """When PM1.nam is missing on the save disk (English/BETA builds),
-    loading a game disk must fill in team names from start.dat."""
+class TestEnglishSaveTeamNames(unittest.TestCase):
+    """English/BETA saves lack PM1.nam but still carry team names inside
+    each save's 44 × 100-byte team records (same layout as Italian saves).
+    Names are populated straight from those records."""
 
     @classmethod
     def setUpClass(cls):
         from pm_core.names import GameDisk
         cls.adf = ADF.load(_EN_SAVE_ADF)
-        # Pick the first save slot on the disk.
         save_name = cls.adf.list_saves()[0].name
         cls.slot = SaveSlot(cls.adf, save_name)
         cls.gd = GameDisk.load(_EN_GAME_ADF)
 
-    def test_save_has_no_pm1_nam(self):
-        self.assertFalse(self.slot.team_names_from_save)
+    def test_names_sourced_from_save_records(self):
+        self.assertTrue(self.slot.team_names_from_save)
+        # team_names[0] is the user's team (no save record); fall back to
+        # placeholder since the English save has no PM1.nam.
+        self.assertEqual(self.slot.team_names[0], "Team 0")
+        # team_names[i>=1] = save record[i-1]. Two known English clubs
+        # confirmed from the first save on this disk.
+        self.assertIn("LIVERPOOL", self.slot.team_names[1:])
+        self.assertIn("CHELSEA", self.slot.team_names[1:])
 
-    def test_default_names_are_placeholders(self):
-        # Before any fallback, names are "Team N".
-        for i, name in enumerate(self.slot.team_names):
-            self.assertEqual(name, f"Team {i}")
-
-    def test_fallback_applies_game_disk_names(self):
+    def test_fallback_is_noop_when_records_populated(self):
+        before = list(self.slot.team_names)
         changed = self.slot.apply_team_name_fallback(self.gd.team_names)
-        self.assertTrue(changed)
-        self.assertEqual(self.slot.team_names[0], "CHELSEA")
-        self.assertEqual(self.slot.team_names[3], "LIVERPOOL")
-        # Slot 43 is unused template data; placeholder retained.
-        self.assertEqual(self.slot.team_names[43], "Team 43")
+        self.assertFalse(changed)
+        self.assertEqual(self.slot.team_names, before)
 
 
 class TestBestXI(unittest.TestCase):

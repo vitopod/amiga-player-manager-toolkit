@@ -35,6 +35,14 @@ NUM_TEAMS = 44
 TEAM_NAME_RECORD_SIZE = 20
 TEAM_NAMES_FILE = "PM1.nam"
 
+# Each .sav stores 44 × 100-byte team records in current standings order.
+# Player.team_index N maps to save record[N-1]: team_index 0 is the user's
+# own team (no save record), 1..43 map to standings records 0..42. Record
+# 43 is unused template garbage. Team name is NUL-terminated ASCII at
+# sub-offset 68 of each 100-byte record.
+SAV_TEAM_RECORD_SIZE = 100
+SAV_TEAM_NAME_OFFSET = 68
+
 # Formations map position code (1=GK, 2=DEF, 3=MID, 4=FWD) to slot counts.
 FORMATIONS = {
     "4-4-2": {1: 1, 2: 4, 3: 4, 4: 2},
@@ -63,19 +71,74 @@ class SaveSlot:
         self.db_header, self.players = self._load_player_db()
 
     def _load_team_names(self) -> tuple[list[str], bool]:
-        """Load 44 team names from PM1.nam. Second element is True if the
-        names came from the save disk, False if we fell back to placeholders
-        (which callers may later overwrite via apply_team_name_fallback)."""
+        """Resolve team_index → name for this save.
+
+        The source of truth is the save's own 44 × 100-byte team records
+        (in current league-standings order), not PM1.nam. PM1.nam reflects
+        only the initial season layout and becomes stale as soon as the
+        standings reshuffle. Player.team_index is 1-based against these
+        records: team_index N references record[N-1]; team_index 0 is the
+        user's own team (no save record).
+
+        Returns (names, from_save). from_save is True whenever the save's
+        in-record names parse as real (Italian saves always; English/BETA
+        saves fall through so apply_team_name_fallback can fill them in).
+        """
+        pm1_nam_entry_0 = self._read_pm1_nam_entry(0)
+        user_team = pm1_nam_entry_0 if pm1_nam_entry_0 else "Team 0"
+
+        save_data = self.adf.read_at(self.entry.byte_offset, self.entry.size)
+        records: list[str | None] = []
+        for i in range(NUM_TEAMS - 1):  # 43 real team records; slot 43 is garbage
+            name = self._parse_sav_team_name(save_data, i)
+            records.append(name)
+
+        from_save = any(r is not None for r in records)
+        if not from_save:
+            # English/BETA save with no usable in-record names — placeholders
+            # get overwritten later via apply_team_name_fallback().
+            return [f"Team {i}" for i in range(NUM_TEAMS)], False
+
+        names = [user_team]
+        for i, rec in enumerate(records):
+            names.append(rec if rec is not None else f"Team {i + 1}")
+        return names, True
+
+    def _read_pm1_nam_entry(self, index: int) -> str | None:
+        """Return PM1.nam[index] if the file exists and the entry is real."""
         try:
             nam_data = self.adf.read_file(TEAM_NAMES_FILE)
         except FileNotFoundError:
-            return [f"Team {i}" for i in range(NUM_TEAMS)], False
-        names = []
-        for i in range(NUM_TEAMS):
-            rec = nam_data[i * TEAM_NAME_RECORD_SIZE:(i + 1) * TEAM_NAME_RECORD_SIZE]
-            null_pos = rec.index(0) if 0 in rec else TEAM_NAME_RECORD_SIZE
-            names.append(rec[:null_pos].decode("latin-1", errors="replace"))
-        return names, True
+            return None
+        start = index * TEAM_NAME_RECORD_SIZE
+        rec = nam_data[start:start + TEAM_NAME_RECORD_SIZE]
+        if not rec:
+            return None
+        null_pos = rec.index(0) if 0 in rec else TEAM_NAME_RECORD_SIZE
+        text = rec[:null_pos].decode("latin-1", errors="replace")
+        return text or None
+
+    @staticmethod
+    def _parse_sav_team_name(save_data: bytes, record_index: int) -> str | None:
+        """Extract an in-record team name, or None if the slot looks unused.
+
+        A slot is "real" when the name field decodes to ≥2 ASCII letters/
+        spaces starting with a letter — enough to reject template garbage
+        (record 43 on Italian disks, or any record on English/BETA saves
+        that don't populate this field).
+        """
+        start = record_index * SAV_TEAM_RECORD_SIZE + SAV_TEAM_NAME_OFFSET
+        raw = save_data[start:start + (SAV_TEAM_RECORD_SIZE - SAV_TEAM_NAME_OFFSET)]
+        end = raw.index(0) if 0 in raw else len(raw)
+        try:
+            text = raw[:end].decode("ascii")
+        except UnicodeDecodeError:
+            return None
+        if (len(text) >= 2
+                and text[0].isalpha()
+                and all(c.isalpha() or c == " " for c in text)):
+            return text
+        return None
 
     def apply_team_name_fallback(self, team_names: list[str]) -> bool:
         """When PM1.nam is absent on the save disk (English/BETA builds),

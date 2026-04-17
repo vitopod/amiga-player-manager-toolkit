@@ -4,6 +4,33 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.2] — 2026-04-17
+
+### Fixed
+- **Wrong team rosters on saves after standings reshuffle.** From pm2.sav
+  onward the team ordering inside each save slot shifts as teams move in
+  the league standings, but the toolkit was resolving team names through
+  `PM1.nam` — a static snapshot of the *initial* standings. This made
+  players in later saves (e.g. pm6.sav, pm7.sav) display under the wrong
+  team label and caused the entire roster for teams like HURGADA to look
+  nothing like the in-game squad. `SaveSlot` now reads team names
+  directly from each `.sav`'s 44 × 100-byte team records (NUL-terminated
+  ASCII at sub-offset 68, same layout `start.dat` uses), matching the
+  1-based `team_index` → record[N−1] mapping the game engine uses. Slot
+  0 (the user's own team) still falls back to `PM1.nam[0]` when present.
+- Documented that `player.team_index` is **1-based** against the save's
+  team records (team_index=0 = user's own team, team_index=N → record N−1).
+
+### Changed
+- `SaveSlot.apply_team_name_fallback` is now a no-op whenever the save's
+  own records populated that slot — which is the common case for both
+  Italian and English save disks.
+
+### Tests
+- New regression tests: HURGADA moves between saves as standings shift;
+  slot 0 falls back to `PM1.nam[0]` on Italian saves and to the
+  placeholder on English saves without `PM1.nam`.
+
 ## [2.1.1] — 2026-04-17
 
 ### Added
