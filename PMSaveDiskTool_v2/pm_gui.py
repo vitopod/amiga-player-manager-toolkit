@@ -1506,26 +1506,32 @@ class PMSaveDiskToolGUI:
             [("Player #", "player_id"), ("Name", "name"), ("Seed", "rng_seed")]
         ):
             tk.Label(self.detail_header, text=label.upper(), anchor="e",
-                     bg=PAL["bg_mid"], fg=PAL["fg_dim"],
-                     font=("Courier New", 8)).grid(
-                         row=0, column=i * 2, sticky="e", padx=(6, 3), pady=6)
+                     bg=PAL["bg_mid"], fg=PAL["fg_label"],
+                     font=_retro(9, "bold")).grid(
+                         row=0, column=i * 2, sticky="e", padx=(8, 4), pady=8)
             var = tk.StringVar()
             tk.Label(self.detail_header, textvariable=var,
                      bg=PAL["bg_mid"], fg=PAL["fg_title"],
-                     font=("Courier New", 10, "bold"), anchor="w").grid(
-                         row=0, column=i * 2 + 1, sticky="w", padx=(0, 16), pady=6)
+                     font=_retro(12, "bold"), anchor="w").grid(
+                         row=0, column=i * 2 + 1, sticky="w", padx=(0, 18), pady=8)
             self.fields[key] = var
 
         def add_field(parent, label, key, row):
-            ttk.Label(parent, text=label).grid(
-                row=row, column=0, sticky="e", padx=(6, 3), pady=2)
+            tk.Label(parent, text=label.upper(), anchor="e",
+                     bg=PAL["bg"], fg=PAL["fg_data"],
+                     font=_retro(10, "bold")).grid(
+                         row=row, column=0, sticky="e", padx=(8, 4), pady=4)
             var = tk.StringVar()
-            ttk.Entry(parent, textvariable=var, width=12).grid(
-                row=row, column=1, sticky="w", padx=(3, 6), pady=2)
+            tk.Entry(parent, textvariable=var, width=12,
+                     bg=PAL["field"], fg=PAL["fg_data"],
+                     insertbackground=PAL["fg_data"],
+                     relief="flat", bd=1,
+                     font=("Courier New", 10)).grid(
+                         row=row, column=1, sticky="w", padx=(2, 8), pady=3)
             self.fields[key] = var
 
         def add_tab(title, fields):
-            tab = ttk.Frame(self.notebook)
+            tab = tk.Frame(self.notebook, bg=PAL["bg"])
             self.notebook.add(tab, text=title)
             for r, (label, key) in enumerate(fields):
                 add_field(tab, label, key, r)
