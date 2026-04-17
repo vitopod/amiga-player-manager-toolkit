@@ -4,6 +4,28 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Amiga-era Topaz font** now ships in `PMSaveDiskTool_v2/assets/` and is
+  used for the main title band, Update-available banner, ttk Notebook
+  tabs, Treeview column headings, and the Compare Players title —
+  bringing the GUI's chrome closer to Player Manager's in-game look.
+  Player-list rows, entry fields, and small labels stay on Courier New
+  for legibility.
+- `pm_core.fonts` registers the bundled TTF at process scope using
+  `CTFontManagerRegisterFontsForURL` on macOS, `AddFontResourceEx` on
+  Windows, and `~/.local/share/fonts/` + `fc-cache` on Linux. Silent
+  fallback to Courier New when registration fails — zero new
+  dependencies. Nothing is installed system-wide on macOS or Windows.
+- `assets/NOTICE.md` documents the CC BY-NC-SA 3.0 license that applies
+  to the bundled Topaz file (commercial redistributors should remove the
+  `.ttf`; the GUI degrades gracefully).
+
+### Credits
+- **Topaz** font: TrueType rendition © 2009 dMG of Trueschool and
+  Divine Stylers, sourced from https://github.com/rewtnull/amigafonts.
+
 ## [2.2.3] — 2026-04-17
 
 ### Added

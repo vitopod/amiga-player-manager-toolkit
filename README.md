@@ -150,10 +150,13 @@ python3 -m pytest PMSaveDiskTool_v2/tests/ -v
 - **PMSaveDiskTool v1.2** by UltimateBinary (http://www.ultimatebinary.com) — original tool and format research.
 - **Player Manager** by Anco Software (1990).
 - **Dino Dini** (https://github.com/dndn1011) — original programmer of Player Manager.
+- **Topaz** font — the GUI bundles `Topaz_a1200_v1.0.ttf` for its retro Amiga look. TrueType rendition © 2009 dMG of Trueschool and Divine Stylers (<http://www.trueschool.org>), licensed under [CC BY-NC-SA 3.0](http://creativecommons.org/licenses/by-nc-sa/3.0/). Full attribution and terms in `PMSaveDiskTool_v2/assets/NOTICE.md`. Sourced from <https://github.com/rewtnull/amigafonts>.
 
 ## License
 
 Released under the [MIT License](LICENSE). Contributions and improvements are welcome.
+
+Note: bundled third-party assets in `PMSaveDiskTool_v2/assets/` are under their own licenses — see `PMSaveDiskTool_v2/assets/NOTICE.md`. In particular, the bundled Topaz font is **non-commercial only** (CC BY-NC-SA 3.0); remove the `.ttf` file if you redistribute the toolkit as part of a commercial product. The GUI falls back to Courier New automatically.
 
 This project is not affiliated with or endorsed by Anco Software or UltimateBinary.
 Reverse-engineering was performed for interoperability purposes only.

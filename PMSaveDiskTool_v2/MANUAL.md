@@ -1178,3 +1178,9 @@ quick sale until you've confirmed it sticks in your own copy of the game.
 - **Player Manager** by Anco Software (1990).
 - **Dino Dini** (https://github.com/dndn1011) — original programmer of Player
   Manager.
+- **Topaz** font — `Topaz_a1200_v1.0.ttf` in `assets/`, used for the GUI's
+  retro title band, tabs, and list headers. TrueType rendition © 2009 dMG
+  of Trueschool and Divine Stylers (http://www.trueschool.org), licensed
+  **CC BY-NC-SA 3.0** (non-commercial). Remove the `.ttf` for commercial
+  redistribution — the GUI falls back to Courier New automatically. Full
+  notice in `assets/NOTICE.md`.

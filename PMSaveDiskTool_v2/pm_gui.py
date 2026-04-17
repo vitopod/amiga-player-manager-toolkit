@@ -27,6 +27,7 @@ from pm_core.names import GameDisk
 from pm_core import workbench
 from pm_core import lineup
 from pm_core import updates
+from pm_core import fonts
 
 # Preset filters shared by the Byte Workbench tabs. "Real players" uses the
 # same garbage-record guard as the Young Talents / Best XI views.
@@ -66,6 +67,21 @@ RECENT_FILE = os.path.join(CONFIG_DIR, "recent.json")
 RECENT_LIMIT = 5
 GITHUB_URL = "https://github.com/vitopod/amiga-player-manager-toolkit"
 LICENSE_URL = f"{GITHUB_URL}/blob/main/LICENSE"
+
+# Font family constants. Topaz is the bundled Amiga-era pixel font used for
+# headers and titles to match the in-game look; it's only registered if the
+# bundled TTF is present, otherwise all helpers below fall back to Courier
+# New transparently. Dense data views (player list, entry fields, tiny
+# labels) stay on Courier New regardless, because pixel fonts become hard
+# to read at small sizes and inside tight tables.
+FONT_DATA = "Courier New"
+
+
+def _retro(size: int, weight: str = "normal") -> tuple[str, int, str]:
+    """Retro header/label font with automatic fallback to Courier New."""
+    family = fonts.TOPAZ_FAMILY if fonts.topaz_available() else FONT_DATA
+    return (family, size, weight)
+
 
 PAL = {
     "bg":         "#000066",
@@ -145,12 +161,12 @@ def apply_theme(root: tk.Tk) -> None:
               background=[("selected", sel)],
               foreground=[("selected", PAL["fg_white"])])
     style.configure("Treeview.Heading", background=bg_hdr, foreground=PAL["fg_title"],
-                    relief="flat")
+                    relief="flat", font=_retro(11, "bold"))
     style.map("Treeview.Heading",
               background=[("active", sel)])
     style.configure("TNotebook",     background=bg, borderwidth=0)
     style.configure("TNotebook.Tab", background=bg_mid, foreground=fg_dim,
-                    padding=(8, 3))
+                    padding=(10, 4), font=_retro(11, "bold"))
     style.map("TNotebook.Tab",
               background=[("selected", bg)],
               foreground=[("selected", PAL["fg_white"])])
@@ -835,12 +851,12 @@ class PlayerCompareWindow(tk.Toplevel):
             self._refresh_player_a_labels()
 
     def _build_title_band(self):
-        band = tk.Frame(self, bg=PAL["bg_header"], height=26)
+        band = tk.Frame(self, bg=PAL["bg_header"], height=30)
         band.pack(fill=tk.X)
         band.pack_propagate(False)
         tk.Label(band, text="COMPARE PLAYERS",
                  bg=PAL["bg_header"], fg=PAL["fg_title"],
-                 font=("Courier New", 11, "bold")).pack(side=tk.LEFT, padx=10)
+                 font=_retro(13, "bold")).pack(side=tk.LEFT, padx=10)
 
     def _build_selector_row(self):
         row = tk.Frame(self, bg=PAL["bg_mid"])
@@ -1187,14 +1203,14 @@ class PMSaveDiskToolGUI:
     # ── Title band ────────────────────────────────────────────
 
     def _build_title_band(self):
-        band = tk.Frame(self.root, bg=PAL["bg_header"], height=28)
+        band = tk.Frame(self.root, bg=PAL["bg_header"], height=32)
         band.pack(fill=tk.X, side=tk.TOP)
         band.pack_propagate(False)
 
         self._title_left = tk.Label(
             band, text="PLAYER MANAGER TOOLKIT",
             bg=PAL["bg_header"], fg=PAL["fg_title"],
-            font=("Courier New", 12, "bold"),
+            font=_retro(14, "bold"),
         )
         self._title_left.pack(side=tk.LEFT, padx=10)
 
@@ -1203,7 +1219,7 @@ class PMSaveDiskToolGUI:
         self._title_banner = tk.Label(
             band, text="",
             bg=PAL["fg_data"], fg=PAL["bg_header"],
-            font=("Courier New", 9, "bold"),
+            font=_retro(10, "bold"),
             cursor="hand2",
         )
         # intentionally not packed here — shown later via _show_update_banner
@@ -1211,7 +1227,7 @@ class PMSaveDiskToolGUI:
         self._title_right = tk.Label(
             band, text="",
             bg=PAL["bg_header"], fg=PAL["fg_label"],
-            font=("Courier New", 9),
+            font=_retro(10),
         )
         self._title_right.pack(side=tk.RIGHT, padx=10)
 
@@ -2414,6 +2430,11 @@ def _show_splash(root: tk.Tk) -> None:
 
 
 def main():
+    # Register bundled fonts before any Tk widget is created so they show
+    # up in the font family list. Best-effort: silent fallback to system
+    # fonts if registration fails.
+    fonts.register_bundled_fonts()
+
     root = tk.Tk()
     root.withdraw()          # hide while splash shows
     _show_splash(root)
