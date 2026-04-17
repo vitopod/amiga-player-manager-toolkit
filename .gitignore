@@ -28,6 +28,9 @@ Screenshot*.png
 *.png
 !PMSaveDiskTool_v2/Loading_IMG.png
 
+# Git worktrees
+.worktrees/
+
 # Editor / IDE
 .superpowers/
 .vscode/
