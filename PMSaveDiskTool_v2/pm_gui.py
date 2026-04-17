@@ -1115,8 +1115,8 @@ class PlayerCompareWindow(tk.Toplevel):
             fg_a  = PAL["player_a"] if win_a else PAL["fg_dim"]
             fg_b  = PAL["player_b"] if win_b else PAL["fg_dim"]
 
-            fill_a = int((va / self._MAX_SKILL) * half_bar)
-            fill_b = int((vb / self._MAX_SKILL) * half_bar)
+            fill_a = int((va / 200) * half_bar)
+            fill_b = int((vb / 200) * half_bar)
 
             c.create_text(bax1 - 3, y + 8, text=str(va),
                           fill=fg_a, font=("Courier New", 9, "bold" if win_a else "normal"),
