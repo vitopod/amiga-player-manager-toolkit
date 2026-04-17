@@ -80,6 +80,8 @@ PAL = {
     "btn_go_fg":  "#44ff44",
     "selected":   "#3344aa",
     "border":     "#2244aa",
+    "field":      "#000044",   # entry/combobox field background
+    "fg_white":   "#ffffff",   # selected/active foreground
 }
 
 
@@ -124,19 +126,19 @@ def apply_theme(root: tk.Tk) -> None:
                     relief="flat",   borderwidth=1)
     style.map("TButton",
               background=[("active", sel)],
-              foreground=[("active", "#ffffff")])
-    style.configure("TEntry",        fieldbackground="#000044", foreground=fg_data,
+              foreground=[("active", PAL["fg_white"])])
+    style.configure("TEntry",        fieldbackground=PAL["field"], foreground=fg_data,
                     insertcolor=fg_data, bordercolor=border, selectbackground=sel)
-    style.configure("TCombobox",     fieldbackground="#000044", foreground=fg_data,
+    style.configure("TCombobox",     fieldbackground=PAL["field"], foreground=fg_data,
                     selectbackground=sel, arrowcolor=fg_lbl)
     style.map("TCombobox",
-              fieldbackground=[("readonly", "#000044")],
+              fieldbackground=[("readonly", PAL["field"])],
               foreground=[("readonly", fg_data)])
     style.configure("Treeview",      background=bg,  foreground=fg_data,
                     fieldbackground=bg, rowheight=20)
     style.map("Treeview",
               background=[("selected", sel)],
-              foreground=[("selected", "#ffffff")])
+              foreground=[("selected", PAL["fg_white"])])
     style.configure("Treeview.Heading", background=bg_hdr, foreground=PAL["fg_title"],
                     relief="flat")
     style.map("Treeview.Heading",
@@ -146,7 +148,7 @@ def apply_theme(root: tk.Tk) -> None:
                     padding=(8, 3))
     style.map("TNotebook.Tab",
               background=[("selected", bg)],
-              foreground=[("selected", fg_data)])
+              foreground=[("selected", PAL["fg_white"])])
     style.configure("TSeparator",    background=border)
     style.configure("TScrollbar",    background=bg_mid, troughcolor=bg,
                     arrowcolor=fg_lbl, borderwidth=0)
