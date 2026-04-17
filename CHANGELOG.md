@@ -4,6 +4,19 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.6] — 2026-04-17
+
+### Fixed
+- **Identity header** (PLAYER# / NAME / SEED above the tabs) used
+  `fg_dim` labels that were almost invisible on the mid-navy band.
+  Labels are now `fg_label` retro bold 9 pt; values bumped to retro
+  bold 12 pt so ID, name and seed stand out.
+- **Core / Status / Season / Career tabs** relied on the ttk default
+  label styling, which rendered as faint small text. Rebuilt the
+  field helper to use `tk.Label` / `tk.Entry` with explicit amber
+  `fg_data` at retro bold 10 pt and a navy entry field, matching the
+  Skills tab treatment.
+
 ## [2.2.5] — 2026-04-17
 
 ### Fixed
