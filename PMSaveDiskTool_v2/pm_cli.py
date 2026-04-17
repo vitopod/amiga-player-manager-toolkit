@@ -531,6 +531,20 @@ def cmd_suggest_xi(args):
                                               composite=comp, breakdown=br))
         ranked.sort(key=lambda r: r.composite, reverse=True)
 
+    reserves: list[lineup.RoleAssignment] = []
+    if args.reserves > 0 and ranked:
+        try:
+            md = lineup.assemble_matchday_squad(
+                pool_list, ranked[0].formation,
+                n_reserves=args.reserves,
+                allow_cross_position=args.allow_cross_position,
+                eligibility=eligibility,
+                weights=weights,
+            )
+            reserves = md.reserves
+        except ValueError:
+            reserves = []
+
     print(f"[BETA] Line-up Coach — {pool_label}  (pool size {len(pool)})")
     print("Scoring is heuristic; not calibrated to PM's match engine.\n")
 
@@ -567,6 +581,19 @@ def cmd_suggest_xi(args):
               f"{a.player.age:>3}y  {team:<16} "
               f"skill {a.player.total_skill:>4}  fit {a.fit*100:>5.1f}%")
 
+    if reserves:
+        print("— Reserves —")
+        for a in reserves:
+            team = slot.get_team_name(a.player.team_index)
+            name = (gd.player_full_name(a.player.rng_seed)
+                    if gd and a.player.rng_seed else "")
+            name_col = f"{name:<18} " if gd else ""
+            print(f"  {a.role:<4} #{a.player.player_id:>4} {name_col}"
+                  f"{a.player.age:>3}y  {team:<16} "
+                  f"skill {a.player.total_skill:>4}  fit {a.fit*100:>5.1f}%")
+    elif args.reserves > 0:
+        print(f"— Reserves — (bench empty: pool too thin for {args.reserves} reserves)")
+
     br = best.breakdown
     print(f"\nBreakdown: mean fit {br['mean_fit']*100:.1f}%, "
           f"mean morale {br['mean_morale']*100:.1f}%, "
@@ -587,6 +614,88 @@ def cmd_suggest_xi(args):
                   f"best fit {s.best_fit*100:.0f}%, gap {s.gap*100:+.0f}%)")
         if len(flags) > args.reassign_limit:
             print(f"  … and {len(flags) - args.reassign_limit} more.")
+
+
+def _hex_block(data: bytes, base: int = 0, width: int = 16) -> str:
+    """Return a classic hex + ASCII dump of ``data`` starting at offset ``base``."""
+    lines = []
+    for off in range(0, len(data), width):
+        chunk = data[off:off + width]
+        hex_part = " ".join(f"{b:02x}" for b in chunk)
+        ascii_part = "".join(chr(b) if 32 <= b < 127 else "." for b in chunk)
+        lines.append(f"{base + off:06x}  {hex_part:<{width * 3}}  {ascii_part}")
+    return "\n".join(lines)
+
+
+def cmd_show_tactics(args):
+    """Dump the `.tac` tactic files from a save disk (and optionally diff against another ADF).
+
+    Reverse-engineering aid: the tactic file byte layout is not yet documented.
+    This command prints a hex + ASCII view of every `.tac` file on the disk,
+    or the one named via ``--file``. With ``--diff OTHER.adf`` it reports
+    byte-level differences between the same tactic in two disks — the way
+    to find where PM stores the selected XI.
+    """
+    adf = ADF.load(args.adf)
+    tac_entries = [e for e in adf.list_files() if e.name.lower().endswith(".tac")]
+    if not tac_entries:
+        raise SystemExit(f"No .tac files found on {args.adf}")
+
+    if args.file:
+        tac_entries = [e for e in tac_entries
+                       if e.name.lower() == args.file.lower()]
+        if not tac_entries:
+            raise SystemExit(f"{args.file!r} not found on {args.adf}")
+
+    other = ADF.load(args.diff) if args.diff else None
+
+    for entry in tac_entries:
+        data = adf.read_at(entry.byte_offset, entry.size)
+        print(f"== {entry.name}  size={entry.size}  "
+              f"offset=0x{entry.byte_offset:06x} ==")
+
+        if other is None:
+            print(_hex_block(data, base=0))
+            print()
+            continue
+
+        # Diff mode — compare byte-for-byte against the same-named entry in
+        # the second disk. Report only differing bytes unless --full is set.
+        try:
+            other_entry = other.find_file(entry.name)
+        except KeyError:
+            print(f"  (missing in {args.diff})\n")
+            continue
+        other_data = other.read_at(other_entry.byte_offset, other_entry.size)
+
+        if len(data) != len(other_data):
+            print(f"  size differs: {len(data)} vs {len(other_data)} bytes")
+
+        common = min(len(data), len(other_data))
+        diffs = [(i, data[i], other_data[i])
+                 for i in range(common) if data[i] != other_data[i]]
+
+        if args.full:
+            print(f"-- {args.adf} --")
+            print(_hex_block(data, base=0))
+            print(f"-- {args.diff} --")
+            print(_hex_block(other_data, base=0))
+
+        if not diffs:
+            print("  identical (in the overlap)")
+            print()
+            continue
+
+        print(f"  {len(diffs)} differing byte(s):")
+        print(f"    offset    A    B     A (ascii)  B (ascii)")
+        for off, a, b in diffs[: args.limit]:
+            a_ch = chr(a) if 32 <= a < 127 else "."
+            b_ch = chr(b) if 32 <= b < 127 else "."
+            print(f"    0x{off:04x}   0x{a:02x} 0x{b:02x}   "
+                  f"{a:>3d} vs {b:>3d}   {a_ch}          {b_ch}")
+        if len(diffs) > args.limit:
+            print(f"    … and {len(diffs) - args.limit} more (raise --limit).")
+        print()
 
 
 def cmd_edit_player(args):
@@ -758,12 +867,29 @@ def main():
                       help="Include currently-injured players (shows the 'ideal' XI)")
     p_sx.add_argument("--weights", nargs="*", metavar="KEY=VAL",
                       help="Override composite weights (e.g. morale=40 fatigue=10)")
+    p_sx.add_argument("--reserves", type=int, default=2,
+                      help="Number of bench reserves to suggest (default 2; 0 to skip)")
     p_sx.add_argument("--reassign-threshold", type=float, default=0.15,
                       help="Min best-vs-nominal gap to flag (default 0.15)")
     p_sx.add_argument("--reassign-limit", type=int, default=10,
                       help="Max reassignment suggestions shown (default 10)")
     p_sx.add_argument("--game-adf", metavar="PATH",
                       help="Game disk ADF for player names")
+
+    # show-tactics (reverse-engineering aid for the .tac file format)
+    p_st = sub.add_parser(
+        "show-tactics",
+        help="Hex-dump the .tac tactic files (and diff two disks for RE work)",
+    )
+    p_st.add_argument("adf", help="Path to the save-disk ADF image")
+    p_st.add_argument("--file", metavar="NAME",
+                      help="Limit to a single tactic file (e.g. 4-4-2.tac)")
+    p_st.add_argument("--diff", metavar="OTHER_ADF",
+                      help="Compare each tactic against the same file in a second ADF")
+    p_st.add_argument("--full", action="store_true",
+                      help="With --diff, also print the full hex dump of both sides")
+    p_st.add_argument("--limit", type=int, default=64,
+                      help="Max differing bytes to list per file (default 64)")
 
     # edit-player
     p_ep = sub.add_parser("edit-player", help="Edit player attributes")
@@ -812,6 +938,7 @@ def main():
         "byte-stats": cmd_byte_stats,
         "byte-diff": cmd_byte_diff,
         "suggest-xi": cmd_suggest_xi,
+        "show-tactics": cmd_show_tactics,
     }
     commands[args.command](args)
 

@@ -714,6 +714,9 @@ class LineupCoachWindow(tk.Toplevel):
                   justify=tk.LEFT).pack(fill=tk.X, padx=10, pady=(2, 8))
 
         self._current_ranked: list[lineup.LineupResult] = []
+        self._current_pool: list = []
+        self._current_allow_cross: bool = False
+        self._current_eligibility = lineup._is_eligible
 
     def _compute(self):
         team_label = self.team_var.get()
@@ -751,6 +754,9 @@ class LineupCoachWindow(tk.Toplevel):
             ))
         ranked.sort(key=lambda r: r.composite, reverse=True)
         self._current_ranked = ranked
+        self._current_pool = pool
+        self._current_allow_cross = allow_cross
+        self._current_eligibility = eligibility
 
         self.rank_tree.delete(*self.rank_tree.get_children())
         self.xi_tree.delete(*self.xi_tree.get_children())
@@ -806,6 +812,35 @@ class LineupCoachWindow(tk.Toplevel):
                 a.player.age, team, a.player.total_skill,
                 f"{a.fit*100:.1f}",
             ))
+
+        reserves: list[lineup.RoleAssignment] = []
+        if self._current_pool:
+            try:
+                md = lineup.assemble_matchday_squad(
+                    self._current_pool, result.formation, n_reserves=2,
+                    allow_cross_position=self._current_allow_cross,
+                    eligibility=self._current_eligibility,
+                )
+                reserves = md.reserves
+            except ValueError:
+                reserves = []
+
+        if reserves:
+            self.xi_tree.insert("", "end",
+                                values=("— Reserves —", "", "", "", "", "", ""),
+                                tags=("bench_header",))
+            for i, a in enumerate(reserves, 1):
+                team = self.slot.get_team_name(a.player.team_index)
+                name = (self.game_disk.player_full_name(a.player.rng_seed)
+                        if self.game_disk and a.player.rng_seed else "")
+                self.xi_tree.insert("", "end", values=(
+                    f"R{i} {a.role}", a.player.player_id, name,
+                    a.player.age, team, a.player.total_skill,
+                    f"{a.fit*100:.1f}",
+                ), tags=("bench_row",))
+        self.xi_tree.tag_configure("bench_header", foreground=PAL["fg_label"])
+        self.xi_tree.tag_configure("bench_row", foreground=PAL["player_a"])
+
         suffix = f" ({pool_label})" if pool_label else ""
         self.summary_var.set(
             f"{result.formation}{suffix}  —  composite {result.composite:.1f}, "

@@ -32,9 +32,11 @@ from .player import PlayerRecord, SKILL_NAMES
 __all__ = [
     "ROLES", "FORMATION_ROLES", "CROSS_POSITION_PENALTY",
     "DEFAULT_COMPOSITE_WEIGHTS",
-    "RoleAssignment", "LineupResult", "ReassignmentSuggestion",
+    "RoleAssignment", "LineupResult", "MatchdaySquad",
+    "ReassignmentSuggestion",
     "role_fit", "best_role", "best_role_in_position",
-    "assemble_xi", "score_xi", "suggest_reassignments",
+    "assemble_xi", "assemble_matchday_squad",
+    "score_xi", "suggest_reassignments",
     "rank_formations",
 ]
 
@@ -159,6 +161,26 @@ class LineupResult:
     @property
     def total_skill(self) -> int:
         return sum(a.player.total_skill for a in self.assignments)
+
+
+@dataclass
+class MatchdaySquad:
+    """Starting XI plus a short bench of reserves.
+
+    ``xi`` is an XI in formation order (GK first, then DEF/MID/FWD). ``reserves``
+    is an ordered list of bench players — typically 2 — each carrying the role
+    they'd slot into if subbed in (``best_role_in_position`` for the player).
+    The bench may be shorter than requested when the pool is thin.
+    """
+    formation: str
+    xi: list[RoleAssignment]
+    reserves: list[RoleAssignment]
+    composite: float
+    breakdown: dict[str, float]
+
+    @property
+    def total_skill(self) -> int:
+        return sum(a.player.total_skill for a in self.xi)
 
 
 @dataclass
@@ -338,6 +360,65 @@ def assemble_xi(pool: Iterable[PlayerRecord],
         pi, fit = assigned_slot[si]
         out.append(RoleAssignment(role=role_key, player=candidates[pi], fit=fit))
     return out
+
+
+def assemble_matchday_squad(pool: Iterable[PlayerRecord],
+                            formation: str,
+                            *,
+                            n_reserves: int = 2,
+                            backup_gk: bool = True,
+                            allow_cross_position: bool = False,
+                            eligibility: Callable[[PlayerRecord], bool] = _is_eligible,
+                            weights: Optional[dict[str, float]] = None,
+                            ) -> MatchdaySquad:
+    """Return the starting XI plus a bench of ``n_reserves`` players.
+
+    When ``backup_gk`` is True (default) and the pool contains at least one
+    eligible goalkeeper outside the XI, the first reserve is the best such
+    GK. Remaining reserves are the eligible non-XI outfielders with the
+    highest ``total_skill``; each carries the role returned by
+    ``best_role_in_position`` so the GUI/CLI can label where they'd slot in.
+
+    The bench is silently truncated when the pool has fewer spare players
+    than ``n_reserves`` — the starting XI is the hard constraint.
+    """
+    if n_reserves < 0:
+        raise ValueError(f"n_reserves must be ≥ 0, got {n_reserves}")
+
+    pool_list = list(pool)
+    xi = assemble_xi(pool_list, formation,
+                     allow_cross_position=allow_cross_position,
+                     eligibility=eligibility)
+    composite, breakdown = score_xi(xi, weights=weights)
+
+    xi_ids = {id(a.player) for a in xi}
+    bench_pool = [p for p in pool_list
+                  if eligibility(p) and id(p) not in xi_ids]
+
+    reserves: list[RoleAssignment] = []
+    picked: set[int] = set()
+
+    if backup_gk and n_reserves > 0:
+        gk_candidates = [p for p in bench_pool if p.position == 1]
+        if gk_candidates:
+            gk = max(gk_candidates, key=lambda p: role_fit(p, "GK"))
+            reserves.append(RoleAssignment(
+                role="GK", player=gk, fit=role_fit(gk, "GK"),
+            ))
+            picked.add(id(gk))
+
+    remaining = [p for p in bench_pool if id(p) not in picked]
+    remaining.sort(key=lambda p: p.total_skill, reverse=True)
+    for p in remaining:
+        if len(reserves) >= n_reserves:
+            break
+        role_key, fit = best_role_in_position(p)
+        reserves.append(RoleAssignment(role=role_key, player=p, fit=fit))
+
+    return MatchdaySquad(
+        formation=formation, xi=xi, reserves=reserves,
+        composite=composite, breakdown=breakdown,
+    )
 
 
 # ────────────────────────────────────────────────────────────────────────

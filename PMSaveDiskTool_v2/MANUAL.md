@@ -80,7 +80,7 @@ installer, no pip package. Upgrading means replacing the folder.
 
 ```
 git pull                 # latest on main
-git checkout v2.2.6      # or any tagged release
+git checkout v2.2.7      # or any tagged release
 ```
 
 **If you downloaded a release zip:**
@@ -362,7 +362,11 @@ a *different* position better than any role in their current position. The
 
 Right pane — **Recommended XI**: the starting eleven for the selected
 formation. Each row shows the role tag (CB, DM, POA, etc.), player id, name,
-age, team, total skill, and role-fit %.
+age, team, total skill, and role-fit %. Below the XI a short `— Reserves —`
+section lists two bench substitutes: the best backup goalkeeper (where one
+exists) and the best remaining outfielder by total skill. The reserve rows
+use `R1 / R2` prefixes and are highlighted to stand apart from the starting
+eleven.
 
 Bottom — **Breakdown line**: mean role fit, morale, fatigue, card risk, and
 forward form for the selected XI.
@@ -831,6 +835,15 @@ python3 pm_cli.py suggest-xi Save1_PM.adf --save pm1.sav \
     --team 0 --allow-cross-position
 ```
 
+By default the command also prints a `— Reserves —` section after the XI
+with two bench substitutes (a backup goalkeeper, when one is available,
+plus the best spare outfielder by total skill). Pass `--reserves N` to ask
+for a different bench size, or `--reserves 0` to skip reserves entirely:
+```
+python3 pm_cli.py suggest-xi Save1_PM.adf --save pm1.sav \
+    --team 0 --reserves 3
+```
+
 Increase how many reassignment suggestions are shown, and lower the threshold
 so smaller gaps are included:
 ```
@@ -849,6 +862,36 @@ With player names:
 python3 pm_cli.py suggest-xi Save1_PM.adf --save pm1.sav \
     --game-adf PlayerManagerITA.adf
 ```
+
+---
+
+### show-tactics — raw dump of the `.tac` tactic files
+
+The save disk contains a `.tac` file per formation (`4-4-2.tac`, `4-3-3.tac`,
+`5-3-2.tac`, `4-2-4.tac`) plus per-save variants used by the game to store
+the player's tactical selections. Their byte layout is **not yet
+reverse-engineered**; this command is the discovery aid for that work.
+
+Dump every tactic file on a save disk:
+```
+python3 pm_cli.py show-tactics Save1_PM.adf
+```
+
+Dump just one:
+```
+python3 pm_cli.py show-tactics Save1_PM.adf --file 4-4-2.tac
+```
+
+Diff the same tactic in two disks — the usual workflow is: make a copy of
+your save disk, change the XI for one formation in the game on emulator,
+copy the modified disk off, then compare to find which bytes moved:
+```
+python3 pm_cli.py show-tactics Save1_PM.adf --file 4-4-2.tac \
+    --diff Save1_PM_AFTER.adf
+```
+
+Add `--full` to print both hex dumps in addition to the diff summary, and
+`--limit N` to cap how many differing bytes are listed per file.
 
 ---
 

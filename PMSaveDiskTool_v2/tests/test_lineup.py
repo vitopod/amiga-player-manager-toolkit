@@ -21,9 +21,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pm_core.player import PlayerRecord, SKILL_NAMES
 from pm_core.lineup import (
     ROLES, FORMATION_ROLES, CROSS_POSITION_PENALTY, DEFAULT_COMPOSITE_WEIGHTS,
-    RoleAssignment, LineupResult, ReassignmentSuggestion,
+    RoleAssignment, LineupResult, MatchdaySquad, ReassignmentSuggestion,
     role_fit, best_role, best_role_in_position,
-    assemble_xi, score_xi, suggest_reassignments, rank_formations,
+    assemble_xi, assemble_matchday_squad,
+    score_xi, suggest_reassignments, rank_formations,
 )
 
 
@@ -284,6 +285,100 @@ class TestSuggestReassignments(unittest.TestCase):
         out = suggest_reassignments([weak, strong], threshold=0.05)
         self.assertEqual(len(out), 2)
         self.assertGreaterEqual(out[0].gap, out[1].gap)
+
+
+class TestAssembleMatchdaySquad(unittest.TestCase):
+
+    def test_returns_xi_plus_requested_reserves(self):
+        # 1 GK, 5 DEF, 5 MID, 3 FWD → 14 eligible, XI fills 11, 3 to spare.
+        squad = _squad(n_per_pos=(1, 5, 5, 3))
+        md = assemble_matchday_squad(squad, "4-4-2", n_reserves=2)
+        self.assertEqual(len(md.xi), 11)
+        self.assertEqual(len(md.reserves), 2)
+        self.assertEqual(md.formation, "4-4-2")
+
+    def test_reserves_do_not_overlap_xi(self):
+        squad = _squad(n_per_pos=(1, 5, 5, 3))
+        md = assemble_matchday_squad(squad, "4-4-2", n_reserves=2)
+        xi_ids = {id(a.player) for a in md.xi}
+        reserve_ids = {id(a.player) for a in md.reserves}
+        self.assertTrue(xi_ids.isdisjoint(reserve_ids))
+
+    def test_prefers_backup_gk_when_available(self):
+        # 2 GKs, one in the XI, the other should be reserve #1.
+        squad = _squad(n_per_pos=(2, 4, 4, 2))
+        md = assemble_matchday_squad(squad, "4-4-2", n_reserves=2)
+        self.assertEqual(md.reserves[0].player.position, 1)
+        self.assertEqual(md.reserves[0].role, "GK")
+
+    def test_no_backup_gk_falls_back_to_outfielders(self):
+        # Only 1 GK — no backup exists, bench fills with outfielders.
+        squad = _squad(n_per_pos=(1, 5, 5, 3))
+        md = assemble_matchday_squad(squad, "4-4-2", n_reserves=2)
+        self.assertEqual(len(md.reserves), 2)
+        for a in md.reserves:
+            self.assertNotEqual(a.player.position, 1)
+
+    def test_backup_gk_can_be_disabled(self):
+        # Two GKs, eight outfielder spares where each spare has higher
+        # total_skill than the backup GK. backup_gk=True must still pick the
+        # GK first; backup_gk=False must fall through to total_skill ranking.
+        squad = _squad(n_per_pos=(2, 5, 5, 3))
+        backup_gk = next(p for p in squad
+                         if p.position == 1 and p is not squad[0])
+        # Weaken the backup GK so outfielders clearly outrank him on skill.
+        for s in SKILL_NAMES:
+            setattr(backup_gk, s, 20)
+
+        forced = assemble_matchday_squad(squad, "4-4-2",
+                                         n_reserves=2, backup_gk=True)
+        self.assertEqual(forced.reserves[0].player.position, 1)
+
+        free = assemble_matchday_squad(squad, "4-4-2",
+                                       n_reserves=2, backup_gk=False)
+        for a in free.reserves:
+            self.assertNotEqual(a.player.position, 1)
+
+    def test_thin_bench_truncates_silently(self):
+        # Exactly 11 eligible players — no reserves available.
+        squad = _squad(n_per_pos=(1, 4, 4, 2))
+        md = assemble_matchday_squad(squad, "4-4-2", n_reserves=2)
+        self.assertEqual(len(md.xi), 11)
+        self.assertEqual(md.reserves, [])
+
+    def test_injured_excluded_from_reserves(self):
+        # 1 GK + 6 DEF + 6 MID + 4 FWD = 17 eligible. After the XI (1/4/4/2)
+        # that leaves 6 spares. Injure half; the remaining 3 must pass.
+        squad = _squad(n_per_pos=(1, 6, 6, 4))
+        injured = [squad[6], squad[12], squad[16]]  # spares across positions
+        for p in injured:
+            p.injury_weeks = 3
+        md = assemble_matchday_squad(squad, "4-4-2", n_reserves=2)
+        self.assertEqual(len(md.reserves), 2)
+        for a in md.reserves:
+            self.assertEqual(a.player.injury_weeks, 0)
+
+    def test_zero_reserves_returns_empty_bench(self):
+        squad = _squad(n_per_pos=(1, 5, 5, 3))
+        md = assemble_matchday_squad(squad, "4-4-2", n_reserves=0)
+        self.assertEqual(md.reserves, [])
+        self.assertEqual(len(md.xi), 11)
+
+    def test_negative_reserves_raises(self):
+        squad = _squad(n_per_pos=(1, 5, 5, 3))
+        with self.assertRaises(ValueError):
+            assemble_matchday_squad(squad, "4-4-2", n_reserves=-1)
+
+    def test_unfillable_xi_raises(self):
+        squad = _squad(n_per_pos=(1, 2, 4, 2))  # not enough DEFs
+        with self.assertRaises(ValueError):
+            assemble_matchday_squad(squad, "4-4-2", n_reserves=2)
+
+    def test_composite_matches_score_xi(self):
+        squad = _squad(n_per_pos=(1, 5, 5, 3))
+        md = assemble_matchday_squad(squad, "4-4-2")
+        direct_composite, _ = score_xi(md.xi)
+        self.assertAlmostEqual(md.composite, direct_composite, places=6)
 
 
 class TestRankFormations(unittest.TestCase):

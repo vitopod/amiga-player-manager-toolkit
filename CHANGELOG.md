@@ -4,6 +4,24 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.7] — 2026-04-17
+
+### Added
+- **Line-up Coach bench (2 reserves)** — `assemble_matchday_squad()` in
+  `pm_core.lineup` returns the starting XI plus a short bench. Default:
+  one backup goalkeeper (when available) plus the best remaining
+  outfielder by total skill. Bench size is configurable; the backup-GK
+  preference can be disabled. Reserves are surfaced in both the GUI
+  Line-up Coach window (below the XI, under a `— Reserves —` header)
+  and the `suggest-xi` CLI via a new `--reserves N` flag (default 2,
+  set to `0` to skip).
+- **`show-tactics` CLI subcommand** — hex-dumps the `.tac` tactic files
+  stored on every save disk (`4-4-2.tac`, `4-3-3.tac`, `5-3-2.tac`,
+  `4-2-4.tac`, plus per-save variants), with a `--diff OTHER_ADF` mode
+  that reports byte-level differences between the same tactic in two
+  disks. Discovery aid for ongoing reverse-engineering of how PM
+  encodes the selected XI inside those files.
+
 ## [2.2.6] — 2026-04-17
 
 ### Fixed
