@@ -4,6 +4,20 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.8] — 2026-04-17
+
+### Added
+- **In-app help popovers** — a small `?` button is now wired into three
+  surfaces that open a styled help dialog. The **main window** toolbar
+  (next to SAVE / VIEW) gets a comprehensive guide to save slots, every
+  VIEW entry (regular teams, All Players, Free Agents, Young Talents,
+  Top Scorers, Squad Analyst, Top 11 / Young XI / Free-Agent XI),
+  the Filter field, player-list columns, the ★ market marker, and the
+  detail panel tabs. The **Line-up Coach** and **Byte Workbench**
+  windows each get their own scoped help (with per-tab guidance for
+  Byte Workbench's Raw View / Histogram / Diff). Text lives in
+  `pm_core.help_text.HELP`, rendered by a shared `HelpDialog` class.
+
 ## [2.2.7] — 2026-04-17
 
 ### Added

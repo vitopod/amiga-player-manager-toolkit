@@ -28,6 +28,7 @@ from pm_core import workbench
 from pm_core import lineup
 from pm_core import updates
 from pm_core import fonts
+from pm_core import help_text
 
 # Preset filters shared by the Byte Workbench tabs. "Real players" uses the
 # same garbage-record guard as the Young Talents / Best XI views.
@@ -175,6 +176,95 @@ def apply_theme(root: tk.Tk) -> None:
                     arrowcolor=fg_lbl, borderwidth=0)
 
     root.configure(bg=bg)
+
+
+class HelpDialog(tk.Toplevel):
+    """Modeless popover that renders a topic from ``pm_core.help_text.HELP``.
+
+    The body uses a lightweight markup: lines starting with ``# `` are
+    section headers, ``## `` subsection headers, ``- `` bullets, and blank
+    lines are paragraph breaks. Everything is rendered in a styled
+    ``tk.Text`` widget sharing the main-window palette.
+    """
+
+    def __init__(self, parent, topic: str):
+        super().__init__(parent)
+        title, body = help_text.get(topic)
+        self.title(title)
+        self.geometry("620x520")
+        self.minsize(480, 360)
+        self.configure(bg=PAL["bg"])
+        self.transient(parent)
+
+        text = tk.Text(
+            self,
+            wrap="word",
+            bg=PAL["bg"],
+            fg=PAL["fg_data"],
+            insertbackground=PAL["fg_data"],
+            selectbackground=PAL["selected"],
+            selectforeground=PAL["fg_white"],
+            padx=14,
+            pady=12,
+            borderwidth=0,
+            highlightthickness=0,
+            font=_retro(11),
+        )
+        scroll = ttk.Scrollbar(self, orient=tk.VERTICAL, command=text.yview)
+        text.configure(yscrollcommand=scroll.set)
+        scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        text.tag_configure("h1", foreground=PAL["fg_title"],
+                           font=_retro(13, "bold"),
+                           spacing1=10, spacing3=4)
+        text.tag_configure("h2", foreground=PAL["fg_title"],
+                           font=_retro(11, "bold"),
+                           spacing1=6, spacing3=2)
+        text.tag_configure("bullet", foreground=PAL["fg_data"],
+                           lmargin1=16, lmargin2=32, spacing3=2)
+        text.tag_configure("para", foreground=PAL["fg_data"], spacing3=4)
+
+        for line in body.splitlines():
+            if line.startswith("# "):
+                text.insert("end", line[2:] + "\n", "h1")
+            elif line.startswith("## "):
+                text.insert("end", line[3:] + "\n", "h2")
+            elif line.startswith("- "):
+                text.insert("end", "• " + line[2:] + "\n", "bullet")
+            elif line.strip() == "":
+                text.insert("end", "\n")
+            else:
+                text.insert("end", line + "\n", "para")
+
+        text.configure(state="disabled")
+
+        close = tk.Button(
+            self, text="Close", command=self.destroy,
+            bg=PAL["bg_mid"], fg=PAL["fg_data"],
+            activebackground=PAL["selected"],
+            activeforeground=PAL["fg_white"],
+            relief="flat", borderwidth=1,
+            font=_retro(10, "bold"),
+        )
+        close.pack(side=tk.BOTTOM, pady=(0, 8))
+
+        self.bind("<Escape>", lambda e: self.destroy())
+
+
+def _help_button(parent, topic: str) -> tk.Button:
+    """Small ``?`` button that opens a ``HelpDialog`` for ``topic``."""
+    btn = tk.Button(
+        parent, text="?",
+        command=lambda: HelpDialog(parent.winfo_toplevel(), topic),
+        bg=PAL["bg_mid"], fg=PAL["fg_data"],
+        activebackground=PAL["selected"],
+        activeforeground=PAL["fg_white"],
+        relief="flat", borderwidth=1,
+        font=_retro(11, "bold"),
+        width=2, cursor="question_arrow",
+    )
+    return btn
 
 
 class CareerTrackerWindow(tk.Toplevel):
@@ -325,6 +415,12 @@ class ByteWorkbenchWindow(tk.Toplevel):
 
         self.slot = slot
         self.game_disk = game_disk
+
+        header = ttk.Frame(self, padding=(8, 8, 8, 4))
+        header.pack(fill=tk.X)
+        ttk.Label(header, text="Byte Workbench",
+                  font=("TkDefaultFont", 13, "bold")).pack(side=tk.LEFT)
+        _help_button(header, "byte_workbench").pack(side=tk.RIGHT)
 
         nb = ttk.Notebook(self)
         nb.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
@@ -600,6 +696,7 @@ class LineupCoachWindow(tk.Toplevel):
         ttk.Label(header, text="  BETA",
                   foreground="#c2410c",
                   font=("TkDefaultFont", 10, "bold")).pack(side=tk.LEFT)
+        _help_button(header, "lineup_coach").pack(side=tk.RIGHT)
 
         disclaimer = ttk.Label(self, text=self.BETA_DISCLAIMER,
                                foreground=PAL["fg_label"], wraplength=900,
@@ -1420,6 +1517,8 @@ class PMSaveDiskToolGUI:
                                        state="readonly", width=28)
         self.team_combo.pack(side=tk.LEFT, padx=2)
         self.team_combo.bind("<<ComboboxSelected>>", self._on_team_selected)
+
+        _help_button(toolbar, "main_window").pack(side=tk.RIGHT, padx=(4, 10))
 
     # ── Main area ─────────────────────────────────────────────
 
