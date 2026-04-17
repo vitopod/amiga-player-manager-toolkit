@@ -1047,6 +1047,13 @@ class PMSaveDiskToolGUI:
                                     foreground="gray", anchor="e")
         self.game_label.pack(side=tk.RIGHT, padx=4)
 
+        # Persistent BETA pill. Shown only when a non-verified build is loaded.
+        self.beta_pill = tk.Label(
+            bar, text=" BETA ",
+            bg="#b36b00", fg="white", font=("TkDefaultFont", 9, "bold"),
+            padx=4,
+        )
+
     # ── Actions ───────────────────────────────────────────────
 
     def _open_adf(self):
@@ -1066,16 +1073,66 @@ class PMSaveDiskToolGUI:
             return
         try:
             self.game_disk = GameDisk.load(path)
-            self.game_label.config(
-                text=f"{os.path.basename(path)} ({self.game_disk.surname_count} names)",
-                foreground="green",
-            )
-            self.status_var.set(
-                f"Game ADF loaded: {self.game_disk.surname_count} Italian surnames available"
-            )
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load game ADF:\n{e}")
             return
+
+        gd = self.game_disk
+        fname = os.path.basename(path)
+        # Toggle BETA pill: visible only for builds whose name generation
+        # hasn't been verified against the live game.
+        if gd.is_beta:
+            self.beta_pill.pack(side=tk.RIGHT, padx=(0, 2))
+        else:
+            self.beta_pill.pack_forget()
+
+        if gd.names_available and not gd.is_beta:
+            self.game_label.config(
+                text=f"{fname} ({gd.surname_count} names)",
+                foreground="green",
+            )
+            self.status_var.set(
+                f"Game ADF loaded: {gd.surname_count} Italian surnames available"
+            )
+        elif gd.names_available and gd.is_beta:
+            self.game_label.config(
+                text=f"{fname} ({gd.surname_count} names, {gd.build})",
+                foreground="#b36b00",
+            )
+            self.status_var.set(
+                f"Game ADF loaded ({gd.build} BETA): {gd.surname_count} surnames. "
+                "Initials are a best-guess — may not match in-game exactly."
+            )
+            messagebox.showwarning(
+                "English name resolution (BETA)",
+                f"Loaded as '{gd.build}' build: {gd.surname_count} English "
+                "surnames extracted from the disk.\n\n"
+                "Surnames and initials charsets have been cross-checked "
+                "against a real in-game roster screen and match. What's "
+                "still unverified is the full seed → exact-name mapping "
+                "— individual players could in principle resolve to "
+                "slightly different names than the game displays. Hence "
+                "BETA.\n\n"
+                "Save editing and all other features work normally.",
+            )
+        else:
+            self.game_label.config(
+                text=f"{fname} (no names — {gd.build})",
+                foreground="#b36b00",
+            )
+            self.status_var.set(
+                f"Game ADF loaded ({gd.build} build) — player names "
+                f"unavailable for this version; save editing works normally"
+            )
+            messagebox.showwarning(
+                "Player names unavailable",
+                f"Loaded a recognisable Player Manager game disk "
+                f"(detected build: {gd.build}), but no surname table could "
+                "be located for this version.\n\n"
+                "Player names will stay blank. All other features "
+                "(rosters, editing, Best XI, Line-up Coach, exports) work "
+                "normally.",
+            )
         # Refresh list if a save is already open
         if self.slot:
             self._refresh_player_list()

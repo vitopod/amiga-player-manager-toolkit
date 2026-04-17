@@ -69,10 +69,26 @@ def _load_game_disk(path):
     if not path:
         return None
     try:
-        return GameDisk.load(path)
+        gd = GameDisk.load(path)
     except Exception as e:
         print(f"Warning: could not load game ADF: {e}", file=sys.stderr)
         return None
+    if not gd.names_available:
+        print(
+            f"Warning: game ADF recognised as '{gd.build}' build but no "
+            "surname table could be located — player names will be blank.",
+            file=sys.stderr,
+        )
+    elif gd.is_beta:
+        print(
+            f"Note: game ADF loaded as '{gd.build}' BETA "
+            f"({gd.surname_count} surnames). Surnames and initials charsets "
+            "verified against an in-game screen; full seed→name mapping not "
+            "yet confirmed, so individual resolved names could differ from "
+            "the game.",
+            file=sys.stderr,
+        )
+    return gd
 
 
 def cmd_list_saves(args):

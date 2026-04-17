@@ -22,6 +22,12 @@ _GAME_ADF = os.path.join(
     "PlayerManagerITA.adf",
 )
 
+# English game disk (BETA). Optional — tests gated on existence.
+_EN_GAME_ADF = os.environ.get(
+    "PM_EN_GAME_ADF",
+    "/Users/simone/Downloads/Player Manager (1990)(Anco)[cr OCL] EN.adf",
+)
+
 
 class TestHashRound(unittest.TestCase):
     """The hash round is a pure 6-byte buffer permutation. Properties we can
@@ -145,6 +151,76 @@ class TestGameDiskIntegration(unittest.TestCase):
         full = self.gd.player_full_name(0x12345678)
         surname = self.gd.player_surname(0x12345678)
         self.assertTrue(full.endswith(" " + surname))
+
+
+@unittest.skipUnless(os.path.isfile(_EN_GAME_ADF),
+                     f"{_EN_GAME_ADF} not available")
+class TestEnglishGameDiskBeta(unittest.TestCase):
+    """English BETA path: anchor-scan on a PM custom-file-table disk.
+
+    Verification state (2026-04-17): surname table and initials charsets
+    cross-checked against a real in-game roster screenshot; full seed→name
+    mapping not yet locked against a known seed. These tests guard the
+    extraction and API surface only.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.gd = GameDisk.load(_EN_GAME_ADF)
+
+    def test_build_detected_as_english(self):
+        self.assertEqual(self.gd.build, "english")
+
+    def test_flagged_as_beta(self):
+        self.assertTrue(self.gd.is_beta)
+        self.assertTrue(self.gd.names_available)
+
+    def test_surname_count_183(self):
+        # The Windows PMSaveDiskTool PE32 also has exactly 183 English names;
+        # this count is expected to be stable.
+        self.assertEqual(self.gd.surname_count, 183)
+
+    def test_known_edges_of_surname_table(self):
+        # Adams..Young, straddling the anchor and terminator.
+        self.assertEqual(self.gd.surnames[0], "Adams")
+        self.assertEqual(self.gd.surnames[-1], "Young")
+
+    def test_anchor_surnames_in_order(self):
+        # These are the five surnames used as the anchor pattern — if the
+        # anchor scan drifts, this is the first thing that breaks.
+        self.assertEqual(self.gd.surnames[:5],
+                         ["Adams", "Adcock", "Addison", "Aldridge", "Alexander"])
+
+    def test_no_ui_strings_leaked_into_table(self):
+        # The surname region is adjacent to menu/UI strings. Everything we
+        # return must be alphabetic and capitalised.
+        for s in self.gd.surnames:
+            self.assertTrue(s.isalpha(), f"non-alpha surname: {s!r}")
+            self.assertTrue(s[0].isupper(), f"surname not capitalised: {s!r}")
+            self.assertGreaterEqual(len(s), 2)
+
+    def test_player_full_name_shapes(self):
+        # For a spread of seeds, output must have the "I. Surname" shape
+        # (1–3 dot-separated initials, space, surname from our table).
+        import re
+        pattern = re.compile(r"^([A-Z]\.){1,3} [A-Z][a-z]+$")
+        surname_set = set(self.gd.surnames)
+        for seed in (0x00000000, 0xFFFFFFFF, 0x12345678, 0xdeadbeef, 0x47264fa5):
+            full = self.gd.player_full_name(seed)
+            self.assertRegex(full, pattern, f"bad shape for seed {seed:#x}: {full!r}")
+            self.assertIn(full.split(" ", 1)[1], surname_set)
+
+    def test_initials_stay_within_charsets(self):
+        # The Italian charsets (reused for English) are ADJR / CEGMS /
+        # BFHILNTW / O. Every initial produced must be one of those.
+        allowed = set("ADJR") | set("CEGMS") | set("BFHILNTW") | set("O")
+        for seed in range(0, 0x100000, 0x2711):  # 63 pseudo-random seeds
+            full = self.gd.player_full_name(seed)
+            for c in full.split(" ", 1)[0]:
+                if c.isalpha():
+                    self.assertIn(c, allowed,
+                                  f"initial {c!r} from seed {seed:#x} ({full!r}) "
+                                  "outside allowed charsets")
 
 
 if __name__ == "__main__":

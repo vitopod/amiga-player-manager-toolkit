@@ -2,17 +2,32 @@
 
 The game generates player names procedurally:
   - Surname: derived from the RNG seed via a hash algorithm, index into
-    the surname table embedded in the DEFAJAM-packed '2507' executable
+    the surname table embedded in the game disk
   - Initials: 1–3 chars chosen from character-set tables based on the seed
 
 The hash algorithm was reverse-engineered from the Windows PMSaveDiskTool
-PE32 binary (function at file offset 0x50F0–0x5384). The surname table is
-extracted by decompressing the Italian game disk's '2507' executable with
-the DEFAJAM decompressor.
+PE32 binary (function at file offset 0x50F0–0x5384).
+
+Two build layouts are supported:
+
+  * Italian (stable): surname table embedded in the DEFAJAM-packed '2507'
+    executable on an AmigaDOS OFS disk. 245 surnames. Initials charsets
+    reverse-engineered.
+
+  * English (BETA): surname table stored as plaintext NUL-separated ASCII
+    on a PM-custom-file-table disk (no AmigaDOS filesystem). 183 surnames.
+    Located by anchor-scan on known leading surnames. Surnames and the
+    reused Italian initials charsets were cross-checked against an in-game
+    roster screen (2026-04-17) and every observed surname and initial
+    letter was consistent. What's still BETA is the exact seed→name
+    mapping: individual players could in principle resolve to slightly
+    different names than the live game displays.
 
 Usage:
     gd = GameDisk.load("PlayerManagerITA.adf")
     print(gd.player_full_name(rng_seed))   # e.g. "A. Baresi"
+    print(gd.build)                         # 'italian' or 'english'
+    print(gd.is_beta)                       # True for non-Italian builds
 """
 
 import struct
@@ -131,15 +146,33 @@ class _DEFAJAMDecompressor:
 # ── OFS filesystem reader ────────────────────────────────────────────────────
 
 def _ofs_read_file(adf_data: bytes, filename: str) -> bytes | None:
-    """Read a named file from an AmigaDOS OFS disk image."""
+    """Read a named file from an AmigaDOS OFS disk image.
+
+    Returns None if the disk isn't OFS, the file doesn't exist, or any
+    on-disk pointer points outside the image. Non-OFS disks (e.g. PM's
+    custom-file-table game/save disks) are silently ignored here — callers
+    fall back to PM-specific detection.
+    """
     BLOCK = 512
+    total_blocks = len(adf_data) // BLOCK
+    if total_blocks <= 880:
+        return None
     root = adf_data[880 * BLOCK:(880 + 1) * BLOCK]
 
+    def _block(blk):
+        if blk <= 0 or blk >= total_blocks:
+            return None
+        return adf_data[blk * BLOCK:(blk + 1) * BLOCK]
+
     def read_header(blk):
-        b = adf_data[blk * BLOCK:(blk + 1) * BLOCK]
+        b = _block(blk)
+        if b is None:
+            return None
         btype    = struct.unpack_from('>I', b, 0)[0]
         sec_type = struct.unpack_from('>i', b, 508)[0]
         nl = b[432]
+        if nl > 30:
+            return None
         name  = b[433:433+nl].decode('latin-1', errors='replace')
         fsize = struct.unpack_from('>I', b, 324)[0]
         chain = struct.unpack_from('>I', b, 316)[0]
@@ -148,15 +181,26 @@ def _ofs_read_file(adf_data: bytes, filename: str) -> bytes | None:
 
     for i in range(72):
         blk = struct.unpack_from('>I', root, 24 + i * 4)[0]
-        while blk:
-            btype, sec_type, name, fsize, chain, first = read_header(blk)
+        seen = set()
+        while blk and blk not in seen:
+            seen.add(blk)
+            hdr = read_header(blk)
+            if hdr is None:
+                break
+            btype, sec_type, name, fsize, chain, first = hdr
             if btype == 2 and sec_type == -3 and name == filename:
                 result = bytearray()
                 db = first
-                while db and len(result) < fsize:
-                    block = adf_data[db * BLOCK:(db + 1) * BLOCK]
+                data_seen = set()
+                while db and db not in data_seen and len(result) < fsize:
+                    data_seen.add(db)
+                    block = _block(db)
+                    if block is None:
+                        return None
                     ds  = struct.unpack_from('>I', block, 12)[0]
                     nxt = struct.unpack_from('>I', block, 16)[0]
+                    if ds > BLOCK - 24:
+                        return None
                     result.extend(block[24:24 + ds])
                     db = nxt
                 return bytes(result[:fsize])
@@ -248,33 +292,121 @@ def _name_from_seed(rng_seed: int, surnames: list[str]) -> str:
     return "".join(f"{c}." for c in initials) + " " + surname
 
 
+# ── PM custom file table reader (same format as save disks) ─────────────────
+
+def _pm_custom_file_table_names(adf_data: bytes) -> list[str]:
+    """Read filenames from PM's custom 16-byte file table at block 2 (0x400).
+
+    Returns [] if the layout doesn't look like a PM custom file table.
+    Used to detect non-Italian game disks (e.g. English cracked builds store
+    their files via this table, not AmigaDOS OFS).
+    """
+    BLOCK = 512
+    ENTRY = 16
+    FT_OFFSET = 2 * BLOCK
+    if len(adf_data) < FT_OFFSET + BLOCK:
+        return []
+    names = []
+    for i in range(BLOCK // ENTRY):
+        raw = adf_data[FT_OFFSET + i * ENTRY : FT_OFFSET + (i + 1) * ENTRY]
+        if raw[0] == 0:
+            break
+        null_pos = raw.index(0) if 0 in raw[:12] else 12
+        try:
+            name = raw[:null_pos].decode('ascii')
+        except UnicodeDecodeError:
+            return []
+        if not all(0x20 <= b < 0x7f for b in raw[:null_pos]):
+            return []
+        names.append(name)
+    return names
+
+
+# Known PM game-disk executable names, per build.
+_PM_GAME_EXECUTABLES = {"2507", "manager.prg"}
+
+
+def _detect_game_disk_build(adf_data: bytes) -> str | None:
+    """Return a short build hint (e.g. 'italian', 'english', 'unknown-pm')
+    if adf_data looks like *some* Player Manager game disk, else None.
+
+    Detection is intentionally loose: we want to accept any disk whose layout
+    is clearly PM's, even if we can't extract names from it.
+    """
+    # Italian build: AmigaDOS OFS with file '2507'
+    if _ofs_read_file(adf_data, "2507") is not None:
+        return "italian"
+
+    # English / cracked builds: PM's custom file table at 0x400
+    names = _pm_custom_file_table_names(adf_data)
+    if not names:
+        return None
+    name_set = set(names)
+    if "2507" in name_set:
+        return "italian-custom"
+    if "manager.prg" in name_set:
+        return "english"
+    # Heuristic: multiple PM-style files (tactics, etc.) are a strong signal
+    tac_count = sum(1 for n in names if n.endswith(".tac"))
+    if tac_count >= 2 and any(n.endswith(".prg") for n in names):
+        return "unknown-pm"
+    return None
+
+
 # ── GameDisk ─────────────────────────────────────────────────────────────────
 
 class GameDisk:
     """Loads a Player Manager game ADF and provides player name generation.
 
+    Only the Italian build ('2507' executable) has a known surname-table
+    layout. Other PM builds load successfully but with `surnames=[]` and
+    `names_available=False` — save editing still works; player names stay
+    blank as if no game disk were loaded.
+
     Usage:
         gd = GameDisk.load("PlayerManagerITA.adf")
         print(gd.player_full_name(rng_seed))   # "A. Baresi"
         print(gd.surname_count)                 # 245
+        print(gd.build)                         # "italian"
     """
 
-    # Surname table location in the decompressed game image
+    # Surname table location in the decompressed Italian game image
     _NAME_START = 0x15B02
     _NAME_END   = 0x162E6
 
-    def __init__(self, surnames: list[str]):
+    def __init__(self, surnames: list[str], build: str = "italian"):
         self.surnames = surnames
+        self.build = build
 
     @classmethod
     def load(cls, path: str) -> "GameDisk":
-        """Load and decompress the game ADF, extracting the surname table."""
+        """Load a game ADF. Accepts any recognizable PM build; names are
+        only populated for the Italian build."""
         with open(path, "rb") as f:
             adf_data = f.read()
         return cls.from_bytes(adf_data)
 
     @classmethod
     def from_bytes(cls, adf_data: bytes) -> "GameDisk":
+        build = _detect_game_disk_build(adf_data)
+        if build is None:
+            raise ValueError(
+                "Not a recognizable Player Manager game disk "
+                "(no '2507' via OFS and no PM custom file table found)"
+            )
+
+        if build == "italian":
+            return cls(cls._extract_italian_surnames(adf_data), build="italian")
+        if build == "english":
+            surnames = cls._extract_english_surnames(adf_data)
+            # If the anchor scan misses (non-standard crack), downgrade to
+            # "loaded but no names" rather than hard-failing.
+            return cls(surnames, build="english")
+        # Recognised as PM-ish but we don't know how to extract names.
+        return cls(surnames=[], build=build)
+
+    @classmethod
+    def _extract_italian_surnames(cls, adf_data: bytes) -> list[str]:
         raw = _ofs_read_file(adf_data, "2507")
         if raw is None:
             raise ValueError("File '2507' not found — is this a Player Manager game disk?")
@@ -322,16 +454,70 @@ class GameDisk:
         if not surnames:
             raise ValueError("No surnames found in decompressed game image")
 
-        return cls(surnames)
+        return surnames
+
+    # Anchor: the first five surnames in the English surname table, in order.
+    # They appear as one contiguous NUL-separated block and are unlikely to
+    # occur elsewhere in the 900KB image, which makes this a robust locator
+    # regardless of how the game disk was cracked/reassembled.
+    _ENGLISH_ANCHOR = b"Adams\x00Adcock\x00Addison\x00Aldridge\x00Alexander\x00"
+    # Boundary marker immediately following the table in known dumps.
+    _ENGLISH_TERMINATOR = b"JOYSTICK"
+
+    @classmethod
+    def _extract_english_surnames(cls, adf_data: bytes) -> list[str]:
+        """Extract the English surname table by anchor-scan.
+
+        Returns [] if the anchor isn't found — the disk is accepted as PM
+        but names stay blank (handled by the caller).
+        """
+        start = adf_data.find(cls._ENGLISH_ANCHOR)
+        if start < 0:
+            return []
+        # Find the end: nearest known non-surname UI string after the anchor.
+        term = adf_data.find(cls._ENGLISH_TERMINATOR, start)
+        if term < 0:
+            return []
+        # Strip trailing NULs before the terminator.
+        end = term
+        while end > start and adf_data[end - 1] == 0:
+            end -= 1
+        surnames = []
+        for chunk in adf_data[start:end].split(b"\x00"):
+            if not chunk:
+                continue
+            try:
+                text = chunk.decode("ascii")
+            except UnicodeDecodeError:
+                continue
+            # Surnames only: capitalised, alphabetic, 2–20 chars.
+            if 2 <= len(text) <= 20 and text[0].isupper() and text.isalpha():
+                surnames.append(text)
+        return surnames
 
     @property
     def surname_count(self) -> int:
         return len(self.surnames)
 
+    @property
+    def names_available(self) -> bool:
+        return bool(self.surnames)
+
+    @property
+    def is_beta(self) -> bool:
+        """True for builds whose name generation is unverified against the
+        live game (anything non-Italian)."""
+        return self.build != "italian"
+
     def player_full_name(self, rng_seed: int) -> str:
-        """Return 'I. Surname' name for a given RNG seed."""
+        """Return 'I. Surname' name for a given RNG seed, or '' if this
+        build has no known surname table."""
+        if not self.surnames:
+            return ""
         return _name_from_seed(rng_seed, self.surnames)
 
     def player_surname(self, rng_seed: int) -> str:
-        """Return just the surname for a given RNG seed."""
+        """Return just the surname for a given RNG seed, or '' if unavailable."""
+        if not self.surnames:
+            return ""
         return _name_from_seed(rng_seed, self.surnames).split(" ", 1)[-1]
