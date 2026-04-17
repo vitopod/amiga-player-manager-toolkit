@@ -813,6 +813,7 @@ class PMSaveDiskToolGUI:
         self.game_disk = None   # GameDisk for name generation (optional)
         self.dirty = False
 
+        self._build_title_band()
         self._build_menu()
         self._build_toolbar()
         self._build_main()
@@ -822,6 +823,27 @@ class PMSaveDiskToolGUI:
         self.root.protocol("WM_DELETE_WINDOW", self._on_quit)
         if sys.platform == "darwin":
             self.root.createcommand("tk::mac::Quit", self._on_quit)
+
+    # ── Title band ────────────────────────────────────────────
+
+    def _build_title_band(self):
+        band = tk.Frame(self.root, bg=PAL["bg_header"], height=28)
+        band.pack(fill=tk.X, side=tk.TOP)
+        band.pack_propagate(False)
+
+        self._title_left = tk.Label(
+            band, text="PLAYER MANAGER TOOLKIT",
+            bg=PAL["bg_header"], fg=PAL["fg_title"],
+            font=("Courier New", 12, "bold"),
+        )
+        self._title_left.pack(side=tk.LEFT, padx=10)
+
+        self._title_right = tk.Label(
+            band, text="",
+            bg=PAL["bg_header"], fg=PAL["fg_label"],
+            font=("Courier New", 9),
+        )
+        self._title_right.pack(side=tk.RIGHT, padx=10)
 
     # ── Menu ──────────────────────────────────────────────────
 
@@ -1534,6 +1556,17 @@ class PMSaveDiskToolGUI:
         self._add_recent(path)
         self.status_var.set(f"Loaded: {os.path.basename(path)}")
 
+    def _refresh_title_band(self):
+        if self.adf_path and self.slot:
+            slot_name = self.save_var.get()
+            self._title_right.config(
+                text=f"{os.path.basename(self.adf_path)}  ·  {slot_name}"
+            )
+        elif self.adf_path:
+            self._title_right.config(text=os.path.basename(self.adf_path))
+        else:
+            self._title_right.config(text="")
+
     def _update_title(self):
         if self.adf_path:
             base = f"PMSaveDiskToolkit — {os.path.basename(self.adf_path)}"
@@ -1542,6 +1575,7 @@ class PMSaveDiskToolGUI:
         else:
             base = f"PMSaveDiskToolkit — {__version__}"
         self.root.title(base)
+        self._refresh_title_band()
 
     def _set_dirty(self, flag: bool = True):
         if self.dirty != flag:
