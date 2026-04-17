@@ -192,7 +192,7 @@ class CareerTrackerWindow(tk.Toplevel):
                                          values=save_names, state="readonly", width=10)
         self.save_b_combo.pack(side=tk.LEFT, padx=2)
 
-        self.adf_b_label = ttk.Label(ctrls, text="(same ADF)", foreground="gray")
+        self.adf_b_label = ttk.Label(ctrls, text="(same ADF)", foreground=PAL["fg_dim"])
         self.adf_b_label.pack(side=tk.LEFT, padx=(10, 4))
         ttk.Button(ctrls, text="Load side-B ADF...",
                    command=self._load_adf_b).pack(side=tk.LEFT, padx=2)
@@ -251,7 +251,7 @@ class CareerTrackerWindow(tk.Toplevel):
     def _reset_adf_b(self):
         self.adf_b = self.adf_a
         self.adf_b_path = self.adf_a_path
-        self.adf_b_label.config(text="(same ADF)", foreground="gray")
+        self.adf_b_label.config(text="(same ADF)", foreground=PAL["fg_dim"])
         self.save_b_combo["values"] = [e.name for e in self.adf_a.list_saves()]
 
     def _compare(self):
@@ -328,7 +328,7 @@ class ByteWorkbenchWindow(tk.Toplevel):
         spin.pack(side=tk.LEFT, padx=(4, 10))
         spin.bind("<Return>", lambda e: self._refresh_raw())
 
-        self.raw_header = ttk.Label(top, text="", foreground="gray30")
+        self.raw_header = ttk.Label(top, text="", foreground=PAL["fg_label"])
         self.raw_header.pack(side=tk.LEFT, padx=8)
 
         cols = ("offset", "hex", "dec", "bin", "field", "note")
@@ -414,7 +414,7 @@ class ByteWorkbenchWindow(tk.Toplevel):
         ttk.Button(top, text="Compute",
                    command=self._compute_histogram).pack(side=tk.LEFT, padx=4)
 
-        self.hist_info = ttk.Label(frame, text="", foreground="gray30")
+        self.hist_info = ttk.Label(frame, text="", foreground=PAL["fg_label"])
         self.hist_info.pack(anchor="w", padx=6, pady=(0, 4))
 
         cols = ("value_dec", "value_hex", "value_bin", "count", "pct")
@@ -498,7 +498,7 @@ class ByteWorkbenchWindow(tk.Toplevel):
         ttk.Button(top, text="Compute",
                    command=self._compute_diff).pack(side=tk.LEFT, padx=4)
 
-        self.diff_info = ttk.Label(frame, text="", foreground="gray30")
+        self.diff_info = ttk.Label(frame, text="", foreground=PAL["fg_label"])
         self.diff_info.pack(anchor="w", padx=6, pady=(0, 4))
 
         cols = ("offset", "field", "bit", "p_a", "p_b", "delta")
@@ -581,7 +581,7 @@ class LineupCoachWindow(tk.Toplevel):
                   font=("TkDefaultFont", 10, "bold")).pack(side=tk.LEFT)
 
         disclaimer = ttk.Label(self, text=self.BETA_DISCLAIMER,
-                               foreground="gray30", wraplength=900,
+                               foreground=PAL["fg_label"], wraplength=900,
                                justify=tk.LEFT)
         disclaimer.pack(fill=tk.X, padx=10, pady=(0, 6))
 
@@ -689,7 +689,7 @@ class LineupCoachWindow(tk.Toplevel):
 
         self.breakdown_var = tk.StringVar(value="")
         ttk.Label(self, textvariable=self.breakdown_var,
-                  foreground="gray30", wraplength=900,
+                  foreground=PAL["fg_label"], wraplength=900,
                   justify=tk.LEFT).pack(fill=tk.X, padx=10, pady=(2, 8))
 
         self._current_ranked: list[lineup.LineupResult] = []
@@ -1328,17 +1328,19 @@ class PMSaveDiskToolGUI:
     # ── Toolbar ───────────────────────────────────────────────
 
     def _build_toolbar(self):
-        toolbar = ttk.Frame(self.root)
-        toolbar.pack(fill=tk.X, padx=5, pady=(5, 0))
+        toolbar = tk.Frame(self.root, bg=PAL["bg_mid"])
+        toolbar.pack(fill=tk.X, padx=0, pady=0)
 
-        ttk.Label(toolbar, text="Save:").pack(side=tk.LEFT, padx=(2, 2))
+        tk.Label(toolbar, text="SAVE:", bg=PAL["bg_mid"], fg=PAL["fg_label"],
+                 font=("Courier New", 8)).pack(side=tk.LEFT, padx=(10, 2))
         self.save_var = tk.StringVar()
         self.save_combo = ttk.Combobox(toolbar, textvariable=self.save_var,
                                        state="readonly", width=12)
         self.save_combo.pack(side=tk.LEFT, padx=2)
         self.save_combo.bind("<<ComboboxSelected>>", self._on_save_selected)
 
-        ttk.Label(toolbar, text="View:").pack(side=tk.LEFT, padx=(14, 2))
+        tk.Label(toolbar, text="VIEW:", bg=PAL["bg_mid"], fg=PAL["fg_label"],
+                 font=("Courier New", 8)).pack(side=tk.LEFT, padx=(14, 2))
         self.team_var = tk.StringVar()
         self.team_combo = ttk.Combobox(toolbar, textvariable=self.team_var,
                                        state="readonly", width=28)
@@ -1357,7 +1359,7 @@ class PMSaveDiskToolGUI:
 
         self.summary_var = tk.StringVar(value="")
         self.summary_label = ttk.Label(left, textvariable=self.summary_var,
-                                       anchor="w", foreground="gray30")
+                                       anchor="w", foreground=PAL["fg_label"])
         self.summary_label.pack(fill=tk.X, padx=3, pady=(0, 2))
 
         search_bar = ttk.Frame(left)
@@ -2169,14 +2171,14 @@ class PMSaveDiskToolGUI:
         ttk.Label(body, text="PMSaveDiskToolkit",
                   font=("TkDefaultFont", 14, "bold")).pack(anchor="w")
         ttk.Label(body, text=f"Version {__version__}",
-                  foreground="gray30").pack(anchor="w", pady=(0, 12))
+                  foreground=PAL["fg_label"]).pack(anchor="w", pady=(0, 12))
         ttk.Label(
             body, justify=tk.LEFT,
             text=("Cross-platform save-disk editor for Player Manager\n"
                   "(Anco Software, 1990 — Amiga)."),
         ).pack(anchor="w", pady=(0, 12))
         ttk.Label(
-            body, justify=tk.LEFT, foreground="gray30",
+            body, justify=tk.LEFT, foreground=PAL["fg_label"],
             text=("Based on PMSaveDiskTool v1.2 by UltimateBinary.\n"
                   "Original game by Dino Dini."),
         ).pack(anchor="w", pady=(0, 12))
