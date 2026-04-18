@@ -62,6 +62,7 @@ PAL_RETRO = {
     "radar_bg":   "#000055",   # radar canvas background (intentionally lighter than bg)
     "bar_trough": "#111144",   # skill bar trough fill
     "status_bar": "#000033",   # status bar frame background
+    "warn_fg":    "#ff9944",   # ⚠ warning accent (skill-threshold flags)
 }
 
 # Accessible light theme. High-contrast (WCAG AA on all foregrounds),
@@ -88,6 +89,7 @@ PAL_LIGHT = {
     "radar_bg":   "#ffffff",
     "bar_trough": "#dcdcdc",
     "status_bar": "#d6d6d6",
+    "warn_fg":    "#a93226",
 }
 
 # Active palette. ``set_theme`` swaps its contents to ``PAL_LIGHT`` when

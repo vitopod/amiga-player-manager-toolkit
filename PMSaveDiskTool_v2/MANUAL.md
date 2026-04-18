@@ -80,7 +80,7 @@ installer, no pip package. Upgrading means replacing the folder.
 
 ```
 git pull                 # latest on main
-git checkout v2.4.2      # or any tagged release
+git checkout v2.4.3      # or any tagged release
 ```
 
 **If you downloaded a release zip:**
@@ -185,6 +185,45 @@ type — by player id, name, team, or position abbreviation (GK / DEF / MID / FW
 
 Click any player row to load their full record into the detail panel on the right.
 
+### Sorting the list
+
+Every column heading in the player list is clickable. Click **Name** and the
+list sorts by family name (ascending); click again to flip to descending — the
+active column shows a ▲ or ▼ arrow next to its label. The same works for
+**ID**, **Age**, **Pos**, **Team**, **Skill**, **⚠**, and **Mkt**.
+
+- **Name** sorts on the family name — the last whitespace-separated token of
+  the displayed name. "S.D. Giannini" sorts under **G**, alongside
+  "R. Giannini".
+- **Age**, **Skill**, **ID** sort numerically. **⚠** and **Mkt** group flagged
+  rows first. **Pos** and **Team** are alphabetical.
+- The active sort persists across View / Filter / save-slot changes — useful
+  for scanning the same shape across multiple teams or seasons without having
+  to click again.
+
+### Skill-threshold warnings (⚠)
+
+When a player's essential skills for its position fall below 100, a **⚠**
+appears in the Warn column. Essentials per position:
+
+| Position | Essential skills |
+|----------|-----------------|
+| GK  | keeping, agility, resilience |
+| DEF | tackling, stamina, pace |
+| MID | passing, stamina, flair |
+| FWD | shooting, pace, flair |
+
+Select a flagged player and the **Status** tab shows a "Weakness" row listing
+which skills tripped the threshold, e.g. `⚠ pace 85, stamina 92`. This is a
+tactic-agnostic sanity check — a shallow "can this player do the basics of
+its position?" warning, not a judgement on whether they're a good player. A
+future release may layer a tactic-aware version on top once shirt→player
+mapping is reverse-engineered from the `.sav`.
+
+The feature can be toggled in **Help → Preferences…** → "Flag players whose
+essential skills are below 100". When off, the ⚠ column stays empty and the
+Status tab reads "(warnings disabled in Preferences)".
+
 ### Market availability (★)
 
 A **★** in the Mkt column means the player is currently available to sign —
@@ -248,6 +287,14 @@ Disk…` and `File → Open Game Disk…` dialogs seed their starting folder
 from the last file you opened — always handy on a workflow where the
 ADFs live in the same directory each time (e.g. MiSTer / emulator
 setups).
+
+**Warnings:**
+
+- **Flag players whose essential skills are below 100 (⚠)** (default on) —
+  the ⚠ column on the player list and the Status tab's Weakness row will
+  highlight players whose position-essential skills fall below 100. See
+  *Skill-threshold warnings* above for the exact skill list per position.
+  Takes effect immediately — the next list refresh reflects the new value.
 
 **Updates:**
 

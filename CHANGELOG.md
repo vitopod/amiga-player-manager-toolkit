@@ -4,6 +4,39 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.3] — 2026-04-18
+
+### Added
+- **Sortable player-list columns.** Every heading (ID, Name, Age, Pos,
+  Team, Skill, ⚠, Mkt) is now clickable. Click to sort ascending, click
+  again to flip to descending; the active column shows a ▲ / ▼ arrow.
+  **Name** sorts by family name — the last whitespace-separated token,
+  so "S.D. Giannini" sorts under **G**. Numeric columns sort
+  numerically; ⚠ and ★ group flagged rows first. The active sort
+  persists across View, Filter, and save-slot changes. Documented in
+  MANUAL and the main-window `?` help.
+- **Position-based skill-threshold warnings (⚠).** A new ⚠ column on
+  the player list flags any player whose position-essential skills
+  fall below 100 — GK needs keeping/agility/resilience, DEF needs
+  tackling/stamina/pace, MID needs passing/stamina/flair, FWD needs
+  shooting/pace/flair. The Status tab's new **Weakness** row spells
+  out which skills tripped the threshold for the selected player
+  ("⚠ pace 85, stamina 92"). Toggle on/off in Help → Preferences… —
+  the setting applies live, no relaunch needed. This is a tactic-
+  agnostic sanity check; tactic-aware warnings will ship once
+  shirt→player mapping is reverse-engineered from the `.sav`.
+- `pm_core.warnings` module exposes the reusable pieces
+  (`POSITION_REQUIRED_SKILLS`, `DEFAULT_THRESHOLD`, `weak_skills`,
+  `has_weakness`, `describe_weaknesses`). Fully tested.
+
+### Fixed
+- **Skills tab entries readable on every theme.** The skill-value
+  entry boxes used to hardcode their dark-navy background, so on the
+  light theme the foreground text resolved to the same shade as the
+  background and values looked blank. Entries now track `PAL["field"]`
+  and use a slightly bolder, larger font so they read clearly on both
+  themes.
+
 ## [2.4.2] — 2026-04-18
 
 ### Added

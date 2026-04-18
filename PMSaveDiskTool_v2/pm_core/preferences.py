@@ -31,6 +31,10 @@ Schema keys with defaults — see ``default_state()``:
   accessible light theme (off-white background, dark text, muted blue
   accents). Takes effect on next launch. Splash / welcome dialogs are
   unaffected — they always render in the PM-title palette.
+- ``skill_warnings`` (bool) — surface a ⚠ flag on players whose
+  position-essential skills fall below the threshold (see
+  :mod:`pm_core.warnings`). Defaults to ``True``. Applies live — the
+  next player-list refresh picks up the new value.
 
 The loader silently replaces missing / wrong-type values with
 ``default_state()`` entries so an older file (or a hand-edited one)
@@ -62,6 +66,7 @@ def default_state() -> dict:
         "default_formation":    "4-4-2",
         "use_system_font":      False,
         "theme":                "retro",
+        "skill_warnings":       True,
     }
 
 

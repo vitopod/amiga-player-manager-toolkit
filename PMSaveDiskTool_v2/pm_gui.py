@@ -26,6 +26,9 @@ from pm_core.names import GameDisk
 from pm_core import updates
 from pm_core import fonts
 from pm_core import preferences
+from pm_core.warnings import (
+    describe_weaknesses, has_weakness,
+)
 
 from pm_gui_theme import (
     PAL, FONT_DATA, _retro, apply_theme, set_theme, set_use_system_font,
@@ -347,14 +350,17 @@ class PMSaveDiskToolGUI:
         ttk.Button(search_bar, text="×", width=2,
                    command=lambda: self.search_var.set("")).pack(side=tk.LEFT)
 
-        cols = ("id", "name", "age", "pos", "team", "total", "mkt")
+        cols = ("id", "name", "age", "pos", "team", "total", "warn", "mkt")
         self.tree = ttk.Treeview(left, columns=cols, show="headings", selectmode="browse")
+        for c in cols:
+            self.tree.heading(c, command=lambda col=c: self._sort_by(col))
         self.tree.heading("id", text="ID")
         self.tree.heading("name", text="Name")
         self.tree.heading("age", text="Age")
         self.tree.heading("pos", text="Pos")
         self.tree.heading("team", text="Team")
         self.tree.heading("total", text="Skill")
+        self.tree.heading("warn", text="⚠")
         self.tree.heading("mkt", text="Mkt")
         self.tree.column("id", width=50, anchor="e")
         self.tree.column("name", width=140)
@@ -362,7 +368,11 @@ class PMSaveDiskToolGUI:
         self.tree.column("pos", width=45, anchor="center")
         self.tree.column("team", width=120)
         self.tree.column("total", width=50, anchor="e")
+        self.tree.column("warn", width=26, anchor="center", stretch=False)
         self.tree.column("mkt", width=30, anchor="center", stretch=False)
+        self._sort_col: str | None = None
+        self._sort_reverse: bool = False
+        self._current_heading_overrides: dict[str, str] = {}
 
         scrollbar = ttk.Scrollbar(left, orient=tk.VERTICAL, command=self.tree.yview)
         self.tree.configure(yscrollcommand=scrollbar.set)
@@ -489,9 +499,13 @@ class PMSaveDiskToolGUI:
                          row=row, column=lc, sticky="e", padx=(8, 3), pady=4)
 
             var = tk.StringVar()
-            tk.Entry(skills_tab, textvariable=var, width=5,
-                     bg="#000044", fg=PAL["fg_data"], insertbackground=PAL["fg_data"],
-                     relief="flat", bd=1, font=("Courier New", 10)).grid(
+            tk.Entry(skills_tab, textvariable=var, width=4,
+                     bg=PAL["field"], fg=PAL["fg_data"],
+                     insertbackground=PAL["fg_data"],
+                     relief="solid", bd=1,
+                     highlightbackground=PAL["border"],
+                     highlightcolor=PAL["fg_data"],
+                     font=("Courier New", 12, "bold")).grid(
                          row=row, column=ec, sticky="w", padx=(2, 4), pady=3)
             self.fields[skill] = var
             var.trace_add("write", lambda *_, s=skill: self._redraw_skill_bar_single(s))
@@ -501,7 +515,17 @@ class PMSaveDiskToolGUI:
             bar.grid(row=row, column=bc, sticky="w", padx=(0, 10), pady=3)
             self._skill_bars[skill] = bar
 
-        add_tab("Status", self._STATUS_FIELDS)
+        status_tab = add_tab("Status", self._STATUS_FIELDS)
+        warn_row = len(self._STATUS_FIELDS)
+        tk.Label(status_tab, text="WEAKNESS:", anchor="e",
+                 bg=PAL["bg"], fg=PAL["warn_fg"],
+                 font=_retro(10, "bold")).grid(
+                     row=warn_row, column=0, sticky="e", padx=(8, 4), pady=(12, 4))
+        self._weakness_var = tk.StringVar(value="")
+        tk.Label(status_tab, textvariable=self._weakness_var,
+                 bg=PAL["bg"], fg=PAL["warn_fg"], wraplength=260,
+                 font=("Courier New", 10), anchor="w", justify=tk.LEFT).grid(
+                     row=warn_row, column=1, sticky="w", padx=(2, 8), pady=(12, 4))
         add_tab("Season", self._SEASON_FIELDS)
         add_tab("Career", self._CAREER_FIELDS)
 
@@ -675,12 +699,68 @@ class PMSaveDiskToolGUI:
 
     _DEFAULT_TREE_HEADINGS = {
         "id": "ID", "name": "Name", "age": "Age", "pos": "Pos",
-        "team": "Team", "total": "Skill", "mkt": "Mkt",
+        "team": "Team", "total": "Skill", "warn": "⚠", "mkt": "Mkt",
     }
 
     def _set_tree_headings(self, **overrides):
+        self._current_heading_overrides = dict(overrides)
         for col, text in self._DEFAULT_TREE_HEADINGS.items():
-            self.tree.heading(col, text=overrides.get(col, text))
+            label = overrides.get(col, text)
+            if col == self._sort_col:
+                label = f"{label} {'▼' if self._sort_reverse else '▲'}"
+            self.tree.heading(col, text=label)
+
+    def _sort_by(self, col: str) -> None:
+        """Sort the player tree by *col*, toggling direction on repeat clicks."""
+        if self._sort_col == col:
+            self._sort_reverse = not self._sort_reverse
+        else:
+            self._sort_col = col
+            self._sort_reverse = False
+        self._apply_sort()
+        # Refresh headings so the arrow moves to the active column.
+        self._set_tree_headings(**self._current_heading_overrides)
+
+    def _sort_key(self, col: str, iid: str):
+        """Return a comparable key for row *iid* in column *col*.
+
+        Name sorts by family name (last whitespace-separated token).
+        Numeric columns parse as float; ⚠ and ★ columns sort present
+        before absent.
+        """
+        raw = self.tree.set(iid, col)
+        if col == "name":
+            # Family-name sort makes sense for players ("S.D. Giannini" →
+            # "giannini"). Squad Analyst rows use this column for team
+            # names — sort the whole string alphabetically instead.
+            if iid.startswith("squad-"):
+                return (0, raw.lower())
+            tokens = raw.split()
+            family = tokens[-1].lower() if tokens else ""
+            return (1, "") if not family else (0, family)
+        if col == "warn":
+            return (0, 0 if raw else 1)
+        if col == "mkt":
+            return (0, 0 if raw == "★" else 1)
+        try:
+            return (0, float(raw))
+        except ValueError:
+            return (0, raw.lower())
+
+    def _apply_sort(self) -> None:
+        """Reorder the tree's children according to the current sort state."""
+        if self._sort_col is None:
+            return
+        # Squad Analyst rows keep their natural team-index order — sorting
+        # them by some columns (e.g. the GK·DEF·MID·FWD breakdown) would be
+        # misleading, but we honour the click uniformly anyway.
+        children = list(self.tree.get_children(""))
+        children.sort(
+            key=lambda iid: self._sort_key(self._sort_col, iid),
+            reverse=self._sort_reverse,
+        )
+        for idx, iid in enumerate(children):
+            self.tree.move(iid, "", idx)
 
     def _refresh_player_list(self):
         if not self.slot:
@@ -729,6 +809,7 @@ class PMSaveDiskToolGUI:
                 )
 
         needle = self.search_var.get().strip().lower() if hasattr(self, "search_var") else ""
+        show_warn = self._skill_warnings_enabled()
         for p in players:
             team = self.slot.get_team_name(p.team_index)
             name = (self.game_disk.player_full_name(p.rng_seed)
@@ -738,10 +819,12 @@ class PMSaveDiskToolGUI:
                 if needle not in haystack:
                     continue
             mkt = "★" if p.is_market_available else ""
+            warn = "⚠" if (show_warn and has_weakness(p)) else ""
             tags = ("free",) if p.is_free_agent else ()
             self.tree.insert("", "end", iid=str(p.player_id),
                              values=(p.player_id, name, p.age, p.position_name,
-                                     team, score_fn(p), mkt), tags=tags)
+                                     team, score_fn(p), warn, mkt), tags=tags)
+        self._apply_sort()
 
     def _populate_squad_analyst(self):
         """Render one row per team with composition summary columns.
@@ -752,7 +835,7 @@ class PMSaveDiskToolGUI:
         """
         self._set_tree_headings(
             id="Tm", name="Team", age="AvgAge", pos="Size",
-            team="GK·DEF·MID·FWD", total="AvgSkl", mkt="Mkt",
+            team="GK·DEF·MID·FWD", total="AvgSkl", warn="", mkt="Mkt",
         )
         needle = self.search_var.get().strip().lower() if hasattr(self, "search_var") else ""
         for s in self.slot.all_squad_summaries():
@@ -765,8 +848,9 @@ class PMSaveDiskToolGUI:
                 "", "end", iid=f"squad-{s['team_index']}",
                 values=(s["team_index"], team_name,
                         f"{s['avg_age']:.1f}", s["size"], breakdown,
-                        f"{s['avg_skill']:.0f}", s["on_market"]),
+                        f"{s['avg_skill']:.0f}", "", s["on_market"]),
             )
+        self._apply_sort()
 
     def _on_player_selected(self, event):
         sel = self.tree.selection()
@@ -842,6 +926,11 @@ class PMSaveDiskToolGUI:
         self.fields["div4_years"].set(str(p.div4_years))
         self.fields["int_years"].set(str(p.int_years))
         self.fields["contract_years"].set(str(p.contract_years))
+        if self._skill_warnings_enabled():
+            desc = describe_weaknesses(p)
+            self._weakness_var.set(f"⚠ {desc}" if desc else "none")
+        else:
+            self._weakness_var.set("(warnings disabled in Preferences)")
         self._redraw_skill_bars()
 
     @staticmethod
@@ -1297,7 +1386,18 @@ class PMSaveDiskToolGUI:
     # ── Preferences ───────────────────────────────────────────
 
     def _show_preferences(self):
-        open_preferences(self.root, XI_ENTRIES)
+        open_preferences(self.root, XI_ENTRIES, on_saved=self._on_preferences_saved)
+
+    def _on_preferences_saved(self) -> None:
+        """Apply preference toggles that take effect without a relaunch."""
+        if self.slot:
+            self._refresh_player_list()
+            if self.current_player is not None:
+                self._populate_fields(self.current_player)
+
+    def _skill_warnings_enabled(self) -> bool:
+        """Current value of the skill-warnings preference (live-read)."""
+        return bool(preferences.load().get("skill_warnings", True))
 
     def _show_about(self):
         top = tk.Toplevel(self.root)

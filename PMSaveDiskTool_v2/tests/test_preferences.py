@@ -42,6 +42,7 @@ class TestDefaultState:
             "default_formation",
             "use_system_font",
             "theme",
+            "skill_warnings",
         }
 
     def test_splash_defaults_on(self):
@@ -71,6 +72,9 @@ class TestDefaultState:
 
     def test_theme_default_retro(self):
         assert preferences.default_state()["theme"] == "retro"
+
+    def test_skill_warnings_default_on(self):
+        assert preferences.default_state()["skill_warnings"] is True
 
 
 class TestLoad:

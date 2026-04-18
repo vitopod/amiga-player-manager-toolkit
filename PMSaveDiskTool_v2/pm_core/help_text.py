@@ -102,7 +102,15 @@ The View dropdown combines regular teams with several analytical "super-views". 
 - **Pos** — GK / DEF / MID / FWD. Stored as 1/2/3/4 in the record's position byte.
 - **Team** — owner club. "Free Agent" when team_index is 0xFF.
 - **Skill** (or **Goals** in Top Scorers) — sum of the 10 skill fields (pace, stamina, heading, etc.), 0..990.
+- **⚠** — shown when any skill essential to the player's position is below 100: GK → keeping/agility/resilience, DEF → tackling/stamina/pace, MID → passing/stamina/flair, FWD → shooting/pace/flair. Select a player to see which skills triggered the flag on the Status tab ("Weakness" row). Toggle via Help → Preferences → "Flag players whose essential skills are below 100".
 - **Mkt** — ★ means market-available: either a free agent, or currently on the transfer list. The transfer flag lives in the high bit of `mystery3` (byte 0x1A) and matches the in-game LISTA TRASFERIMENTI screen.
+
+## Click any column heading to sort
+
+- Click a heading to sort ascending by that column; click again to flip to descending. The active column shows a ▲ / ▼ arrow.
+- **Name** sorts by family name — the last whitespace-separated token, so "S.D. Giannini" sorts under **G** alongside "R. Giannini".
+- **Age**, **Skill**, **ID** sort numerically. **Pos**, **Team** are alphabetical. **⚠** and **Mkt** group flagged rows first.
+- The sort persists across View / Filter / save-slot changes until you click a different column.
 
 # Detail panel (right side)
 
@@ -138,6 +146,7 @@ Header: PLAYER# / NAME / SEED — the player's identity, fixed while you edit ot
 - **Morale** — numeric morale (~0..255; ~80 is neutral). The in-game card summarises this as "OK / Low / High".
 - **Value** — transfer market value scalar.
 - **Wks Since Transfer** — post-transfer cooldown counter (NOT a "listed for sale" flag). Internal field; no in-game label.
+- **Weakness** — shorthand list of essential skills below 100 for the player's position, e.g. "⚠ pace 85, stamina 92". "none" means every essential skill clears the threshold. Shows "(warnings disabled in Preferences)" when the toggle is off.
 
 ## Season tab (This Yr / Last Yr pairs)
 

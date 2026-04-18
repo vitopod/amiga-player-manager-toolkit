@@ -11,13 +11,23 @@ formation-specific XI entries without having to import from
 
 import os
 import tkinter as tk
+from collections.abc import Callable
 from tkinter import ttk
 
 from pm_core import preferences, updates
 
 
-def open_preferences(parent: tk.Tk | tk.Toplevel, xi_entries: dict) -> None:
-    """Build and display the modal preferences dialog."""
+def open_preferences(
+    parent: tk.Tk | tk.Toplevel,
+    xi_entries: dict,
+    on_saved: Callable[[], None] | None = None,
+) -> None:
+    """Build and display the modal preferences dialog.
+
+    ``on_saved`` fires after preferences are persisted and the dialog
+    closes — used by the main window to refresh state that applies
+    live (e.g. the skill-threshold warning toggle).
+    """
     top = tk.Toplevel(parent)
     top.title("Preferences")
     top.resizable(False, False)
@@ -113,6 +123,17 @@ def open_preferences(parent: tk.Tk | tk.Toplevel, xi_entries: dict) -> None:
               text="Font and theme changes take effect on next launch.",
               foreground="#888").pack(anchor="w", padx=(22, 0))
 
+    warn_var = tk.BooleanVar(value=bool(prefs["skill_warnings"]))
+    ttk.Checkbutton(body,
+                    text="Flag players whose essential skills are below 100 (⚠)",
+                    variable=warn_var).pack(anchor="w", pady=(10, 0))
+    ttk.Label(body,
+              text="Warns e.g. a GK with low keeping, a DEF with low tackling, "
+                   "a FWD with low\npace. Applies immediately to the player list "
+                   "and Status tab.",
+              foreground="#888", justify=tk.LEFT).pack(
+        anchor="w", padx=(22, 0))
+
     ttk.Separator(body, orient=tk.HORIZONTAL).pack(
         fill=tk.X, pady=(12, 10))
 
@@ -149,10 +170,13 @@ def open_preferences(parent: tk.Tk | tk.Toplevel, xi_entries: dict) -> None:
         prefs["default_formation"] = fmt_var.get()
         prefs["use_system_font"] = bool(font_var.get())
         prefs["theme"] = reverse_theme_lookup.get(theme_var.get(), "retro")
+        prefs["skill_warnings"] = bool(warn_var.get())
         preferences.save(prefs)
         update_state["opted_in"] = bool(update_var.get())
         updates.save_state(update_state)
         top.destroy()
+        if on_saved is not None:
+            on_saved()
 
     ttk.Button(btns, text="Cancel",
                command=top.destroy).pack(side=tk.RIGHT)
