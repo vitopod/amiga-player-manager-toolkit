@@ -35,6 +35,8 @@ Schema keys with defaults — see ``default_state()``:
   position-essential skills fall below the threshold (see
   :mod:`pm_core.warnings`). Defaults to ``True``. Applies live — the
   next player-list refresh picks up the new value.
+- ``update_interval`` (str) — how often the automatic update check runs
+  when opted in. ``"weekly"`` (default) or ``"daily"``.
 
 The loader silently replaces missing / wrong-type values with
 ``default_state()`` entries so an older file (or a hand-edited one)
@@ -67,6 +69,7 @@ def default_state() -> dict:
         "use_system_font":      False,
         "theme":                "retro",
         "skill_warnings":       True,
+        "update_interval":      "weekly",
     }
 
 

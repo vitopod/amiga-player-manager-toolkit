@@ -59,19 +59,37 @@ class TestShouldCheck(unittest.TestCase):
         s["opted_in"] = True
         self.assertTrue(updates.should_check(s, now=1_000_000.0))
 
-    def test_false_within_24h(self):
+    def test_false_within_24h_daily(self):
         s = updates.default_state()
         s["opted_in"] = True
         s["last_check_at"] = 1_000_000.0
         self.assertFalse(updates.should_check(
-            s, now=1_000_000.0 + updates.CHECK_INTERVAL_SEC - 1))
+            s, now=1_000_000.0 + updates.INTERVAL_DAILY - 1,
+            interval=updates.INTERVAL_DAILY))
 
-    def test_true_after_24h(self):
+    def test_true_after_24h_daily(self):
         s = updates.default_state()
         s["opted_in"] = True
         s["last_check_at"] = 1_000_000.0
         self.assertTrue(updates.should_check(
-            s, now=1_000_000.0 + updates.CHECK_INTERVAL_SEC + 1))
+            s, now=1_000_000.0 + updates.INTERVAL_DAILY + 1,
+            interval=updates.INTERVAL_DAILY))
+
+    def test_weekly_interval_not_due_after_one_day(self):
+        s = updates.default_state()
+        s["opted_in"] = True
+        s["last_check_at"] = 1_000_000.0
+        self.assertFalse(updates.should_check(
+            s, now=1_000_000.0 + updates.INTERVAL_DAILY + 1,
+            interval=updates.INTERVAL_WEEKLY))
+
+    def test_weekly_interval_due_after_seven_days(self):
+        s = updates.default_state()
+        s["opted_in"] = True
+        s["last_check_at"] = 1_000_000.0
+        self.assertTrue(updates.should_check(
+            s, now=1_000_000.0 + updates.INTERVAL_WEEKLY + 1,
+            interval=updates.INTERVAL_WEEKLY))
 
 
 class TestStateLocation(unittest.TestCase):

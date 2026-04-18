@@ -1319,7 +1319,11 @@ class PMSaveDiskToolGUI:
         if state.get("opted_in") is None:
             self._prompt_update_optin(state)
             state = updates.load_state()
-        if not updates.should_check(state):
+        prefs = preferences.load()
+        _interval_name = prefs.get("update_interval", "weekly")
+        _interval = (updates.INTERVAL_DAILY if _interval_name == "daily"
+                     else updates.INTERVAL_WEEKLY)
+        if not updates.should_check(state, interval=_interval):
             # Still surface a previously-cached update, if any.
             latest = state.get("latest_version") or ""
             if latest and updates.is_newer(latest, __version__):
@@ -1334,11 +1338,12 @@ class PMSaveDiskToolGUI:
     def _prompt_update_optin(self, state: dict):
         answer = messagebox.askyesno(
             "Check for updates?",
-            "Should Player Manager Toolkit check GitHub once a day for new "
+            "Should Player Manager Toolkit periodically check GitHub for new "
             "releases?\n\n"
             "It never sends anything about you or your save files — just a "
             "single HTTPS request to the public release feed.\n\n"
-            "You can change this any time in Help → Preferences.",
+            "You can set the frequency (daily / weekly) and disable it any "
+            "time in Help → Preferences.",
             parent=self.root,
         )
         state["opted_in"] = bool(answer)

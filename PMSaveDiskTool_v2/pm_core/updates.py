@@ -1,6 +1,6 @@
 """Update-check state and GitHub Releases fetcher.
 
-Pure logic for Help → Check for Updates and the opt-in daily background
+Pure logic for Help → Check for Updates and the automatic background
 check. No tkinter; the GUI module wires the thread and the UI around this.
 
 Persistent state lives at ``~/.pmsavedisktool/update_check.json`` with the
@@ -28,7 +28,9 @@ RELEASES_PAGE_URL = (
 STATE_DIR = os.path.expanduser("~/.pmsavedisktool")
 STATE_FILE = os.path.join(STATE_DIR, "update_check.json")
 
-CHECK_INTERVAL_SEC = 24 * 60 * 60  # 24h
+INTERVAL_DAILY     = 24 * 60 * 60        # 1 day
+INTERVAL_WEEKLY    = 7 * 24 * 60 * 60   # 7 days
+CHECK_INTERVAL_SEC = INTERVAL_DAILY      # legacy alias used by existing tests
 FETCH_TIMEOUT_SEC = 5
 
 
@@ -70,13 +72,17 @@ def save_state(state: dict) -> None:
         json.dump(state, f, indent=2)
 
 
-def should_check(state: dict, now: float | None = None) -> bool:
-    """True if the opt-in is on and we're past the 24h cache window."""
+def should_check(
+    state: dict,
+    now: float | None = None,
+    interval: int = INTERVAL_WEEKLY,
+) -> bool:
+    """True if the opt-in is on and we're past the check-interval window."""
     if not state.get("opted_in"):
         return False
     now = now if now is not None else time.time()
     last = float(state.get("last_check_at") or 0.0)
-    return (now - last) >= CHECK_INTERVAL_SEC
+    return (now - last) >= interval
 
 
 def version_tuple(v: str) -> tuple[int, ...]:

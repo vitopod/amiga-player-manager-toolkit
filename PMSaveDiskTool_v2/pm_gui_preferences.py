@@ -138,22 +138,28 @@ def open_preferences(
         fill=tk.X, pady=(12, 10))
 
     # ── Updates ────────────────────────────────────────────
-    ttk.Label(body, text="Updates",
-              font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
+    ttk.Label(body, text=”Updates”,
+              font=(“TkDefaultFont”, 10, “bold”)).pack(anchor=”w”)
 
-    update_var = tk.BooleanVar(value=bool(update_state.get("opted_in")))
-    ttk.Checkbutton(
-        body,
-        text="Check GitHub for updates once a day",
-        variable=update_var,
-    ).pack(anchor="w", pady=(4, 0))
+    _freq_saved = prefs.get(“update_interval”, “weekly”)
+    if _freq_saved not in (“daily”, “weekly”):
+        _freq_saved = “weekly”
+    _current_freq = “disabled” if not update_state.get(“opted_in”) else _freq_saved
+    freq_var = tk.StringVar(value=_current_freq)
+    ttk.Label(body, text=”Automatic update checks:”).pack(anchor=”w”, pady=(4, 2))
+    for _label, _val in [(“Disabled”, “disabled”),
+                         (“Daily”, “daily”),
+                         (“Weekly”, “weekly”)]:
+        ttk.Radiobutton(body, text=_label,
+                        variable=freq_var, value=_val).pack(
+            anchor=”w”, padx=(22, 0))
     ttk.Label(
         body,
-        text="When enabled, a small “Update available” banner appears "
-             "next to\nthe title whenever a newer release is published.",
-        foreground="#888",
+        text='A “New version available” banner appears next to the title\n'
+             'when a newer release is found on GitHub. No data is sent.',
+        foreground=”#888”,
         justify=tk.LEFT,
-    ).pack(anchor="w", pady=(4, 0))
+    ).pack(anchor=”w”, pady=(4, 0))
 
     btns = ttk.Frame(body)
     btns.pack(fill=tk.X, pady=(14, 0))
@@ -171,8 +177,11 @@ def open_preferences(
         prefs["use_system_font"] = bool(font_var.get())
         prefs["theme"] = reverse_theme_lookup.get(theme_var.get(), "retro")
         prefs["skill_warnings"] = bool(warn_var.get())
+        freq = freq_var.get()
+        update_state["opted_in"] = (freq != "disabled")
+        if freq in ("daily", "weekly"):
+            prefs["update_interval"] = freq
         preferences.save(prefs)
-        update_state["opted_in"] = bool(update_var.get())
         updates.save_state(update_state)
         top.destroy()
         if on_saved is not None:

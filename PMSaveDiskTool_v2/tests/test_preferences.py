@@ -43,6 +43,7 @@ class TestDefaultState:
             "use_system_font",
             "theme",
             "skill_warnings",
+            "update_interval",
         }
 
     def test_splash_defaults_on(self):
@@ -75,6 +76,9 @@ class TestDefaultState:
 
     def test_skill_warnings_default_on(self):
         assert preferences.default_state()["skill_warnings"] is True
+
+    def test_update_interval_default_weekly(self):
+        assert preferences.default_state()["update_interval"] == "weekly"
 
 
 class TestLoad:
