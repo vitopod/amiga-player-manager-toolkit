@@ -1,10 +1,11 @@
-"""Line-up Coach (BETA) — suggested XI + reassignments window."""
+"""Line-up Coach (BETA) -- suggested XI + reassignments window."""
 
 import tkinter as tk
 from tkinter import ttk
 
 from pm_core import lineup, preferences
 from pm_core.save import SaveSlot
+from pm_core.strings import t
 
 from pm_gui_theme import PAL
 from pm_gui_help import help_button
@@ -15,19 +16,19 @@ class LineupCoachWindow(tk.Toplevel):
 
     Suggests formation + XI + per-player role reassignments from a pool
     (one team or the whole championship). Scoring is a heuristic layered
-    on PM's 10 skill fields, not a reconstruction of the match engine —
+    on PM's 10 skill fields, not a reconstruction of the match engine --
     the output is labelled BETA throughout.
     """
 
     BETA_DISCLAIMER = (
-        "BETA — scoring is a football-management heuristic built on top of PM's "
+        "BETA -- scoring is a football-management heuristic built on top of PM's "
         "skill fields. PM's match-engine weights are not reverse-engineered; "
         "treat output as 'suggested,' not 'optimal.'"
     )
 
     def __init__(self, parent, slot: SaveSlot, game_disk=None):
         super().__init__(parent)
-        self.title("Line-up Coach (BETA)")
+        self.title(t("lineup.title"))
         self.geometry("940x620")
         self.minsize(820, 520)
 
@@ -36,7 +37,7 @@ class LineupCoachWindow(tk.Toplevel):
 
         header = ttk.Frame(self, padding=(8, 8, 8, 4))
         header.pack(fill=tk.X)
-        ttk.Label(header, text="Line-up Coach",
+        ttk.Label(header, text=t("lineup.header"),
                   font=("TkDefaultFont", 13, "bold")).pack(side=tk.LEFT)
         ttk.Label(header, text="  BETA",
                   foreground="#c2410c",
@@ -51,9 +52,9 @@ class LineupCoachWindow(tk.Toplevel):
         ctrl = ttk.Frame(self, padding=(8, 4))
         ctrl.pack(fill=tk.X)
 
-        ttk.Label(ctrl, text="Team:").pack(side=tk.LEFT)
-        self.team_var = tk.StringVar(value="— Whole championship")
-        team_choices = ["— Whole championship"] + [
+        ttk.Label(ctrl, text=t("lineup.team")).pack(side=tk.LEFT)
+        self.team_var = tk.StringVar(value=t("lineup.whole_champ"))
+        team_choices = [t("lineup.whole_champ")] + [
             f"{i:>3}  {slot.get_team_name(i)}" for i in range(len(slot.team_names))
         ]
         self.team_cb = ttk.Combobox(ctrl, textvariable=self.team_var,
@@ -61,27 +62,27 @@ class LineupCoachWindow(tk.Toplevel):
                                     width=26)
         self.team_cb.pack(side=tk.LEFT, padx=(4, 10))
 
-        ttk.Label(ctrl, text="Formation:").pack(side=tk.LEFT)
+        ttk.Label(ctrl, text=t("lineup.formation")).pack(side=tk.LEFT)
         pref_fmt = preferences.load().get("default_formation", "4-4-2")
         if pref_fmt not in lineup.FORMATION_ROLES:
-            pref_fmt = "— Rank all"
+            pref_fmt = t("lineup.rank_all")
         self.formation_var = tk.StringVar(value=pref_fmt)
         self.formation_cb = ttk.Combobox(
             ctrl, textvariable=self.formation_var,
-            values=["— Rank all"] + list(lineup.FORMATION_ROLES),
+            values=[t("lineup.rank_all")] + list(lineup.FORMATION_ROLES),
             state="readonly", width=12,
         )
         self.formation_cb.pack(side=tk.LEFT, padx=(4, 10))
 
         self.cross_pos_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(ctrl, text="Allow cross-position",
+        ttk.Checkbutton(ctrl, text=t("lineup.cross_pos"),
                         variable=self.cross_pos_var).pack(side=tk.LEFT, padx=6)
 
         self.include_injured_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(ctrl, text="Include injured",
+        ttk.Checkbutton(ctrl, text=t("lineup.include_inj"),
                         variable=self.include_injured_var).pack(side=tk.LEFT, padx=6)
 
-        ttk.Button(ctrl, text="Compute",
+        ttk.Button(ctrl, text=t("lineup.compute"),
                    command=self._compute).pack(side=tk.LEFT, padx=(16, 4))
 
         body = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -90,63 +91,61 @@ class LineupCoachWindow(tk.Toplevel):
         # Left: formation ranking
         left = ttk.Frame(body)
         body.add(left, weight=1)
-        ttk.Label(left, text="Formation ranking",
+        ttk.Label(left, text=t("lineup.form_ranking"),
                   font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
         self.rank_tree = ttk.Treeview(
             left, show="headings",
             columns=("form", "comp", "skill", "fit"),
             height=5,
         )
-        for c, txt, w, anc in [
-            ("form", "Formation", 80, tk.W),
-            ("comp", "Composite", 90, tk.E),
-            ("skill", "Skill", 70, tk.E),
-            ("fit", "Fit%", 60, tk.E),
+        for c, tkey, w, anc in [
+            ("form", "lineup.col.form",  80, tk.W),
+            ("comp", "lineup.col.comp",  90, tk.E),
+            ("skill", "lineup.col.skill", 70, tk.E),
+            ("fit",  "lineup.col.fit",   60, tk.E),
         ]:
-            self.rank_tree.heading(c, text=txt)
+            self.rank_tree.heading(c, text=t(tkey))
             self.rank_tree.column(c, width=w, anchor=anc)
         self.rank_tree.pack(fill=tk.BOTH, expand=True, pady=(2, 6))
         self.rank_tree.bind("<<TreeviewSelect>>", self._on_rank_select)
 
-        ttk.Label(left, text="Reassignment suggestions",
+        ttk.Label(left, text=t("lineup.reassign"),
                   font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
         self.reassign_tree = ttk.Treeview(
             left, show="headings",
             columns=("id", "nominal", "suggested", "gap"),
             height=10,
         )
-        for c, txt, w, anc in [
-            ("id", "Player", 140, tk.W),
-            ("nominal", "Nominal", 80, tk.W),
-            ("suggested", "Suggested", 80, tk.W),
-            ("gap", "Gap", 70, tk.E),
+        for c, tkey, w, anc in [
+            ("id",        "lineup.col.player",    140, tk.W),
+            ("nominal",   "lineup.col.nominal",    80, tk.W),
+            ("suggested", "lineup.col.suggested",  80, tk.W),
+            ("gap",       "lineup.col.gap",        70, tk.E),
         ]:
-            self.reassign_tree.heading(c, text=txt)
+            self.reassign_tree.heading(c, text=t(tkey))
             self.reassign_tree.column(c, width=w, anchor=anc)
         self.reassign_tree.pack(fill=tk.BOTH, expand=True, pady=(2, 0))
 
         # Right: recommended XI
         right = ttk.Frame(body)
         body.add(right, weight=2)
-        self.summary_var = tk.StringVar(
-            value="Click Compute to generate a suggested XI."
-        )
+        self.summary_var = tk.StringVar(value=t("lineup.click_compute"))
         ttk.Label(right, textvariable=self.summary_var,
                   font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
         self.xi_tree = ttk.Treeview(
             right, show="headings",
             columns=("role", "pid", "name", "age", "team", "skill", "fit"),
         )
-        for c, txt, w, anc in [
-            ("role", "Role", 55, tk.W),
-            ("pid", "ID", 55, tk.E),
-            ("name", "Name", 150, tk.W),
-            ("age", "Age", 45, tk.E),
-            ("team", "Team", 140, tk.W),
-            ("skill", "Skill", 60, tk.E),
-            ("fit", "Fit%", 55, tk.E),
+        for c, tkey, w, anc in [
+            ("role",  "lineup.col.role",  55, tk.W),
+            ("pid",   "lineup.col.pid",   55, tk.E),
+            ("name",  "lineup.col.name", 150, tk.W),
+            ("age",   "lineup.col.age",   45, tk.E),
+            ("team",  "lineup.col.team", 140, tk.W),
+            ("skill", "lineup.col.skill", 60, tk.E),
+            ("fit",   "lineup.col.fit",   55, tk.E),
         ]:
-            self.xi_tree.heading(c, text=txt)
+            self.xi_tree.heading(c, text=t(tkey))
             self.xi_tree.column(c, width=w, anchor=anc)
         sb = ttk.Scrollbar(right, orient=tk.VERTICAL, command=self.xi_tree.yview)
         self.xi_tree.configure(yscrollcommand=sb.set)
@@ -165,17 +164,17 @@ class LineupCoachWindow(tk.Toplevel):
 
     def _compute(self):
         team_label = self.team_var.get()
-        if team_label.startswith("—"):
+        if team_label.startswith("\u2014"):
             pool = [p for p in self.slot.players
                     if SaveSlot._is_real_player(p)]
             pool_label = "whole championship"
         else:
             team_index = int(team_label.split()[0])
             pool = self.slot.get_players_by_team(team_index)
-            pool_label = f"team {team_index} — {self.slot.get_team_name(team_index)}"
+            pool_label = f"team {team_index} -- {self.slot.get_team_name(team_index)}"
 
         formation_choice = self.formation_var.get()
-        formations = (None if formation_choice.startswith("—")
+        formations = (None if formation_choice.startswith("\u2014")
                       else [formation_choice])
         include_injured = self.include_injured_var.get()
         allow_cross = self.cross_pos_var.get()
@@ -272,7 +271,7 @@ class LineupCoachWindow(tk.Toplevel):
 
         if reserves:
             self.xi_tree.insert("", "end",
-                                values=("— Reserves —", "", "", "", "", "", ""),
+                                values=(t("lineup.reserves"), "", "", "", "", "", ""),
                                 tags=("bench_header",))
             for i, a in enumerate(reserves, 1):
                 team = self.slot.get_team_name(a.player.team_index)
@@ -288,7 +287,7 @@ class LineupCoachWindow(tk.Toplevel):
 
         suffix = f" ({pool_label})" if pool_label else ""
         self.summary_var.set(
-            f"{result.formation}{suffix}  —  composite {result.composite:.1f}, "
+            f"{result.formation}{suffix}  --  composite {result.composite:.1f}, "
             f"skill {result.total_skill}"
         )
         br = result.breakdown

@@ -26,6 +26,7 @@ from pm_core.names import GameDisk
 from pm_core import updates
 from pm_core import fonts
 from pm_core import preferences
+from pm_core.strings import t, set_language
 from pm_core.warnings import (
     describe_weaknesses, has_weakness,
 )
@@ -45,14 +46,19 @@ from pm_gui_splash import show_splash
 from pm_gui_preferences import open_preferences
 
 
-XI_ENTRIES = {
-    "— Top 11 (4-4-2)":   {"formation": "4-4-2", "filter_fn": None},
-    "— Top 11 (4-3-3)":   {"formation": "4-3-3", "filter_fn": None},
-    "— Young XI (≤21)":  {"formation": "4-4-2",
-                           "filter_fn": lambda p: p.age <= 21},
-    "— Free-Agent XI":    {"formation": "4-4-2",
-                           "filter_fn": lambda p: p.is_free_agent},
-}
+_XI_ENTRIES_DATA = [
+    ("view.top11_442", "4-4-2", None),
+    ("view.top11_433", "4-3-3", None),
+    ("view.young_xi",  "4-4-2", lambda p: p.age <= 21),
+    ("view.fa_xi",     "4-4-2", lambda p: p.is_free_agent),
+]
+
+_POS_KEYS = {1: "pos.gk", 2: "pos.def", 3: "pos.mid", 4: "pos.fwd"}
+
+
+def _pos_display(p) -> str:
+    key = _POS_KEYS.get(p.position)
+    return t(key) if key else p.position_name
 
 # Platform-specific modifier for accelerators: Cmd on macOS, Ctrl elsewhere.
 if sys.platform == "darwin":
@@ -108,6 +114,11 @@ class PMSaveDiskToolGUI:
         self.root = root
         self.root.geometry("1100x700")
         self.root.minsize(900, 600)
+
+        self.XI_ENTRIES = {
+            t(key): {"formation": fmt, "filter_fn": fn}
+            for key, fmt, fn in _XI_ENTRIES_DATA
+        }
 
         self.adf = None
         self.slot = None
@@ -172,112 +183,112 @@ class PMSaveDiskToolGUI:
         # macOS apple menu (holds About per platform convention).
         if is_mac:
             app_menu = tk.Menu(menubar, name="apple", tearoff=0)
-            app_menu.add_command(label="About Player Manager Toolkit",
+            app_menu.add_command(label=t("menu.about.title"),
                                  command=self._show_about)
             menubar.add_cascade(menu=app_menu)
 
         # File
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="Open Save Disk…",
+        file_menu.add_command(label=t("menu.file.open_save"),
                               command=self._open_adf,
                               accelerator=f"{MOD_LABEL}+O")
-        file_menu.add_command(label="Open Game Disk…",
+        file_menu.add_command(label=t("menu.file.open_game"),
                               command=self._open_game_adf,
                               accelerator=f"{MOD_LABEL}+G")
         self.recent_menu = tk.Menu(file_menu, tearoff=0)
-        file_menu.add_cascade(label="Open Recent", menu=self.recent_menu)
+        file_menu.add_cascade(label=t("menu.file.recent"), menu=self.recent_menu)
         self._rebuild_recent_menu()
         file_menu.add_separator()
-        file_menu.add_command(label="Save",
+        file_menu.add_command(label=t("menu.file.save"),
                               command=self._save_adf,
                               accelerator=f"{MOD_LABEL}+S")
-        file_menu.add_command(label="Save As…",
+        file_menu.add_command(label=t("menu.file.save_as"),
                               command=self._save_adf_as,
                               accelerator=f"{MOD_LABEL}+Shift+S")
         file_menu.add_separator()
-        file_menu.add_command(label="Export Players…",
+        file_menu.add_command(label=t("menu.file.export"),
                               command=self._export_players,
                               accelerator=f"{MOD_LABEL}+E")
         if not is_mac:
             file_menu.add_separator()
-            file_menu.add_command(label="Quit",
+            file_menu.add_command(label=t("menu.file.quit"),
                                   command=self._on_quit,
                                   accelerator=f"{MOD_LABEL}+Q")
-        menubar.add_cascade(label="File", menu=file_menu)
+        menubar.add_cascade(label=t("menu.file"), menu=file_menu)
 
         # Edit
         edit_menu = tk.Menu(menubar, tearoff=0)
-        edit_menu.add_command(label="Apply Changes",
+        edit_menu.add_command(label=t("menu.edit.apply"),
                               command=self._apply_changes,
                               accelerator=f"{MOD_LABEL}+Return")
-        edit_menu.add_command(label="Revert Player",
+        edit_menu.add_command(label=t("menu.edit.revert"),
                               command=self._revert_player,
                               accelerator="Esc")
         edit_menu.add_separator()
-        edit_menu.add_command(label="Find Player…",
+        edit_menu.add_command(label=t("menu.edit.find"),
                               command=self._find_player,
                               accelerator=f"{MOD_LABEL}+F")
-        menubar.add_cascade(label="Edit", menu=edit_menu)
+        menubar.add_cascade(label=t("menu.edit"), menu=edit_menu)
 
-        # View — mirrors the team-combo analytical entries with accelerators.
+        # View -- mirrors the team-combo analytical entries with accelerators.
         view_menu = tk.Menu(menubar, tearoff=0)
-        view_menu.add_command(label="All Players",
-                              command=lambda: self._set_view("All Players"))
-        view_menu.add_command(label="Free Agents",
-                              command=lambda: self._set_view("Free Agents"))
+        view_menu.add_command(label=t("menu.view.all"),
+                              command=lambda: self._set_view(t("view.all")))
+        view_menu.add_command(label=t("menu.view.free_agents"),
+                              command=lambda: self._set_view(t("view.free_agents")))
         view_menu.add_separator()
-        view_menu.add_command(label="Young Talents (≤21)",
-                              command=lambda: self._set_view("— Young Talents (≤21)"),
+        view_menu.add_command(label=t("menu.view.young"),
+                              command=lambda: self._set_view(t("view.young")),
                               accelerator=f"{MOD_LABEL}+Y")
-        view_menu.add_command(label="Top Scorers",
-                              command=lambda: self._set_view("— Top Scorers"))
-        view_menu.add_command(label="Squad Analyst (all teams)",
-                              command=lambda: self._set_view("— Squad Analyst (all teams)"))
+        view_menu.add_command(label=t("menu.view.scorers"),
+                              command=lambda: self._set_view(t("view.scorers")))
+        view_menu.add_command(label=t("menu.view.squad"),
+                              command=lambda: self._set_view(t("view.squad")))
         view_menu.add_separator()
         xi_menu = tk.Menu(view_menu, tearoff=0)
-        for label in XI_ENTRIES:
-            display = label.lstrip("— ").rstrip()
+        for xi_label in self.XI_ENTRIES:
+            display = xi_label.lstrip("\u2014 ").rstrip()
             xi_menu.add_command(
                 label=display,
-                command=lambda L=label: self._set_view(L),
+                command=lambda L=xi_label: self._set_view(L),
             )
-        view_menu.add_cascade(label="Best XI", menu=xi_menu)
-        menubar.add_cascade(label="View", menu=view_menu)
+        view_menu.add_cascade(label=t("menu.view.best_xi"), menu=xi_menu)
+        menubar.add_cascade(label=t("menu.view"), menu=view_menu)
 
         # Tools
         tools_menu = tk.Menu(menubar, tearoff=0)
-        tools_menu.add_command(label="Career Tracker…",
+        tools_menu.add_command(label=t("menu.tools.career"),
                                command=self._open_career_tracker,
                                accelerator=f"{MOD_LABEL}+T")
-        tools_menu.add_command(label="Byte Workbench…",
+        tools_menu.add_command(label=t("menu.tools.workbench"),
                                command=self._open_byte_workbench,
                                accelerator=f"{MOD_LABEL}+B")
-        tools_menu.add_command(label="Line-up Coach (BETA)…",
+        tools_menu.add_command(label=t("menu.tools.lineup"),
                                command=self._open_lineup_coach,
                                accelerator=f"{MOD_LABEL}+L")
-        tools_menu.add_command(label="Compare Players…",
+        tools_menu.add_command(label=t("menu.tools.compare"),
                                command=self._open_compare,
                                accelerator=f"{MOD_LABEL}+P")
-        tools_menu.add_command(label="Tactic Editor…",
+        tools_menu.add_command(label=t("menu.tools.tactic"),
                                command=self._open_tactic_editor,
                                accelerator=f"{MOD_LABEL}+K")
-        menubar.add_cascade(label="Tools", menu=tools_menu)
+        menubar.add_cascade(label=t("menu.tools"), menu=tools_menu)
 
         # Help
         help_menu = tk.Menu(menubar, tearoff=0)
-        help_menu.add_command(label="Find in Help…",
+        help_menu.add_command(label=t("menu.help.search"),
                               command=self._open_help_search,
                               accelerator=f"{MOD_LABEL}+?")
         help_menu.add_separator()
-        help_menu.add_command(label="Open Manual", command=self._open_manual)
-        help_menu.add_command(label="Check for Updates…",
+        help_menu.add_command(label=t("menu.help.manual"), command=self._open_manual)
+        help_menu.add_command(label=t("menu.help.updates"),
                               command=self._check_for_updates)
-        help_menu.add_command(label="Preferences…",
+        help_menu.add_command(label=t("menu.help.prefs"),
                               command=self._show_preferences)
         if not is_mac:
             help_menu.add_separator()
-            help_menu.add_command(label="About", command=self._show_about)
-        menubar.add_cascade(label="Help", menu=help_menu)
+            help_menu.add_command(label=t("menu.help.about"), command=self._show_about)
+        menubar.add_cascade(label=t("menu.help"), menu=help_menu)
 
         self.root.config(menu=menubar)
 
@@ -295,7 +306,7 @@ class PMSaveDiskToolGUI:
         bind(f"<{MOD}-p>", lambda e: self._open_compare())
         bind(f"<{MOD}-k>", lambda e: self._open_tactic_editor())
         bind(f"<{MOD}-question>", lambda e: self._open_help_search())
-        bind(f"<{MOD}-y>", lambda e: self._set_view("— Young Talents (≤21)"))
+        bind(f"<{MOD}-y>", lambda e: self._set_view(t("view.young")))
         bind(f"<{MOD}-Return>", lambda e: self._apply_changes())
         bind("<Escape>", lambda e: self._on_escape())
         if not is_mac:
@@ -307,7 +318,7 @@ class PMSaveDiskToolGUI:
         toolbar = tk.Frame(self.root, bg=PAL["bg_mid"])
         toolbar.pack(fill=tk.X, padx=0, pady=0)
 
-        tk.Label(toolbar, text="SAVE:", bg=PAL["bg_mid"], fg=PAL["fg_label"],
+        tk.Label(toolbar, text=t("toolbar.save"), bg=PAL["bg_mid"], fg=PAL["fg_label"],
                  font=("Courier New", 8)).pack(side=tk.LEFT, padx=(10, 2))
         self.save_var = tk.StringVar()
         self.save_combo = ttk.Combobox(toolbar, textvariable=self.save_var,
@@ -315,7 +326,7 @@ class PMSaveDiskToolGUI:
         self.save_combo.pack(side=tk.LEFT, padx=2)
         self.save_combo.bind("<<ComboboxSelected>>", self._on_save_selected)
 
-        tk.Label(toolbar, text="VIEW:", bg=PAL["bg_mid"], fg=PAL["fg_label"],
+        tk.Label(toolbar, text=t("toolbar.view"), bg=PAL["bg_mid"], fg=PAL["fg_label"],
                  font=("Courier New", 8)).pack(side=tk.LEFT, padx=(14, 2))
         self.team_var = tk.StringVar()
         self.team_combo = ttk.Combobox(toolbar, textvariable=self.team_var,
@@ -342,7 +353,7 @@ class PMSaveDiskToolGUI:
 
         search_bar = ttk.Frame(left)
         search_bar.pack(fill=tk.X, padx=0, pady=(0, 3))
-        ttk.Label(search_bar, text="Filter:").pack(side=tk.LEFT, padx=(2, 4))
+        ttk.Label(search_bar, text=t("label.filter")).pack(side=tk.LEFT, padx=(2, 4))
         self.search_var = tk.StringVar()
         self.search_var.trace_add("write", lambda *_: self._refresh_player_list())
         self.search_entry = ttk.Entry(search_bar, textvariable=self.search_var)
@@ -354,14 +365,14 @@ class PMSaveDiskToolGUI:
         self.tree = ttk.Treeview(left, columns=cols, show="headings", selectmode="browse")
         for c in cols:
             self.tree.heading(c, command=lambda col=c: self._sort_by(col))
-        self.tree.heading("id", text="ID")
-        self.tree.heading("name", text="Name")
-        self.tree.heading("age", text="Age")
-        self.tree.heading("pos", text="Pos")
-        self.tree.heading("team", text="Team")
-        self.tree.heading("total", text="Skill")
-        self.tree.heading("warn", text="⚠")
-        self.tree.heading("mkt", text="Mkt")
+        self.tree.heading("id",    text=t("col.id"))
+        self.tree.heading("name",  text=t("col.name"))
+        self.tree.heading("age",   text=t("col.age"))
+        self.tree.heading("pos",   text=t("col.pos"))
+        self.tree.heading("team",  text=t("col.team"))
+        self.tree.heading("total", text=t("col.skill"))
+        self.tree.heading("warn",  text=t("col.warn"))
+        self.tree.heading("mkt",   text=t("col.mkt"))
         self.tree.column("id", width=50, anchor="e")
         self.tree.column("name", width=140)
         self.tree.column("age", width=40, anchor="e")
@@ -401,13 +412,13 @@ class PMSaveDiskToolGUI:
         # closing Preferences), turning these into unreadable amber blobs.
         # tk.Label honours bg/fg on every platform.
         self.apply_button = self._make_footer_button(
-            footer, "APPLY",
+            footer, t("btn.apply"),
             bg=PAL["btn_go"], fg=PAL["btn_go_fg"],
             hover=PAL["selected"], command=self._apply_changes,
         )
         self.apply_button.pack(side=tk.RIGHT, padx=(4, 6), pady=4)
         self._make_footer_button(
-            footer, "REVERT",
+            footer, t("btn.revert"),
             bg=PAL["bg_mid"], fg=PAL["fg_data"],
             hover=PAL["selected"], command=self._revert_player,
         ).pack(side=tk.RIGHT, pady=4)
@@ -416,37 +427,42 @@ class PMSaveDiskToolGUI:
         self._build_detail_fields()
 
     _CORE_FIELDS = [
-        ("Age:", "age"), ("Position:", "position"), ("Division:", "division"),
-        ("Team Index:", "team_index"),
-        ("Height (cm):", "height"), ("Weight (kg):", "weight"),
+        ("field.age", "age"), ("field.position", "position"),
+        ("field.division", "division"), ("field.team_index", "team_index"),
+        ("field.height", "height"), ("field.weight", "weight"),
     ]
     _STATUS_FIELDS = [
-        ("Injury Weeks:", "injury_weeks"), ("Disciplinary:", "disciplinary"),
-        ("Morale:", "morale"), ("Value:", "value"),
-        ("Wks Since Transfer:", "weeks_since_transfer"),
+        ("field.injury_weeks", "injury_weeks"),
+        ("field.disciplinary", "disciplinary"),
+        ("field.morale", "morale"),
+        ("field.value", "value"),
+        ("field.weeks_since_transfer", "weeks_since_transfer"),
     ]
     _SEASON_FIELDS = [
-        ("Injuries This Yr:", "injuries_this_year"),
-        ("Injuries Last Yr:", "injuries_last_year"),
-        ("Dsp.Pts. This Yr:", "dsp_pts_this_year"),
-        ("Dsp.Pts. Last Yr:", "dsp_pts_last_year"),
-        ("Goals This Yr:", "goals_this_year"),
-        ("Goals Last Yr:", "goals_last_year"),
-        ("Matches This Yr:", "matches_this_year"),
-        ("Matches Last Yr:", "matches_last_year"),
+        ("field.injuries_this_year",  "injuries_this_year"),
+        ("field.injuries_last_year",  "injuries_last_year"),
+        ("field.dsp_pts_this_year",   "dsp_pts_this_year"),
+        ("field.dsp_pts_last_year",   "dsp_pts_last_year"),
+        ("field.goals_this_year",     "goals_this_year"),
+        ("field.goals_last_year",     "goals_last_year"),
+        ("field.matches_this_year",   "matches_this_year"),
+        ("field.matches_last_year",   "matches_last_year"),
     ]
     _CAREER_FIELDS = [
-        ("Div1 Years:", "div1_years"), ("Div2 Years:", "div2_years"),
-        ("Div3 Years:", "div3_years"), ("Div4 Years:", "div4_years"),
-        ("Int Years:", "int_years"), ("Contract Yrs:", "contract_years"),
+        ("field.div1_years",     "div1_years"),
+        ("field.div2_years",     "div2_years"),
+        ("field.div3_years",     "div3_years"),
+        ("field.div4_years",     "div4_years"),
+        ("field.int_years",      "int_years"),
+        ("field.contract_years", "contract_years"),
     ]
 
     def _build_detail_fields(self):
         # Identity header (read-only; always visible above the tabs).
-        for i, (label, key) in enumerate(
-            [("Player #", "player_id"), ("Name", "name"), ("Seed", "rng_seed")]
+        for i, (label_key, key) in enumerate(
+            [("field.player_id", "player_id"), ("field.name", "name"), ("field.seed", "rng_seed")]
         ):
-            tk.Label(self.detail_header, text=label.upper(), anchor="e",
+            tk.Label(self.detail_header, text=t(label_key).upper(), anchor="e",
                      bg=PAL["bg_mid"], fg=PAL["fg_label"],
                      font=_retro(9, "bold")).grid(
                          row=0, column=i * 2, sticky="e", padx=(8, 4), pady=8)
@@ -457,8 +473,8 @@ class PMSaveDiskToolGUI:
                          row=0, column=i * 2 + 1, sticky="w", padx=(0, 18), pady=8)
             self.fields[key] = var
 
-        def add_field(parent, label, key, row):
-            tk.Label(parent, text=label.upper(), anchor="e",
+        def add_field(parent, label_key, key, row):
+            tk.Label(parent, text=t(label_key).upper(), anchor="e",
                      bg=PAL["bg"], fg=PAL["fg_data"],
                      font=_retro(10, "bold")).grid(
                          row=row, column=0, sticky="e", padx=(8, 4), pady=4)
@@ -474,15 +490,15 @@ class PMSaveDiskToolGUI:
         def add_tab(title, fields):
             tab = tk.Frame(self.notebook, bg=PAL["bg"])
             self.notebook.add(tab, text=title)
-            for r, (label, key) in enumerate(fields):
-                add_field(tab, label, key, r)
+            for r, (label_key, key) in enumerate(fields):
+                add_field(tab, label_key, key, r)
             return tab
 
-        add_tab("Core", self._CORE_FIELDS)
+        add_tab(t("tab.core"), self._CORE_FIELDS)
 
         # Skills tab: two columns so all 10 fit without scrolling.
         skills_tab = tk.Frame(self.notebook, bg=PAL["bg"])
-        self.notebook.add(skills_tab, text="Skills")
+        self.notebook.add(skills_tab, text=t("tab.skills"))
         self._skill_bars: dict[str, tk.Canvas] = {}
         half = (len(SKILL_NAMES) + 1) // 2
         for i, skill in enumerate(SKILL_NAMES):
@@ -493,7 +509,7 @@ class PMSaveDiskToolGUI:
                 lc, ec, bc = 3, 4, 5
                 row = i - half
 
-            tk.Label(skills_tab, text=f"{skill.upper()}:", anchor="e",
+            tk.Label(skills_tab, text=f"{t('skill.' + skill).upper()}:", anchor="e",
                      bg=PAL["bg"], fg=PAL["fg_data"],
                      font=("Courier New", 10, "bold")).grid(
                          row=row, column=lc, sticky="e", padx=(8, 3), pady=4)
@@ -515,9 +531,9 @@ class PMSaveDiskToolGUI:
             bar.grid(row=row, column=bc, sticky="w", padx=(0, 10), pady=3)
             self._skill_bars[skill] = bar
 
-        status_tab = add_tab("Status", self._STATUS_FIELDS)
+        status_tab = add_tab(t("tab.status"), self._STATUS_FIELDS)
         warn_row = len(self._STATUS_FIELDS)
-        tk.Label(status_tab, text="WEAKNESS:", anchor="e",
+        tk.Label(status_tab, text=t("label.weakness").upper(), anchor="e",
                  bg=PAL["bg"], fg=PAL["warn_fg"],
                  font=_retro(10, "bold")).grid(
                      row=warn_row, column=0, sticky="e", padx=(8, 4), pady=(12, 4))
@@ -526,8 +542,8 @@ class PMSaveDiskToolGUI:
                  bg=PAL["bg"], fg=PAL["warn_fg"], wraplength=260,
                  font=("Courier New", 10), anchor="w", justify=tk.LEFT).grid(
                      row=warn_row, column=1, sticky="w", padx=(2, 8), pady=(12, 4))
-        add_tab("Season", self._SEASON_FIELDS)
-        add_tab("Career", self._CAREER_FIELDS)
+        add_tab(t("tab.season"), self._SEASON_FIELDS)
+        add_tab(t("tab.career"), self._CAREER_FIELDS)
 
     # ── Status bar ────────────────────────────────────────────
 
@@ -536,13 +552,13 @@ class PMSaveDiskToolGUI:
         bar.pack(fill=tk.X, side=tk.BOTTOM)
         bar.pack_propagate(False)
 
-        self.status_var = tk.StringVar(value="Open a save disk to begin.")
+        self.status_var = tk.StringVar(value=t("status.open_prompt"))
         tk.Label(bar, textvariable=self.status_var, anchor="w",
                  bg=PAL["status_bar"], fg=PAL["fg_dim"],
                  font=("Courier New", 9)).pack(
                      side=tk.LEFT, fill=tk.X, expand=True, padx=6)
 
-        self.game_label = tk.Label(bar, text="No game disk",
+        self.game_label = tk.Label(bar, text=t("status.no_game_disk"),
                                    bg=PAL["status_bar"], fg=PAL["fg_dim"],
                                    font=("Courier New", 9), anchor="e")
         self.game_label.pack(side=tk.RIGHT, padx=6)
@@ -649,13 +665,13 @@ class PMSaveDiskToolGUI:
 
     def _refresh_team_combo(self):
         """Rebuild the team filter combo from the current slot."""
-        team_options = ["All Players", "Free Agents"]
+        team_options = [t("view.all"), t("view.free_agents")]
         for i, name in enumerate(self.slot.team_names):
             team_options.append(f"{i}: {name}")
-        team_options.append("— Young Talents (≤21)")
-        team_options.append("— Top Scorers")
-        team_options.append("— Squad Analyst (all teams)")
-        team_options.extend(XI_ENTRIES.keys())
+        team_options.append(t("view.young"))
+        team_options.append(t("view.scorers"))
+        team_options.append(t("view.squad"))
+        team_options.extend(self.XI_ENTRIES.keys())
         current = self.team_combo.get()
         self.team_combo["values"] = team_options
         if current in team_options:
@@ -678,13 +694,13 @@ class PMSaveDiskToolGUI:
             self.slot.apply_team_name_fallback(self.game_disk.team_names)
 
         # Populate team filter
-        team_options = ["All Players", "Free Agents"]
+        team_options = [t("view.all"), t("view.free_agents")]
         for i, name in enumerate(self.slot.team_names):
             team_options.append(f"{i}: {name}")
-        team_options.append("— Young Talents (≤21)")
-        team_options.append("— Top Scorers")
-        team_options.append("— Squad Analyst (all teams)")
-        team_options.extend(XI_ENTRIES.keys())
+        team_options.append(t("view.young"))
+        team_options.append(t("view.scorers"))
+        team_options.append(t("view.squad"))
+        team_options.extend(self.XI_ENTRIES.keys())
         self.team_combo["values"] = team_options
         pref_view = preferences.load().get("default_view", "")
         if pref_view and pref_view in team_options:
@@ -697,15 +713,15 @@ class PMSaveDiskToolGUI:
     def _on_team_selected(self, event):
         self._refresh_player_list()
 
-    _DEFAULT_TREE_HEADINGS = {
-        "id": "ID", "name": "Name", "age": "Age", "pos": "Pos",
-        "team": "Team", "total": "Skill", "warn": "⚠", "mkt": "Mkt",
+    _TREE_COL_KEYS = {
+        "id": "col.id", "name": "col.name", "age": "col.age", "pos": "col.pos",
+        "team": "col.team", "total": "col.skill", "warn": "col.warn", "mkt": "col.mkt",
     }
 
     def _set_tree_headings(self, **overrides):
         self._current_heading_overrides = dict(overrides)
-        for col, text in self._DEFAULT_TREE_HEADINGS.items():
-            label = overrides.get(col, text)
+        for col, tkey in self._TREE_COL_KEYS.items():
+            label = overrides.get(col, t(tkey))
             if col == self._sort_col:
                 label = f"{label} {'▼' if self._sort_reverse else '▲'}"
             self.tree.heading(col, text=label)
@@ -769,37 +785,37 @@ class PMSaveDiskToolGUI:
         self.summary_var.set("")
 
         team_sel = self.team_var.get()
-        if team_sel == "— Squad Analyst (all teams)":
+        if team_sel == t("view.squad"):
             self._populate_squad_analyst()
             return
 
         self._set_tree_headings()
 
-        if team_sel == "— Young Talents (≤21)":
+        if team_sel == t("view.young"):
             players = self.slot.get_young_talents()
-            self.tree.heading("total", text="Skill")
+            self.tree.heading("total", text=t("col.skill"))
             score_fn = lambda p: p.total_skill
-        elif team_sel == "— Top Scorers":
+        elif team_sel == t("view.scorers"):
             players = self.slot.get_top_scorers()
-            self.tree.heading("total", text="Goals")
+            self.tree.heading("total", text=t("col.goals"))
             score_fn = lambda p: p.goals_this_year
-        elif team_sel in XI_ENTRIES:
-            cfg = XI_ENTRIES[team_sel]
+        elif team_sel in self.XI_ENTRIES:
+            cfg = self.XI_ENTRIES[team_sel]
             players = self.slot.best_xi(cfg["formation"], filter_fn=cfg["filter_fn"])
-            self.tree.heading("total", text="Skill")
+            self.tree.heading("total", text=t("col.skill"))
             score_fn = lambda p: p.total_skill
-        elif team_sel == "Free Agents":
+        elif team_sel == t("view.free_agents"):
             players = self.slot.get_free_agents()
-            self.tree.heading("total", text="Skill")
+            self.tree.heading("total", text=t("col.skill"))
             score_fn = lambda p: p.total_skill
-        elif team_sel.startswith("All"):
+        elif team_sel == t("view.all"):
             players = [p for p in self.slot.players if p.age > 0]
-            self.tree.heading("total", text="Skill")
+            self.tree.heading("total", text=t("col.skill"))
             score_fn = lambda p: p.total_skill
         else:
             team_idx = int(team_sel.split(":")[0])
             players = self.slot.get_players_by_team(team_idx)
-            self.tree.heading("total", text="Skill")
+            self.tree.heading("total", text=t("col.skill"))
             score_fn = lambda p: p.total_skill
             s = self.slot.squad_summary(team_idx)
             if s["size"] > 0:
@@ -822,7 +838,7 @@ class PMSaveDiskToolGUI:
             warn = "⚠" if (show_warn and has_weakness(p)) else ""
             tags = ("free",) if p.is_free_agent else ()
             self.tree.insert("", "end", iid=str(p.player_id),
-                             values=(p.player_id, name, p.age, p.position_name,
+                             values=(p.player_id, name, p.age, _pos_display(p),
                                      team, score_fn(p), warn, mkt), tags=tags)
         self._apply_sort()
 
@@ -834,8 +850,9 @@ class PMSaveDiskToolGUI:
         breakdown, total=avg_skill, mkt=on_market count.
         """
         self._set_tree_headings(
-            id="Tm", name="Team", age="AvgAge", pos="Size",
-            team="GK·DEF·MID·FWD", total="AvgSkl", warn="", mkt="Mkt",
+            id=t("col.sa.id"), name=t("col.name"), age=t("col.sa.age"),
+            pos=t("col.sa.pos"), team=t("col.sa.team"),
+            total=t("col.sa.skill"), warn="", mkt=t("col.mkt"),
         )
         needle = self.search_var.get().strip().lower() if hasattr(self, "search_var") else ""
         for s in self.slot.all_squad_summaries():
@@ -843,7 +860,7 @@ class PMSaveDiskToolGUI:
             if needle and needle not in f"{s['team_index']} {team_name}".lower():
                 continue
             bp = s["by_position"]
-            breakdown = f"{bp['GK']}·{bp['DEF']}·{bp['MID']}·{bp['FWD']}"
+            breakdown = f"{bp['GK']}\u00b7{bp['DEF']}\u00b7{bp['MID']}\u00b7{bp['FWD']}"
             self.tree.insert(
                 "", "end", iid=f"squad-{s['team_index']}",
                 values=(s["team_index"], team_name,
@@ -928,9 +945,9 @@ class PMSaveDiskToolGUI:
         self.fields["contract_years"].set(str(p.contract_years))
         if self._skill_warnings_enabled():
             desc = describe_weaknesses(p)
-            self._weakness_var.set(f"⚠ {desc}" if desc else "none")
+            self._weakness_var.set(f"\u26a0 {desc}" if desc else t("label.none"))
         else:
-            self._weakness_var.set("(warnings disabled in Preferences)")
+            self._weakness_var.set(t("label.warnings_disabled"))
         self._redraw_skill_bars()
 
     @staticmethod
@@ -1030,7 +1047,7 @@ class PMSaveDiskToolGUI:
         self.recent_menu.delete(0, "end")
         paths = _load_recent()
         if not paths:
-            self.recent_menu.add_command(label="(empty)", state="disabled")
+            self.recent_menu.add_command(label=t("menu.file.recent_empty"), state="disabled")
             return
         for p in paths:
             self.recent_menu.add_command(
@@ -1038,7 +1055,7 @@ class PMSaveDiskToolGUI:
                 command=lambda path=p: self._open_adf_path(path),
             )
         self.recent_menu.add_separator()
-        self.recent_menu.add_command(label="Clear Recent",
+        self.recent_menu.add_command(label=t("menu.file.clear_recent"),
                                      command=self._clear_recent)
 
     def _add_recent(self, path: str):
@@ -1062,8 +1079,8 @@ class PMSaveDiskToolGUI:
             return
         if self.dirty:
             answer = messagebox.askyesnocancel(
-                "Unsaved changes",
-                "Save current changes before opening a new ADF?",
+                t("dlg.unsaved_title"),
+                t("dlg.unsaved_msg"),
             )
             if answer is None:
                 return
@@ -1118,8 +1135,8 @@ class PMSaveDiskToolGUI:
     def _on_quit(self):
         if self.dirty:
             answer = messagebox.askyesnocancel(
-                "Unsaved changes",
-                "You have unsaved changes to the ADF.\n\nSave before quitting?",
+                t("dlg.unsaved_title"),
+                t("dlg.quit_msg"),
             )
             if answer is None:
                 return  # Cancel — stay open
@@ -1177,9 +1194,9 @@ class PMSaveDiskToolGUI:
         fmt = "json" if path.lower().endswith(".json") else "csv"
 
         team_sel = self.team_var.get()
-        if team_sel == "Free Agents":
+        if team_sel == t("view.free_agents"):
             players = self.slot.get_free_agents()
-        elif team_sel.startswith("— ") or team_sel.startswith("All"):
+        elif team_sel.startswith("\u2014") or team_sel == t("view.all"):
             players = [p for p in self.slot.players if p.age > 0]
         elif ":" in team_sel:
             players = self.slot.get_players_by_team(int(team_sel.split(":")[0]))
@@ -1255,12 +1272,12 @@ class PMSaveDiskToolGUI:
 
         menu = tk.Menu(self.root, tearoff=0)
         menu.add_command(
-            label="Send to Compare…",
+            label=t("ctx.send_compare"),
             command=lambda: self._open_compare(player),
         )
         menu.add_separator()
         menu.add_command(
-            label=f"Copy ID #{player.player_id}",
+            label=f"{t('ctx.copy_id')}{player.player_id}",
             command=lambda: (self.root.clipboard_clear(),
                              self.root.clipboard_append(str(player.player_id))),
         )
@@ -1391,7 +1408,7 @@ class PMSaveDiskToolGUI:
     # ── Preferences ───────────────────────────────────────────
 
     def _show_preferences(self):
-        open_preferences(self.root, XI_ENTRIES, on_saved=self._on_preferences_saved)
+        open_preferences(self.root, self.XI_ENTRIES, on_saved=self._on_preferences_saved)
 
     def _on_preferences_saved(self) -> None:
         """Apply preference toggles that take effect without a relaunch."""
@@ -1453,6 +1470,7 @@ def main():
     prefs = preferences.load()
     set_use_system_font(prefs["use_system_font"])
     set_theme(prefs.get("theme", "retro"))
+    set_language(prefs.get("language", "en"))
 
     root = tk.Tk()
     root.withdraw()          # hide while splash shows

@@ -1,4 +1,4 @@
-"""Career Tracker window — diffs two save slots side by side."""
+"""Career Tracker window -- diffs two save slots side by side."""
 
 import os
 import tkinter as tk
@@ -6,6 +6,7 @@ from tkinter import ttk, filedialog, messagebox
 
 from pm_core.adf import ADF
 from pm_core.save import SaveSlot
+from pm_core.strings import t
 
 from pm_gui_theme import PAL
 
@@ -19,7 +20,7 @@ class CareerTrackerWindow(tk.Toplevel):
 
     def __init__(self, parent, adf_a, adf_a_path, game_disk):
         super().__init__(parent)
-        self.title("Career Tracker")
+        self.title(t("career.title"))
         self.geometry("900x520")
         self.minsize(700, 400)
 
@@ -33,12 +34,12 @@ class CareerTrackerWindow(tk.Toplevel):
         ctrls.pack(fill=tk.X, padx=6, pady=6)
 
         save_names = [e.name for e in adf_a.list_saves()]
-        ttk.Label(ctrls, text="Slot A:").pack(side=tk.LEFT, padx=(0, 2))
+        ttk.Label(ctrls, text=t("career.slot_a")).pack(side=tk.LEFT, padx=(0, 2))
         self.save_a_var = tk.StringVar(value=save_names[0] if save_names else "")
         ttk.Combobox(ctrls, textvariable=self.save_a_var, values=save_names,
                      state="readonly", width=10).pack(side=tk.LEFT, padx=2)
 
-        ttk.Label(ctrls, text="Slot B:").pack(side=tk.LEFT, padx=(10, 2))
+        ttk.Label(ctrls, text=t("career.slot_b")).pack(side=tk.LEFT, padx=(10, 2))
         self.save_b_var = tk.StringVar(
             value=save_names[1] if len(save_names) > 1 else (save_names[0] if save_names else "")
         )
@@ -46,35 +47,35 @@ class CareerTrackerWindow(tk.Toplevel):
                                          values=save_names, state="readonly", width=10)
         self.save_b_combo.pack(side=tk.LEFT, padx=2)
 
-        self.adf_b_label = ttk.Label(ctrls, text="(same ADF)", foreground=PAL["fg_dim"])
+        self.adf_b_label = ttk.Label(ctrls, text=t("career.same_adf"), foreground=PAL["fg_dim"])
         self.adf_b_label.pack(side=tk.LEFT, padx=(10, 4))
-        ttk.Button(ctrls, text="Load side-B ADF...",
+        ttk.Button(ctrls, text=t("career.load_b"),
                    command=self._load_adf_b).pack(side=tk.LEFT, padx=2)
-        ttk.Button(ctrls, text="Reset to same ADF",
+        ttk.Button(ctrls, text=t("career.reset_b"),
                    command=self._reset_adf_b).pack(side=tk.LEFT, padx=2)
 
         self.team_changes_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(ctrls, text="Team changes only",
+        ttk.Checkbutton(ctrls, text=t("career.team_only"),
                         variable=self.team_changes_var).pack(side=tk.LEFT, padx=(10, 2))
 
-        ttk.Button(ctrls, text="Compare", command=self._compare).pack(
+        ttk.Button(ctrls, text=t("career.compare"), command=self._compare).pack(
             side=tk.RIGHT, padx=2)
 
         cols = ("id", "name", "age_a", "age_b", "skill_a", "skill_b",
                 "delta", "team_a", "team_b")
         self.tree = ttk.Treeview(self, columns=cols, show="headings")
-        for c, text, w, anc in [
-            ("id", "ID", 50, "e"),
-            ("name", "Name", 140, "w"),
-            ("age_a", "Age A", 55, "e"),
-            ("age_b", "Age B", 55, "e"),
-            ("skill_a", "Skill A", 65, "e"),
-            ("skill_b", "Skill B", 65, "e"),
-            ("delta", "ΔSkill", 55, "e"),
-            ("team_a", "Team A", 130, "w"),
-            ("team_b", "Team B", 130, "w"),
+        for c, tkey, w, anc in [
+            ("id",      "career.col.id",     50,  "e"),
+            ("name",    "career.col.name",   140,  "w"),
+            ("age_a",   "career.col.age_a",   55,  "e"),
+            ("age_b",   "career.col.age_b",   55,  "e"),
+            ("skill_a", "career.col.skill_a", 65,  "e"),
+            ("skill_b", "career.col.skill_b", 65,  "e"),
+            ("delta",   "career.col.delta",   55,  "e"),
+            ("team_a",  "career.col.team_a", 130,  "w"),
+            ("team_b",  "career.col.team_b", 130,  "w"),
         ]:
-            self.tree.heading(c, text=text)
+            self.tree.heading(c, text=t(tkey))
             self.tree.column(c, width=w, anchor=anc)
         scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL,
                                   command=self.tree.yview)
@@ -82,7 +83,7 @@ class CareerTrackerWindow(tk.Toplevel):
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(6, 0), pady=(0, 6))
         scrollbar.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 6), pady=(0, 6))
 
-        self.status_var = tk.StringVar(value="Ready.")
+        self.status_var = tk.StringVar(value=t("career.ready"))
         ttk.Label(self, textvariable=self.status_var, relief=tk.SUNKEN).pack(
             fill=tk.X, side=tk.BOTTOM)
 
@@ -105,7 +106,7 @@ class CareerTrackerWindow(tk.Toplevel):
     def _reset_adf_b(self):
         self.adf_b = self.adf_a
         self.adf_b_path = self.adf_a_path
-        self.adf_b_label.config(text="(same ADF)", foreground=PAL["fg_dim"])
+        self.adf_b_label.config(text=t("career.same_adf"), foreground=PAL["fg_dim"])
         self.save_b_combo["values"] = [e.name for e in self.adf_a.list_saves()]
 
     def _compare(self):

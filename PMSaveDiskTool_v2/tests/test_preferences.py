@@ -44,6 +44,7 @@ class TestDefaultState:
             "theme",
             "skill_warnings",
             "update_interval",
+            "language",
         }
 
     def test_splash_defaults_on(self):
@@ -79,6 +80,9 @@ class TestDefaultState:
 
     def test_update_interval_default_weekly(self):
         assert preferences.default_state()["update_interval"] == "weekly"
+
+    def test_language_default_en(self):
+        assert preferences.default_state()["language"] == "en"
 
 
 class TestLoad:

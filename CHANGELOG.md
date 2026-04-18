@@ -4,6 +4,23 @@ All notable changes to Player Manager Toolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] — 2026-04-18
+
+### Added
+- **Italian language support (Italiano).** Selectable in Help ->
+  Preferences -> Language. Takes effect on the next launch, exactly
+  like the colour theme. All visible UI text is translated: menus
+  (File/Modifica/Vista/Strumenti/Aiuto), skill names, position
+  abbreviations (Port./Dif./Cen./Att.), tab labels
+  (Dati/Abilita'/Stato/Stagione/Storia), column headers, toolbar
+  labels, the Welcome dialog, the Line-up Coach, Career Tracker, and
+  Compare Players windows. Help body text remains in English.
+- `pm_core/strings.py` -- flat EN/IT string table with `set_language(lang)`
+  and `t(key)` helpers; full Italian string coverage enforced by
+  `tests/test_strings.py`.
+- `"language"` preference key (default `"en"`); persisted under
+  `~/.pmsavedisktool/preferences.json` alongside theme and font.
+
 ## [2.4.6] — 2026-04-18
 
 ### Changed

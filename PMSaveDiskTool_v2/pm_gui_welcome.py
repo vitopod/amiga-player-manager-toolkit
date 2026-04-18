@@ -1,6 +1,6 @@
 """First-run welcome dialog.
 
-Styled after the Player Manager title screen — teal/red/navy palette,
+Styled after the Player Manager title screen -- teal/red/navy palette,
 banner strips, and five content boxes covering the essentials a new
 user needs on first launch.
 
@@ -13,16 +13,17 @@ callback so the dialog stays ignorant of the preferences layer.
 from typing import Callable
 import tkinter as tk
 
+from pm_core.strings import t
 from pm_gui_theme import _retro
 
 
 class WelcomeDialog(tk.Toplevel):
     """First-run welcome screen styled after the Player Manager title.
 
-    Four content boxes summarise the essentials. A single checkbox
+    Five content boxes summarise the essentials. A single checkbox
     ("Show this at every launch") defaults to unticked, so dismissing
     the dialog permanently disables it. The user can re-enable the
-    screen later via Help → Preferences…
+    screen later via Help -> Preferences...
     """
 
     TEAL  = "#3a7a9a"
@@ -30,30 +31,24 @@ class WelcomeDialog(tk.Toplevel):
     NAVY  = "#000088"
     WHITE = "#ffffff"
 
-    BOXES = [
-        ("OPEN YOUR SAVE DISK",
-         "File → Open Save Disk… — browse and edit every player"),
-        ("OPTIONAL: OPEN GAME DISK",
-         "File → Open Game Disk… — unlocks player names"),
-        ("BROWSE, EDIT, SAVE",
-         "Pick a VIEW, click a player, tweak, save (makes a .bak first)"),
-        ("EXPLORE THE TOOLS MENU",
-         "Career Tracker · Compare Players · Line-up Coach · Byte Workbench"),
-        ("NEED HELP?",
-         "Tap the ? button in any window for in-app guidance"),
-    ]
-
     def __init__(self, parent, on_dismiss: Callable[[bool], None] | None = None):
         super().__init__(parent)
         self._on_dismiss = on_dismiss
-        self.title("Welcome")
+        self.title(t("welcome.title"))
         self.configure(bg=self.TEAL)
         self.resizable(False, False)
         self.transient(parent)
         self.geometry("640x700")
 
-        self._build_banner("WELCOME", top=True)
-        for big, small in self.BOXES:
+        self._build_banner(t("welcome.banner"), top=True)
+        boxes = [
+            (t("welcome.box1_big"), t("welcome.box1_small")),
+            (t("welcome.box2_big"), t("welcome.box2_small")),
+            (t("welcome.box3_big"), t("welcome.box3_small")),
+            (t("welcome.box4_big"), t("welcome.box4_small")),
+            (t("welcome.box5_big"), t("welcome.box5_small")),
+        ]
+        for big, small in boxes:
             self._build_box(big, small)
         self._build_banner("", top=False)   # decorative footer strip
 
@@ -63,7 +58,7 @@ class WelcomeDialog(tk.Toplevel):
 
         tk.Checkbutton(
             footer, variable=self._keep_var,
-            text="Show this at every launch",
+            text=t("welcome.show_at_launch"),
             bg=self.TEAL, fg=self.WHITE,
             selectcolor=self.NAVY,
             activebackground=self.TEAL, activeforeground=self.WHITE,
@@ -72,7 +67,7 @@ class WelcomeDialog(tk.Toplevel):
         ).pack(side=tk.LEFT)
 
         go_btn = tk.Label(
-            footer, text="  OK, LET'S GO  ",
+            footer, text=t("welcome.btn_go"),
             bg=self.NAVY, fg=self.WHITE,
             font=_retro(12, "bold"),
             padx=16, pady=6,

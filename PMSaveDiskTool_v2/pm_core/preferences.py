@@ -37,6 +37,8 @@ Schema keys with defaults — see ``default_state()``:
   next player-list refresh picks up the new value.
 - ``update_interval`` (str) — how often the automatic update check runs
   when opted in. ``"weekly"`` (default) or ``"daily"``.
+- ``language`` (str) — GUI language. ``"en"`` (default) or ``"it"``
+  (Italiano). Takes effect on next launch.
 
 The loader silently replaces missing / wrong-type values with
 ``default_state()`` entries so an older file (or a hand-edited one)
@@ -70,6 +72,7 @@ def default_state() -> dict:
         "theme":                "retro",
         "skill_warnings":       True,
         "update_interval":      "weekly",
+        "language":             "en",
     }
 
 

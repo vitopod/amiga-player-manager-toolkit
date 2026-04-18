@@ -5,6 +5,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from pm_core.player import POSITION_NAMES
+from pm_core.strings import t
 
 from pm_gui_theme import PAL, _retro
 
@@ -19,14 +20,16 @@ class PlayerCompareWindow(tk.Toplevel):
         "pace", "agility", "stamina", "resilience", "aggression",
         "passing", "shooting", "tackling", "keeping",
     )
-    _SKILL_LABELS = [s.upper()[:7] for s in _COMPARE_SKILLS]
     _MAX_SKILL = 99
     _N = len(_COMPARE_SKILLS)
     _CX, _CY, _R = 148, 148, 108
 
     def __init__(self, parent, slot, game_disk, player_a=None):
         super().__init__(parent)
-        self.title("Compare Players")
+        self.title(t("compare.title"))
+        self._skill_labels = [
+            t("skill." + s)[:7].upper() for s in self._COMPARE_SKILLS
+        ]
         self.geometry("980x620")
         self.minsize(960, 540)
         self.configure(bg=PAL["bg"])
@@ -52,7 +55,7 @@ class PlayerCompareWindow(tk.Toplevel):
         band = tk.Frame(self, bg=PAL["bg_header"], height=30)
         band.pack(fill=tk.X)
         band.pack_propagate(False)
-        tk.Label(band, text="COMPARE PLAYERS",
+        tk.Label(band, text=t("compare.header"),
                  bg=PAL["bg_header"], fg=PAL["fg_title"],
                  font=_retro(13, "bold")).pack(side=tk.LEFT, padx=10)
 
@@ -94,7 +97,7 @@ class PlayerCompareWindow(tk.Toplevel):
                  font=("Courier New", 9, "bold")).grid(
                      row=0, column=0, columnspan=2, sticky="w")
 
-        tk.Label(panel, text="Team", bg=PAL["bg_mid"],
+        tk.Label(panel, text=t("compare.team"), bg=PAL["bg_mid"],
                  fg=PAL["fg_label"], font=("Courier New", 9)).grid(
                      row=1, column=0, sticky="w", padx=(0, 6), pady=(2, 0))
         team_var = tk.StringVar()
@@ -106,7 +109,7 @@ class PlayerCompareWindow(tk.Toplevel):
             lambda e, s=side: self._on_team_selected(s),
         )
 
-        tk.Label(panel, text="Player", bg=PAL["bg_mid"],
+        tk.Label(panel, text=t("compare.player"), bg=PAL["bg_mid"],
                  fg=PAL["fg_label"], font=("Courier New", 9)).grid(
                      row=2, column=0, sticky="w", padx=(0, 6), pady=(2, 0))
         player_var = tk.StringVar()
@@ -181,7 +184,7 @@ class PlayerCompareWindow(tk.Toplevel):
     def _build_bottom_bar(self):
         bar = tk.Frame(self, bg=PAL["btn_go"])
         bar.pack(fill=tk.X, side=tk.BOTTOM)
-        self._status_lbl = tk.Label(bar, text="Select two players to compare.",
+        self._status_lbl = tk.Label(bar, text=t("compare.select"),
                                     bg=PAL["btn_go"], fg=PAL["btn_go_fg"],
                                     font=("Courier New", 10, "bold"))
         self._status_lbl.pack(side=tk.LEFT, padx=10, pady=5)
@@ -189,7 +192,7 @@ class PlayerCompareWindow(tk.Toplevel):
         # macOS Aqua ignores bg/fg and repaints in system colours, which
         # turned DONE into an invisible-text button. Same workaround as
         # the APPLY / REVERT footer in pm_gui.py.
-        done = tk.Label(bar, text="DONE",
+        done = tk.Label(bar, text=t("compare.done"),
                         bg=PAL["btn_go"], fg=PAL["btn_go_fg"],
                         font=("Courier New", 10, "bold"),
                         padx=14, pady=5,
@@ -208,7 +211,8 @@ class PlayerCompareWindow(tk.Toplevel):
         return f"#{p.player_id}"
 
     def _player_meta(self, p) -> str:
-        pos = POSITION_NAMES.get(p.position, "?")
+        _pos_key = {1: "pos.gk", 2: "pos.def", 3: "pos.mid", 4: "pos.fwd"}
+        pos = t(_pos_key[p.position]) if p.position in _pos_key else "?"
         team = self._slot.get_team_name(p.team_index)
         mkt = " ★" if p.is_market_available else ""
         return f"{pos} · age {p.age} · {team}{mkt} · skill {p.total_skill}"
@@ -220,13 +224,13 @@ class PlayerCompareWindow(tk.Toplevel):
             self._slot.get_team_name(i)
             for i in range(1, len(self._slot.team_names))
         )
-        teams = ["★ Free Agents"] + team_names
+        teams = [t("compare.free_agents")] + team_names
         for side in ("a", "b"):
             self._team_combo[side]["values"] = teams
 
     def _players_for_team_label(self, team_label: str):
         """Return the player list for a team-combo value (or []) for bad input."""
-        if team_label == "★ Free Agents":
+        if team_label == t("compare.free_agents"):
             return [p for p in self._slot.players
                     if p.is_free_agent and self._slot._is_real_player(p)]
         team_idx = next(
@@ -288,7 +292,7 @@ class PlayerCompareWindow(tk.Toplevel):
             self._player_combo[side]["values"] = []
             self._player_var[side].set("")
             return
-        team_label = ("★ Free Agents" if player.is_free_agent
+        team_label = (t("compare.free_agents") if player.is_free_agent
                       else self._slot.get_team_name(player.team_index))
         self._team_var[side].set(team_label)
         players = self._players_for_team_label(team_label)
@@ -380,7 +384,7 @@ class PlayerCompareWindow(tk.Toplevel):
             c.create_polygon(pts, outline=PAL["border"],
                              fill="#000066" if g == 4 else "", width=0.8)
 
-        for i, label in enumerate(self._SKILL_LABELS):
+        for i, label in enumerate(self._skill_labels):
             tx, ty = self._axis_tip(i)
             c.create_line(cx, cy, tx, ty, fill=PAL["border"], width=0.8)
             lx = cx + (r + 18) * math.cos((i * 2 * math.pi / n) - math.pi / 2)
@@ -426,7 +430,7 @@ class PlayerCompareWindow(tk.Toplevel):
         bbx2 = bbx1 + half_bar     # bar B right edge
 
         for idx, (skill_label, va, vb) in enumerate(
-            zip(self._SKILL_LABELS, vals_a, vals_b)
+            zip(self._skill_labels, vals_a, vals_b)
         ):
             y = idx * row_h + 10
             win_a = va > vb
