@@ -36,6 +36,9 @@ from pm_gui_career import CareerTrackerWindow
 from pm_gui_workbench import ByteWorkbenchWindow
 from pm_gui_lineup import LineupCoachWindow
 from pm_gui_compare import PlayerCompareWindow
+from pm_gui_welcome import WelcomeDialog
+from pm_gui_splash import show_splash
+from pm_gui_preferences import open_preferences
 
 
 XI_ENTRIES = {
@@ -94,121 +97,6 @@ def _pref_initialdir(key: str) -> str:
     if path and os.path.isfile(path):
         return os.path.dirname(path)
     return ""
-
-
-class WelcomeDialog(tk.Toplevel):
-    """First-run welcome screen styled after the Player Manager title.
-
-    Four content boxes summarise the essentials. A single checkbox
-    ("Show this at every launch") defaults to unticked, so dismissing
-    the dialog permanently disables it. The user can re-enable the
-    screen later via Help → Preferences…
-    """
-
-    TEAL  = "#3a7a9a"
-    RED   = "#cc3333"
-    NAVY  = "#000088"
-    WHITE = "#ffffff"
-
-    BOXES = [
-        ("OPEN YOUR SAVE DISK",
-         "File → Open Save Disk… — browse and edit every player"),
-        ("OPTIONAL: OPEN GAME DISK",
-         "File → Open Game Disk… — unlocks player names"),
-        ("BROWSE, EDIT, SAVE",
-         "Pick a VIEW, click a player, tweak, save (makes a .bak first)"),
-        ("EXPLORE THE TOOLS MENU",
-         "Career Tracker · Compare Players · Line-up Coach · Byte Workbench"),
-        ("NEED HELP?",
-         "Tap the ? button in any window for in-app guidance"),
-    ]
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.title("Welcome")
-        self.configure(bg=self.TEAL)
-        self.resizable(False, False)
-        self.transient(parent)
-        self.geometry("640x700")
-
-        self._build_banner("WELCOME", top=True)
-        for big, small in self.BOXES:
-            self._build_box(big, small)
-        self._build_banner("", top=False)   # decorative footer strip
-
-        self._keep_var = tk.BooleanVar(value=False)
-        footer = tk.Frame(self, bg=self.TEAL)
-        footer.pack(fill=tk.X, padx=18, pady=(10, 6))
-
-        tk.Checkbutton(
-            footer, variable=self._keep_var,
-            text="Show this at every launch",
-            bg=self.TEAL, fg=self.WHITE,
-            selectcolor=self.NAVY,
-            activebackground=self.TEAL, activeforeground=self.WHITE,
-            font=_retro(10, "bold"),
-            highlightthickness=0, borderwidth=0,
-        ).pack(side=tk.LEFT)
-
-        go_btn = tk.Label(
-            footer, text="  OK, LET'S GO  ",
-            bg=self.NAVY, fg=self.WHITE,
-            font=_retro(12, "bold"),
-            padx=16, pady=6,
-            borderwidth=1, relief="ridge",
-            highlightbackground=self.WHITE, highlightthickness=1,
-            cursor="hand2",
-        )
-        go_btn.bind("<Button-1>", lambda e: self._dismiss())
-        go_btn.bind("<Enter>", lambda e: go_btn.configure(bg=self.RED))
-        go_btn.bind("<Leave>", lambda e: go_btn.configure(bg=self.NAVY))
-        go_btn.pack(side=tk.RIGHT)
-
-        self.bind("<Return>", lambda e: self._dismiss())
-        self.bind("<Escape>", lambda e: self._dismiss())
-        self.protocol("WM_DELETE_WINDOW", self._dismiss)
-
-        self.update_idletasks()
-        self._center_on(parent)
-
-    def _build_banner(self, label: str, top: bool) -> None:
-        band = tk.Frame(self, bg=self.RED,
-                        highlightbackground=self.WHITE, highlightthickness=1)
-        band.pack(fill=tk.X, padx=18,
-                  pady=((18, 6) if top else (10, 4)))
-        if label:
-            tk.Label(band, text=label, bg=self.RED, fg=self.WHITE,
-                     font=_retro(20, "bold"), pady=10).pack(fill=tk.X)
-        else:
-            tk.Frame(band, bg=self.RED, height=28).pack(fill=tk.X)
-
-    def _build_box(self, big: str, small: str) -> None:
-        box = tk.Frame(self, bg=self.NAVY,
-                       highlightbackground=self.WHITE, highlightthickness=1)
-        box.pack(fill=tk.X, padx=36, pady=6)
-        tk.Label(box, text=big,
-                 bg=self.NAVY, fg=self.WHITE,
-                 font=_retro(14, "bold"),
-                 pady=8).pack(fill=tk.X)
-        tk.Label(box, text=small,
-                 bg=self.NAVY, fg=self.WHITE,
-                 font=_retro(10),
-                 pady=(0)).pack(fill=tk.X, pady=(0, 8))
-
-    def _center_on(self, parent) -> None:
-        parent.update_idletasks()
-        w, h = self.winfo_width(), self.winfo_height()
-        pw = parent.winfo_width() or self.winfo_screenwidth()
-        ph = parent.winfo_height() or self.winfo_screenheight()
-        px = parent.winfo_rootx() if parent.winfo_viewable() else 0
-        py = parent.winfo_rooty() if parent.winfo_viewable() else 0
-        x = px + max(0, (pw - w) // 2)
-        y = py + max(0, (ph - h) // 2)
-        self.geometry(f"+{x}+{y}")
-
-    def _dismiss(self) -> None:
-        _pref_update(show_welcome=bool(self._keep_var.get()))
-        self.destroy()
 
 
 class PMSaveDiskToolGUI:
@@ -1398,157 +1286,7 @@ class PMSaveDiskToolGUI:
     # ── Preferences ───────────────────────────────────────────
 
     def _show_preferences(self):
-        top = tk.Toplevel(self.root)
-        top.title("Preferences")
-        top.resizable(False, False)
-        top.transient(self.root)
-
-        body = ttk.Frame(top, padding=(18, 16, 18, 12))
-        body.pack()
-
-        prefs = preferences.load()
-        update_state = updates.load_state()
-
-        # ── On launch ──────────────────────────────────────────
-        ttk.Label(body, text="On launch",
-                  font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
-
-        splash_var = tk.BooleanVar(value=bool(prefs["show_splash"]))
-        ttk.Checkbutton(body, text="Show splash screen",
-                        variable=splash_var).pack(anchor="w", pady=(4, 0))
-
-        welcome_var = tk.BooleanVar(value=bool(prefs["show_welcome"]))
-        ttk.Checkbutton(body, text="Show welcome screen",
-                        variable=welcome_var).pack(anchor="w", pady=(6, 0))
-
-        auto_save_var = tk.BooleanVar(value=bool(prefs["auto_open_last_save"]))
-        ttk.Checkbutton(body, text="Auto-open last save disk",
-                        variable=auto_save_var).pack(anchor="w", pady=(6, 0))
-        ttk.Label(body,
-                  text=self._pref_path_label(prefs["last_save_adf"]),
-                  foreground="#888", justify=tk.LEFT, wraplength=360).pack(
-            anchor="w", padx=(22, 0))
-
-        auto_game_var = tk.BooleanVar(value=bool(prefs["auto_open_last_game"]))
-        ttk.Checkbutton(body, text="Auto-open last game disk",
-                        variable=auto_game_var).pack(anchor="w", pady=(6, 0))
-        ttk.Label(body,
-                  text=self._pref_path_label(prefs["last_game_adf"]),
-                  foreground="#888", justify=tk.LEFT, wraplength=360).pack(
-            anchor="w", padx=(22, 0))
-
-        ttk.Separator(body, orient=tk.HORIZONTAL).pack(
-            fill=tk.X, pady=(12, 10))
-
-        # ── Defaults ───────────────────────────────────────────
-        ttk.Label(body, text="Defaults",
-                  font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
-
-        view_choices = [
-            "(first team in save)",
-            "All Players",
-            "Free Agents",
-            "— Young Talents (≤21)",
-            "— Top Scorers",
-            "— Squad Analyst (all teams)",
-        ] + list(XI_ENTRIES.keys())
-        current_view = prefs["default_view"] or "(first team in save)"
-        if current_view not in view_choices:
-            current_view = "(first team in save)"
-        view_var = tk.StringVar(value=current_view)
-        ttk.Label(body, text="Default view when opening a save disk:").pack(
-            anchor="w", pady=(4, 2))
-        ttk.Combobox(body, textvariable=view_var,
-                     values=view_choices, state="readonly", width=34).pack(
-            anchor="w", padx=(22, 0))
-
-        fmt_choices = ["4-4-2", "4-3-3", "3-5-2"]
-        current_fmt = prefs["default_formation"] if prefs["default_formation"] in fmt_choices else "4-4-2"
-        fmt_var = tk.StringVar(value=current_fmt)
-        ttk.Label(body, text="Default formation (Line-up Coach):").pack(
-            anchor="w", pady=(8, 2))
-        ttk.Combobox(body, textvariable=fmt_var,
-                     values=fmt_choices, state="readonly", width=10).pack(
-            anchor="w", padx=(22, 0))
-
-        theme_choices = [
-            ("retro", "Retro (Amiga navy / amber / cyan)"),
-            ("light", "Light (accessible high-contrast)"),
-        ]
-        theme_labels = [label for _, label in theme_choices]
-        theme_lookup = dict(theme_choices)
-        reverse_theme_lookup = {label: key for key, label in theme_choices}
-        current_theme_key = prefs["theme"] if prefs["theme"] in theme_lookup else "retro"
-        theme_var = tk.StringVar(value=theme_lookup[current_theme_key])
-        ttk.Label(body, text="Colour theme:").pack(anchor="w", pady=(8, 2))
-        ttk.Combobox(body, textvariable=theme_var,
-                     values=theme_labels, state="readonly", width=34).pack(
-            anchor="w", padx=(22, 0))
-
-        font_var = tk.BooleanVar(value=bool(prefs["use_system_font"]))
-        ttk.Checkbutton(body,
-                        text="Use system font instead of retro Topaz",
-                        variable=font_var).pack(anchor="w", pady=(10, 0))
-        ttk.Label(body,
-                  text="Font and theme changes take effect on next launch.",
-                  foreground="#888").pack(anchor="w", padx=(22, 0))
-
-        ttk.Separator(body, orient=tk.HORIZONTAL).pack(
-            fill=tk.X, pady=(12, 10))
-
-        # ── Updates ────────────────────────────────────────────
-        ttk.Label(body, text="Updates",
-                  font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
-
-        update_var = tk.BooleanVar(value=bool(update_state.get("opted_in")))
-        ttk.Checkbutton(
-            body,
-            text="Check GitHub for updates once a day",
-            variable=update_var,
-        ).pack(anchor="w", pady=(4, 0))
-        ttk.Label(
-            body,
-            text="When enabled, a small “Update available” banner appears "
-                 "next to\nthe title whenever a newer release is published.",
-            foreground="#888",
-            justify=tk.LEFT,
-        ).pack(anchor="w", pady=(4, 0))
-
-        btns = ttk.Frame(body)
-        btns.pack(fill=tk.X, pady=(14, 0))
-
-        def _save_and_close():
-            prefs["show_splash"] = bool(splash_var.get())
-            prefs["show_welcome"] = bool(welcome_var.get())
-            prefs["auto_open_last_save"] = bool(auto_save_var.get())
-            prefs["auto_open_last_game"] = bool(auto_game_var.get())
-            picked_view = view_var.get()
-            prefs["default_view"] = (
-                "" if picked_view == "(first team in save)" else picked_view
-            )
-            prefs["default_formation"] = fmt_var.get()
-            prefs["use_system_font"] = bool(font_var.get())
-            prefs["theme"] = reverse_theme_lookup.get(theme_var.get(), "retro")
-            preferences.save(prefs)
-            update_state["opted_in"] = bool(update_var.get())
-            updates.save_state(update_state)
-            top.destroy()
-
-        ttk.Button(btns, text="Cancel",
-                   command=top.destroy).pack(side=tk.RIGHT)
-        ttk.Button(btns, text="Save",
-                   command=_save_and_close).pack(side=tk.RIGHT, padx=(0, 8))
-
-        top.grab_set()
-
-    @staticmethod
-    def _pref_path_label(path: str) -> str:
-        """Format a remembered path for display under its checkbox."""
-        if not path:
-            return "(none recorded yet)"
-        if not os.path.isfile(path):
-            return f"⚠ missing: {path}"
-        return path
+        open_preferences(self.root, XI_ENTRIES)
 
     def _show_about(self):
         top = tk.Toplevel(self.root)
@@ -1589,46 +1327,6 @@ class PMSaveDiskToolGUI:
         top.grab_set()
 
 
-def _show_splash(root: tk.Tk) -> None:
-    img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Loading_IMG.png")
-    try:
-        photo = tk.PhotoImage(file=img_path)
-    except tk.TclError:
-        root.deiconify()
-        return  # missing asset — skip splash silently
-
-    splash = tk.Toplevel(root)
-    splash.overrideredirect(True)
-
-    w, h = photo.width(), photo.height()
-    sw = root.winfo_screenwidth()
-    sh = root.winfo_screenheight()
-    x = (sw - w) // 2
-    y = (sh - h) // 2
-    splash.geometry(f"{w}x{h}+{x}+{y}")
-
-    lbl = tk.Label(splash, image=photo, bd=0)
-    lbl.pack()
-    lbl.image = photo  # prevent GC
-
-    def _dismiss():
-        try:
-            splash.destroy()
-        except tk.TclError:
-            pass
-        root.deiconify()
-
-    _id = root.after(3000, _dismiss)
-
-    def _early(event=None):
-        root.after_cancel(_id)
-        _dismiss()
-
-    splash.bind("<Button-1>", _early)
-    splash.bind("<Key>", _early)
-    lbl.bind("<Button-1>", _early)
-    splash.focus_set()
-
 
 def main():
     # Register bundled fonts before any Tk widget is created so they show
@@ -1643,7 +1341,7 @@ def main():
     root = tk.Tk()
     root.withdraw()          # hide while splash shows
     if prefs["show_splash"]:
-        _show_splash(root)
+        show_splash(root)
     else:
         root.deiconify()
     apply_theme(root)        # theme before main window builds
@@ -1658,7 +1356,10 @@ def main():
         root.after(50, lambda p=prefs["last_game_adf"]: app._load_game_adf_path(p))
 
     if prefs["show_welcome"]:
-        root.after(100, lambda: WelcomeDialog(root))
+        root.after(100, lambda: WelcomeDialog(
+            root,
+            on_dismiss=lambda keep: _pref_update(show_welcome=keep),
+        ))
 
     root.mainloop()
 

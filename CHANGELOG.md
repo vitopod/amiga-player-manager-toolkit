@@ -4,6 +4,28 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] — 2026-04-18
+
+### Changed
+- **GUI module split, part two.** Completes the refactor started in
+  2.2.14. The remaining pieces left in `pm_gui.py` — `WelcomeDialog`,
+  the splash screen, and the preferences dialog — move into three
+  dedicated modules:
+  - `pm_gui_welcome.py` — `WelcomeDialog` (first-run screen). Now
+    takes an `on_dismiss(keep_showing: bool)` callback instead of
+    reaching back into `pm_gui._pref_update`, so the dialog no longer
+    depends on the main module.
+  - `pm_gui_splash.py` — `show_splash(root)` (was the private
+    `_show_splash` at the bottom of `pm_gui.py`).
+  - `pm_gui_preferences.py` — `open_preferences(parent, xi_entries)`
+    (was the 140-line `_show_preferences` method). `XI_ENTRIES` is
+    passed in to avoid a cycle back into `pm_gui`.
+  `pm_gui.py` drops from 1658 to 1368 lines (−17% on top of 2.2.14's
+  −44%; −67% cumulative from the original 2936 lines). Zero behaviour
+  change; 239 tests still passing. There is now no single dialog or
+  Toplevel that lives inside `pm_gui.py` — the main module is purely
+  the `PMSaveDiskToolGUI` class plus `main()`.
+
 ## [2.2.15] — 2026-04-18
 
 ### Added
@@ -35,8 +57,8 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
   `pm_gui.py` drops from 2936 to 1658 lines (−44%) and now contains just
   the main `PMSaveDiskToolGUI` class, the Welcome/Splash/Preferences
   dialogs, and `main()`. All save-disk byte handling, tests, and user-
-  facing behaviour are unchanged. A second refactor pass (2.2.15) will
-  pull the remaining dialogs and the preferences pane out too.
+  facing behaviour are unchanged. The remaining dialogs and the
+  preferences pane were later pulled out in 2.3.0.
 
 ## [2.2.13] — 2026-04-18
 
