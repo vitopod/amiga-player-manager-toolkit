@@ -8,16 +8,23 @@ and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.
 
 ### Changed
 - **Skill-threshold warnings (⚠) now reference only officially-labelled
-  PM skills.** Previously the MID and FWD essentials listed "flair" —
-  our internal placeholder name for byte 0x0F, which is *not* one of the
-  nine skills Player Manager labels on the in-game Player Information
-  card. Essentials are now MID → passing/stamina/tackling, FWD →
-  shooting/pace/agility. The field is still called `flair` in code,
-  lineup role weights, exports and the Byte Workbench (where a stable
-  identifier matters more than a guess at the in-game meaning); it's
-  just no longer surfaced in user-facing warnings. Updated MANUAL,
-  README, and the in-app `?` help. New regression test
-  `test_warning_skills_are_all_official_pm_labels` guards the invariant.
+  PM skills across all four positions.** Goalkeepers and defenders were
+  already clean (GK → keeping/agility/resilience, DEF → tackling/stamina/
+  pace); midfielders and forwards used to list "flair" — our internal
+  placeholder name for byte 0x0F, which is *not* one of the nine skills
+  Player Manager labels on the in-game Player Information card. The full
+  table is now:
+  - **GK** → keeping / agility / resilience *(unchanged)*
+  - **DEF** → tackling / stamina / pace *(unchanged)*
+  - **MID** → passing / stamina / tackling *(was: passing/stamina/flair)*
+  - **FWD** → shooting / pace / agility *(was: shooting/pace/flair)*
+
+  The field is still called `flair` in code, lineup role weights,
+  exports and the Byte Workbench (where a stable identifier matters more
+  than a guess at the in-game meaning); it's just no longer surfaced in
+  user-facing warnings. Updated MANUAL, README, and the in-app `?` help.
+  New regression test `test_warning_skills_are_all_official_pm_labels`
+  guards the invariant.
 
 ## [2.4.3] — 2026-04-18
 
