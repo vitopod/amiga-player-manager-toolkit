@@ -11,8 +11,9 @@ From there it grew into something broader: Mac / Linux / Windows support,
 a full command-line interface, player name generation from the game disk,
 and a stack of analytical views — Young Talents, Championship Highlights,
 Top 11 of the championship, Squad Analyst, Career Tracker, Byte Workbench,
-Line-up Coach (BETA), and a graphical **Compare Players** window. The editor
-stays byte-for-byte compatible with v1.2.
+Line-up Coach (BETA), **Compare Players** (radar chart + skill bars), and a
+**Tactic Editor** for editing `.tac` formation files on the save disk. The
+editor stays byte-for-byte compatible with v1.2.
 
 ---
 
