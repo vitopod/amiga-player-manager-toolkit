@@ -80,7 +80,7 @@ installer, no pip package. Upgrading means replacing the folder.
 
 ```
 git pull                 # latest on main
-git checkout v2.2.8      # or any tagged release
+git checkout v2.2.9      # or any tagged release
 ```
 
 **If you downloaded a release zip:**
@@ -221,6 +221,39 @@ made to the currently-open player since the last Apply.
   creates `<filename>.adf.bak` next to it containing the original bytes.
   Subsequent saves never overwrite `.bak`, so you always have the first-known-
   good state even if you save multiple times.
+
+---
+
+### Preferences
+
+Open via **Help → Preferences…**. Settings are persisted to
+`~/.pmsavedisktool/preferences.json` (outside the source tree, so they
+survive upgrades).
+
+**On launch:**
+
+- **Show splash screen** (default on) — toggle the Amiga-style splash
+  image that appears for ~3 seconds at startup.
+- **Auto-open last save disk** (default off) — when enabled, the toolkit
+  automatically opens the most recently-used save ADF at launch. The
+  remembered path is shown dim beneath the checkbox; if the file has
+  since been moved or deleted, auto-open silently does nothing.
+- **Auto-open last game disk** (default off) — same idea for the game
+  disk ADF used for player names.
+
+The **last-used paths are always recorded** after a successful open,
+regardless of the auto-open toggles. This means the `File → Open Save
+Disk…` and `File → Open Game Disk…` dialogs seed their starting folder
+from the last file you opened — always handy on a workflow where the
+ADFs live in the same directory each time (e.g. MiSTer / emulator
+setups).
+
+**Updates:**
+
+- **Check GitHub for updates once a day** (default off, asked once on
+  first launch) — when enabled, a small *Update available* banner
+  appears next to the title whenever a newer release is published.
+  `Help → Check for Updates…` works regardless of this toggle.
 
 ---
 

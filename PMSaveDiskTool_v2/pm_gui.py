@@ -29,6 +29,7 @@ from pm_core import lineup
 from pm_core import updates
 from pm_core import fonts
 from pm_core import help_text
+from pm_core import preferences
 
 # Preset filters shared by the Byte Workbench tabs. "Real players" uses the
 # same garbage-record guard as the Young Talents / Best XI views.
@@ -123,6 +124,25 @@ def _save_recent(paths: list[str]) -> None:
             json.dump({"save_adfs": paths[:RECENT_LIMIT]}, f, indent=2)
     except OSError:
         pass  # recent list is best-effort
+
+
+def _pref_update(**fields) -> None:
+    """Merge ``fields`` into the on-disk preferences file."""
+    state = preferences.load()
+    state.update(fields)
+    preferences.save(state)
+
+
+def _pref_initialdir(key: str) -> str:
+    """Seed ``filedialog.askopenfilename`` from a remembered path.
+
+    Returns the directory portion of ``preferences[key]`` if that file
+    still exists, otherwise an empty string (tk uses CWD in that case).
+    """
+    path = preferences.load().get(key, "")
+    if path and os.path.isfile(path):
+        return os.path.dirname(path)
+    return ""
 
 
 def apply_theme(root: tk.Tk) -> None:
@@ -1738,6 +1758,7 @@ class PMSaveDiskToolGUI:
         path = filedialog.askopenfilename(
             title="Open Player Manager Save Disk",
             filetypes=[("ADF Disk Images", "*.adf"), ("All Files", "*.*")],
+            initialdir=_pref_initialdir("last_save_adf"),
         )
         if path:
             self._open_adf_path(path)
@@ -1746,14 +1767,20 @@ class PMSaveDiskToolGUI:
         path = filedialog.askopenfilename(
             title="Open Player Manager Game Disk",
             filetypes=[("ADF Disk Images", "*.adf"), ("All Files", "*.*")],
+            initialdir=_pref_initialdir("last_game_adf"),
         )
         if not path:
             return
+        self._load_game_adf_path(path)
+
+    def _load_game_adf_path(self, path: str):
+        """Load a specific game ADF path (used by Open Game Disk + auto-open)."""
         try:
             self.game_disk = GameDisk.load(path)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load game ADF:\n{e}")
             return
+        _pref_update(last_game_adf=path)
 
         gd = self.game_disk
         fname = os.path.basename(path)
@@ -2169,6 +2196,7 @@ class PMSaveDiskToolGUI:
         self._set_dirty(False)
         self._update_title()
         self._add_recent(path)
+        _pref_update(last_save_adf=path)
         self.status_var.set(f"Loaded: {os.path.basename(path)}")
 
     def _refresh_title_band(self):
@@ -2467,13 +2495,46 @@ class PMSaveDiskToolGUI:
         body = ttk.Frame(top, padding=(18, 16, 18, 12))
         body.pack()
 
-        state = updates.load_state()
-        auto_var = tk.BooleanVar(value=bool(state.get("opted_in")))
+        prefs = preferences.load()
+        update_state = updates.load_state()
+
+        # ── On launch ──────────────────────────────────────────
+        ttk.Label(body, text="On launch",
+                  font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
+
+        splash_var = tk.BooleanVar(value=bool(prefs["show_splash"]))
+        ttk.Checkbutton(body, text="Show splash screen",
+                        variable=splash_var).pack(anchor="w", pady=(4, 0))
+
+        auto_save_var = tk.BooleanVar(value=bool(prefs["auto_open_last_save"]))
+        ttk.Checkbutton(body, text="Auto-open last save disk",
+                        variable=auto_save_var).pack(anchor="w", pady=(6, 0))
+        ttk.Label(body,
+                  text=self._pref_path_label(prefs["last_save_adf"]),
+                  foreground="#888", justify=tk.LEFT, wraplength=360).pack(
+            anchor="w", padx=(22, 0))
+
+        auto_game_var = tk.BooleanVar(value=bool(prefs["auto_open_last_game"]))
+        ttk.Checkbutton(body, text="Auto-open last game disk",
+                        variable=auto_game_var).pack(anchor="w", pady=(6, 0))
+        ttk.Label(body,
+                  text=self._pref_path_label(prefs["last_game_adf"]),
+                  foreground="#888", justify=tk.LEFT, wraplength=360).pack(
+            anchor="w", padx=(22, 0))
+
+        ttk.Separator(body, orient=tk.HORIZONTAL).pack(
+            fill=tk.X, pady=(12, 10))
+
+        # ── Updates ────────────────────────────────────────────
+        ttk.Label(body, text="Updates",
+                  font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
+
+        update_var = tk.BooleanVar(value=bool(update_state.get("opted_in")))
         ttk.Checkbutton(
             body,
             text="Check GitHub for updates once a day",
-            variable=auto_var,
-        ).pack(anchor="w")
+            variable=update_var,
+        ).pack(anchor="w", pady=(4, 0))
         ttk.Label(
             body,
             text="When enabled, a small “Update available” banner appears "
@@ -2486,8 +2547,12 @@ class PMSaveDiskToolGUI:
         btns.pack(fill=tk.X, pady=(14, 0))
 
         def _save_and_close():
-            state["opted_in"] = bool(auto_var.get())
-            updates.save_state(state)
+            prefs["show_splash"] = bool(splash_var.get())
+            prefs["auto_open_last_save"] = bool(auto_save_var.get())
+            prefs["auto_open_last_game"] = bool(auto_game_var.get())
+            preferences.save(prefs)
+            update_state["opted_in"] = bool(update_var.get())
+            updates.save_state(update_state)
             top.destroy()
 
         ttk.Button(btns, text="Cancel",
@@ -2496,6 +2561,15 @@ class PMSaveDiskToolGUI:
                    command=_save_and_close).pack(side=tk.RIGHT, padx=(0, 8))
 
         top.grab_set()
+
+    @staticmethod
+    def _pref_path_label(path: str) -> str:
+        """Format a remembered path for display under its checkbox."""
+        if not path:
+            return "(none recorded yet)"
+        if not os.path.isfile(path):
+            return f"⚠ missing: {path}"
+        return path
 
     def _show_about(self):
         top = tk.Toplevel(self.root)
@@ -2583,11 +2657,25 @@ def main():
     # fonts if registration fails.
     fonts.register_bundled_fonts()
 
+    prefs = preferences.load()
+
     root = tk.Tk()
     root.withdraw()          # hide while splash shows
-    _show_splash(root)
+    if prefs["show_splash"]:
+        _show_splash(root)
+    else:
+        root.deiconify()
     apply_theme(root)        # theme before main window builds
     app = PMSaveDiskToolGUI(root)
+
+    # Auto-open remembered paths. Silent on missing-file — the user can
+    # always open manually. Game disk loads after the save so the roster
+    # refresh triggered by _load_game_adf_path picks up real names.
+    if prefs["auto_open_last_save"] and os.path.isfile(prefs["last_save_adf"]):
+        root.after(0, lambda p=prefs["last_save_adf"]: app._open_adf_path(p))
+    if prefs["auto_open_last_game"] and os.path.isfile(prefs["last_game_adf"]):
+        root.after(50, lambda p=prefs["last_game_adf"]: app._load_game_adf_path(p))
+
     root.mainloop()
 
 

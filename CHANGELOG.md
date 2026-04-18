@@ -4,6 +4,21 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.9] — 2026-04-18
+
+### Added
+- **Preferences: remembered paths + splash toggle.** The GUI now
+  persists user preferences at `~/.pmsavedisktool/preferences.json`.
+  New toggles in `Help → Preferences…`:
+  - Show splash screen (default on, matching previous behaviour).
+  - Auto-open last save disk at launch (default off).
+  - Auto-open last game disk at launch (default off).
+  Paths are always recorded after a successful open (regardless of the
+  auto-open toggles), so the file-open dialog now seeds `initialdir`
+  from the last-used folder — less clicking on every relaunch.
+  Persistence layer lives in the new `pm_core.preferences` module
+  (pure Python, atomic writes, round-trip unit-tested).
+
 ## [2.2.8] — 2026-04-17
 
 ### Added
