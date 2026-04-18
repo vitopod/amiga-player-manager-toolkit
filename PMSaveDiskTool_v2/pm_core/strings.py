@@ -273,8 +273,8 @@ _STRINGS: dict[str, dict[str, str]] = {
 
     "it": {
         # Skills
-        "skill.stamina":    "Stamina",
-        "skill.resilience": "Resistenza",
+        "skill.stamina":    "Energia",
+        "skill.resilience": "Ricupero",
         "skill.pace":       "Velocita'",
         "skill.agility":    "Agilita'",
         "skill.aggression": "Aggressivita'",
