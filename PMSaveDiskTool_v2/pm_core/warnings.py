@@ -34,11 +34,18 @@ __all__ = [
 # These are the skills a player of that position should have at a
 # usable minimum; they are *not* an exhaustive "what makes a good
 # player" list, just the must-haves.
+#
+# We deliberately list only the 9 skills Player Manager labels on the
+# in-game Player Information card (Pace / Agility / Stamina /
+# Resilience / Aggression on the left, Passing / Shooting / Tackling /
+# Keeping on the right). Byte 0x0F ("flair" in our code) is an
+# unlabelled record byte, not an official PM skill, so it does not
+# drive user-facing warnings.
 POSITION_REQUIRED_SKILLS: dict[int, tuple[str, ...]] = {
     1: ("keeping", "agility", "resilience"),
     2: ("tackling", "stamina", "pace"),
-    3: ("passing", "stamina", "flair"),
-    4: ("shooting", "pace", "flair"),
+    3: ("passing", "stamina", "tackling"),
+    4: ("shooting", "pace", "agility"),
 }
 
 # Player Manager skills run 0..255. A value of 100 sits just under

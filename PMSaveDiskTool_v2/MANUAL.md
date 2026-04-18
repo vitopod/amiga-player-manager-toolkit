@@ -80,7 +80,7 @@ installer, no pip package. Upgrading means replacing the folder.
 
 ```
 git pull                 # latest on main
-git checkout v2.4.3      # or any tagged release
+git checkout v2.4.4      # or any tagged release
 ```
 
 **If you downloaded a release zip:**
@@ -204,14 +204,15 @@ active column shows a ▲ or ▼ arrow next to its label. The same works for
 ### Skill-threshold warnings (⚠)
 
 When a player's essential skills for its position fall below 100, a **⚠**
-appears in the Warn column. Essentials per position:
+appears in the Warn column. Essentials per position (all taken from the 9
+officially-labelled skills on the in-game Player Information card):
 
 | Position | Essential skills |
 |----------|-----------------|
 | GK  | keeping, agility, resilience |
 | DEF | tackling, stamina, pace |
-| MID | passing, stamina, flair |
-| FWD | shooting, pace, flair |
+| MID | passing, stamina, tackling |
+| FWD | shooting, pace, agility |
 
 Select a flagged player and the **Status** tab shows a "Weakness" row listing
 which skills tripped the threshold, e.g. `⚠ pace 85, stamina 92`. This is a

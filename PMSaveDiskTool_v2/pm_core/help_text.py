@@ -102,7 +102,7 @@ The View dropdown combines regular teams with several analytical "super-views". 
 - **Pos** — GK / DEF / MID / FWD. Stored as 1/2/3/4 in the record's position byte.
 - **Team** — owner club. "Free Agent" when team_index is 0xFF.
 - **Skill** (or **Goals** in Top Scorers) — sum of the 10 skill fields (pace, stamina, heading, etc.), 0..990.
-- **⚠** — shown when any skill essential to the player's position is below 100: GK → keeping/agility/resilience, DEF → tackling/stamina/pace, MID → passing/stamina/flair, FWD → shooting/pace/flair. Select a player to see which skills triggered the flag on the Status tab ("Weakness" row). Toggle via Help → Preferences → "Flag players whose essential skills are below 100".
+- **⚠** — shown when any skill essential to the player's position is below 100: GK → keeping/agility/resilience, DEF → tackling/stamina/pace, MID → passing/stamina/tackling, FWD → shooting/pace/agility. All nine skills are officially labelled on the in-game Player Information card. Select a player to see which skills triggered the flag on the Status tab ("Weakness" row). Toggle via Help → Preferences → "Flag players whose essential skills are below 100".
 - **Mkt** — ★ means market-available: either a free agent, or currently on the transfer list. The transfer flag lives in the high bit of `mystery3` (byte 0x1A) and matches the in-game LISTA TRASFERIMENTI screen.
 
 ## Click any column heading to sort

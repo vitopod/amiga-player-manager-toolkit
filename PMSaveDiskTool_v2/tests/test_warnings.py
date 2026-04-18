@@ -63,6 +63,17 @@ class TestWeakSkills:
         # Returned in POSITION_REQUIRED_SKILLS order: tackling, stamina, pace.
         assert weak_skills(p) == [("tackling", 50), ("pace", 90)]
 
+    def test_warning_skills_are_all_official_pm_labels(self):
+        # Byte 0x0F ("flair" in our code) is unlabelled in-game; the
+        # warning list must only reference officially-labelled skills.
+        official = {"pace", "agility", "stamina", "resilience", "aggression",
+                    "passing", "shooting", "tackling", "keeping"}
+        for pos, required in POSITION_REQUIRED_SKILLS.items():
+            for skill in required:
+                assert skill in official, (
+                    f"position {pos} lists non-official skill '{skill}'"
+                )
+
     def test_threshold_is_exclusive(self):
         # Exactly at the threshold is "OK".
         p = _mk(position=1, keeping=DEFAULT_THRESHOLD)
@@ -85,5 +96,5 @@ class TestDescribeWeaknesses:
 
     def test_formats_comma_separated(self):
         p = _mk(position=4, pace=80, shooting=70)
-        # POSITION_REQUIRED_SKILLS[4] = ("shooting", "pace", "flair")
+        # POSITION_REQUIRED_SKILLS[4] = ("shooting", "pace", "agility")
         assert describe_weaknesses(p) == "shooting 70, pace 80"
