@@ -38,6 +38,9 @@ class TestDefaultState:
             "auto_open_last_game",
             "last_save_adf",
             "last_game_adf",
+            "default_view",
+            "default_formation",
+            "use_system_font",
         }
 
     def test_splash_defaults_on(self):
@@ -55,6 +58,15 @@ class TestDefaultState:
         state = preferences.default_state()
         assert state["last_save_adf"] == ""
         assert state["last_game_adf"] == ""
+
+    def test_default_view_default_empty(self):
+        assert preferences.default_state()["default_view"] == ""
+
+    def test_default_formation_default_442(self):
+        assert preferences.default_state()["default_formation"] == "4-4-2"
+
+    def test_system_font_defaults_off(self):
+        assert preferences.default_state()["use_system_font"] is False
 
 
 class TestLoad:

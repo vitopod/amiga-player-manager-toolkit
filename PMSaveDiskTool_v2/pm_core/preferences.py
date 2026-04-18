@@ -16,6 +16,16 @@ Schema keys with defaults — see ``default_state()``:
   save ADF. Written after any successful open, regardless of the
   auto-open toggle, so the file-open dialog can seed ``initialdir``.
 - ``last_game_adf`` (str) — same idea for game disks.
+- ``default_view`` (str) — View label to select in the main window's
+  View combo after a save disk loads (e.g. ``"— Young Talents (≤21)"``,
+  ``"All Players"``, ``"— Top 11 (4-3-3)"``). Empty string (default)
+  means "first team in the save" — the pre-2.2.12 behaviour.
+- ``default_formation`` (str) — preferred formation label used as the
+  initial selection in the Line-up Coach window. One of ``"4-4-2"``,
+  ``"4-3-3"``, ``"3-5-2"``. Defaults to ``"4-4-2"``.
+- ``use_system_font`` (bool) — when True, the GUI uses a plain system
+  font (Courier New) instead of the bundled Topaz pixel font. Takes
+  effect on next launch. Defaults to False.
 
 The loader silently replaces missing / wrong-type values with
 ``default_state()`` entries so an older file (or a hand-edited one)
@@ -43,6 +53,9 @@ def default_state() -> dict:
         "auto_open_last_game":  False,
         "last_save_adf":        "",
         "last_game_adf":        "",
+        "default_view":         "",
+        "default_formation":    "4-4-2",
+        "use_system_font":      False,
     }
 
 

@@ -4,6 +4,25 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.12] — 2026-04-18
+
+### Added
+- **New Preferences: Defaults section.** `Help → Preferences…` now
+  exposes three new personalisation toggles:
+  - **Default view** — the View combo's selection after a save disk
+    loads. Defaults to "(first team in save)" which matches the
+    pre-2.2.12 behaviour, but can be set to All Players, Free Agents,
+    Young Talents, Top Scorers, Squad Analyst, or any of the XI views.
+  - **Default formation** — the Line-up Coach window now initialises
+    its Formation combo with the preferred formation (4-4-2 / 4-3-3 /
+    3-5-2) instead of the neutral "— Rank all".
+  - **Use system font instead of retro Topaz** — accessibility toggle
+    that swaps the bundled pixel font for Courier New throughout the
+    GUI. Takes effect on next launch.
+  Persisted via `pm_core.preferences`; schema-validated loader so old
+  preferences files continue to load cleanly with the new keys filled
+  in from defaults.
+
 ## [2.2.11] — 2026-04-18
 
 ### Changed

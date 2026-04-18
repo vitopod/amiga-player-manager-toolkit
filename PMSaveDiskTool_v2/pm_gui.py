@@ -78,9 +78,18 @@ LICENSE_URL = f"{GITHUB_URL}/blob/main/LICENSE"
 # to read at small sizes and inside tight tables.
 FONT_DATA = "Courier New"
 
+# Read once by ``main()`` from ``preferences.load()["use_system_font"]``
+# before any widget is built. tk widgets fetch their font at creation
+# time, so toggling this flag mid-session would not repaint existing UI
+# — the Preferences dialog tells users the change takes effect on next
+# launch.
+_USE_SYSTEM_FONT = False
+
 
 def _retro(size: int, weight: str = "normal") -> tuple[str, int, str]:
     """Retro header/label font with automatic fallback to Courier New."""
+    if _USE_SYSTEM_FONT:
+        return (FONT_DATA, size, weight)
     family = fonts.TOPAZ_FAMILY if fonts.topaz_available() else FONT_DATA
     return (family, size, weight)
 
@@ -852,7 +861,10 @@ class LineupCoachWindow(tk.Toplevel):
         self.team_cb.pack(side=tk.LEFT, padx=(4, 10))
 
         ttk.Label(ctrl, text="Formation:").pack(side=tk.LEFT)
-        self.formation_var = tk.StringVar(value="— Rank all")
+        pref_fmt = preferences.load().get("default_formation", "4-4-2")
+        if pref_fmt not in lineup.FORMATION_ROLES:
+            pref_fmt = "— Rank all"
+        self.formation_var = tk.StringVar(value=pref_fmt)
         self.formation_cb = ttk.Combobox(
             ctrl, textvariable=self.formation_var,
             values=["— Rank all"] + list(lineup.FORMATION_ROLES),
@@ -2000,7 +2012,11 @@ class PMSaveDiskToolGUI:
         team_options.append("— Squad Analyst (all teams)")
         team_options.extend(XI_ENTRIES.keys())
         self.team_combo["values"] = team_options
-        self.team_combo.current(0)
+        pref_view = preferences.load().get("default_view", "")
+        if pref_view and pref_view in team_options:
+            self.team_combo.set(pref_view)
+        else:
+            self.team_combo.current(0)
         self._refresh_player_list()
         self.status_var.set(f"Loaded save: {save_name}")
 
@@ -2644,6 +2660,48 @@ class PMSaveDiskToolGUI:
         ttk.Separator(body, orient=tk.HORIZONTAL).pack(
             fill=tk.X, pady=(12, 10))
 
+        # ── Defaults ───────────────────────────────────────────
+        ttk.Label(body, text="Defaults",
+                  font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
+
+        view_choices = [
+            "(first team in save)",
+            "All Players",
+            "Free Agents",
+            "— Young Talents (≤21)",
+            "— Top Scorers",
+            "— Squad Analyst (all teams)",
+        ] + list(XI_ENTRIES.keys())
+        current_view = prefs["default_view"] or "(first team in save)"
+        if current_view not in view_choices:
+            current_view = "(first team in save)"
+        view_var = tk.StringVar(value=current_view)
+        ttk.Label(body, text="Default view when opening a save disk:").pack(
+            anchor="w", pady=(4, 2))
+        ttk.Combobox(body, textvariable=view_var,
+                     values=view_choices, state="readonly", width=34).pack(
+            anchor="w", padx=(22, 0))
+
+        fmt_choices = ["4-4-2", "4-3-3", "3-5-2"]
+        current_fmt = prefs["default_formation"] if prefs["default_formation"] in fmt_choices else "4-4-2"
+        fmt_var = tk.StringVar(value=current_fmt)
+        ttk.Label(body, text="Default formation (Line-up Coach):").pack(
+            anchor="w", pady=(8, 2))
+        ttk.Combobox(body, textvariable=fmt_var,
+                     values=fmt_choices, state="readonly", width=10).pack(
+            anchor="w", padx=(22, 0))
+
+        font_var = tk.BooleanVar(value=bool(prefs["use_system_font"]))
+        ttk.Checkbutton(body,
+                        text="Use system font instead of retro Topaz",
+                        variable=font_var).pack(anchor="w", pady=(10, 0))
+        ttk.Label(body,
+                  text="Takes effect on next launch.",
+                  foreground="#888").pack(anchor="w", padx=(22, 0))
+
+        ttk.Separator(body, orient=tk.HORIZONTAL).pack(
+            fill=tk.X, pady=(12, 10))
+
         # ── Updates ────────────────────────────────────────────
         ttk.Label(body, text="Updates",
                   font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
@@ -2670,6 +2728,12 @@ class PMSaveDiskToolGUI:
             prefs["show_welcome"] = bool(welcome_var.get())
             prefs["auto_open_last_save"] = bool(auto_save_var.get())
             prefs["auto_open_last_game"] = bool(auto_game_var.get())
+            picked_view = view_var.get()
+            prefs["default_view"] = (
+                "" if picked_view == "(first team in save)" else picked_view
+            )
+            prefs["default_formation"] = fmt_var.get()
+            prefs["use_system_font"] = bool(font_var.get())
             preferences.save(prefs)
             update_state["opted_in"] = bool(update_var.get())
             updates.save_state(update_state)
@@ -2778,6 +2842,8 @@ def main():
     fonts.register_bundled_fonts()
 
     prefs = preferences.load()
+    global _USE_SYSTEM_FONT
+    _USE_SYSTEM_FONT = bool(prefs["use_system_font"])
 
     root = tk.Tk()
     root.withdraw()          # hide while splash shows
