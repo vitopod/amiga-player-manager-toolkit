@@ -1,3 +1,3 @@
 # pm_core — Player Manager Save Disk Tool core library
 
-__version__ = "2.4.1"
+__version__ = "2.4.2"

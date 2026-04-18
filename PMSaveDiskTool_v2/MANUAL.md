@@ -80,7 +80,7 @@ installer, no pip package. Upgrading means replacing the folder.
 
 ```
 git pull                 # latest on main
-git checkout v2.4.1      # or any tagged release
+git checkout v2.4.2      # or any tagged release
 ```
 
 **If you downloaded a release zip:**
@@ -478,6 +478,13 @@ corners) it records where each shirt #2..#11 should stand. The goalkeeper
   click lands in. Overlapping zones (corner inside `areaN`, kickoff
   inside `areaN`, …) resolve to the smallest match so the tighter zone
   wins — handy for dropping straight into corners or the kickoff spot.
+- **Compare to** dropdown draws a movement overlay: a ghost ring at each
+  shirt's position in a reference zone plus a dashed arrow to its
+  current position. The default `(previous zone)` auto-follows the last
+  zone you left, so every switch shows the delta. Pin a specific zone
+  to walk through all 20 while keeping the reference fixed, or pick
+  `(none)` to hide the overlay. A `movement from: <zone>` legend sits
+  bottom-right whenever arrows are visible.
 - **Drag** a shirt circle to move it. The new (x, y) commits in world
   coordinates on mouse release. Shirts are clamped to the pitch.
 - **Revert zone** undoes edits to the current zone; **Revert file**

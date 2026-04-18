@@ -4,6 +4,22 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.2] — 2026-04-18
+
+### Added
+- **Tactic Editor — shirt movement overlay.** Switching zones now draws
+  a ghost ring at each shirt's position in a reference zone plus a
+  dashed arrow to its current position, so you can see at a glance how
+  the shape shifts between the two snapshots. A new **Compare to:**
+  combobox defaults to `(previous zone)` — the overlay auto-follows the
+  last zone you left — but you can pin a specific zone to walk through
+  all 20 while keeping the reference fixed, or pick `(none)` to hide
+  the overlay entirely. Arrows recede into the pitch in a muted sage
+  grey and tuck their heads under the shirt outline for a clean read.
+  A `movement from: <zone>` legend in the bottom-right makes the
+  overlay self-explanatory. Documented in the MANUAL Tactic Editor
+  section and the in-app `?` help.
+
 ## [2.4.1] — 2026-04-18
 
 ### Changed
