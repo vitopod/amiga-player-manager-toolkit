@@ -24,11 +24,12 @@ from pm_gui_help import help_button
 
 
 # World coordinate bounds (slightly padded vs the empirical max of ~900 × ~1400
-# seen in PM tactics). Larger canvas means finer drag granularity.
+# seen in PM tactics). The world is stored portrait in .tac — we display it
+# landscape (90° CCW) because it's friendlier to vertical screen space.
 _WORLD_W = 1024
 _WORLD_H = 1536
-_CANVAS_W = 440
-_CANVAS_H = 660
+_CANVAS_W = 660
+_CANVAS_H = 440
 _SHIRT_RADIUS = 14
 
 
@@ -80,8 +81,8 @@ class TacticEditorWindow(tk.Toplevel):
     def __init__(self, parent, adf: ADF, adf_path: str, on_saved=None):
         super().__init__(parent)
         self.title("Tactic Editor")
-        self.geometry("760x820")
-        self.minsize(640, 740)
+        self.geometry("760x600")
+        self.minsize(720, 560)
 
         self.adf = adf
         self.adf_path = adf_path
@@ -280,13 +281,14 @@ class TacticEditorWindow(tk.Toplevel):
     # ── Canvas drawing + drag ─────────────────────────────────
 
     def _world_to_canvas(self, x: int, y: int) -> tuple[int, int]:
-        cx = round(x * _CANVAS_W / _WORLD_W)
-        cy = round(y * _CANVAS_H / _WORLD_H)
+        # 90° CCW rotation: world y → canvas x, world x → canvas y.
+        cx = round(y * _CANVAS_W / _WORLD_H)
+        cy = round(x * _CANVAS_H / _WORLD_W)
         return cx, cy
 
     def _canvas_to_world(self, cx: int, cy: int) -> tuple[int, int]:
-        x = round(cx * _WORLD_W / _CANVAS_W)
-        y = round(cy * _WORLD_H / _CANVAS_H)
+        y = round(cx * _WORLD_H / _CANVAS_W)
+        x = round(cy * _WORLD_W / _CANVAS_H)
         x = max(0, min(_WORLD_W - 1, x))
         y = max(0, min(_WORLD_H - 1, y))
         return x, y
@@ -295,29 +297,30 @@ class TacticEditorWindow(tk.Toplevel):
         self.canvas.delete("all")
         self.shirt_items.clear()
 
-        # Touchlines + halfway line + centre circle + penalty/goal areas.
+        # Touchlines + halfway line + centre circle + penalty/goal areas
+        # (landscape: halfway line is vertical, penalty boxes at left/right).
         line = "#e8e8e8"
         w, h = _CANVAS_W, _CANVAS_H
         self.canvas.create_rectangle(1, 1, w - 1, h - 1, outline=line, width=2)
-        self.canvas.create_line(0, h // 2, w, h // 2, fill=line, width=1)
-        cr = 50
+        self.canvas.create_line(w // 2, 0, w // 2, h, fill=line, width=1)
+        cr = 45
         self.canvas.create_oval(w // 2 - cr, h // 2 - cr,
                                 w // 2 + cr, h // 2 + cr,
                                 outline=line, width=1)
-        # Top and bottom penalty boxes.
-        pw, ph = int(w * 0.5), int(h * 0.14)
-        self.canvas.create_rectangle((w - pw) // 2, 0,
-                                     (w + pw) // 2, ph,
+        # Left and right penalty boxes.
+        pw, ph = int(w * 0.14), int(h * 0.5)
+        self.canvas.create_rectangle(0, (h - ph) // 2,
+                                     pw, (h + ph) // 2,
                                      outline=line, width=1)
-        self.canvas.create_rectangle((w - pw) // 2, h - ph,
-                                     (w + pw) // 2, h,
+        self.canvas.create_rectangle(w - pw, (h - ph) // 2,
+                                     w, (h + ph) // 2,
                                      outline=line, width=1)
-        gw, gh = int(w * 0.25), int(h * 0.06)
-        self.canvas.create_rectangle((w - gw) // 2, 0,
-                                     (w + gw) // 2, gh,
+        gw, gh = int(w * 0.06), int(h * 0.25)
+        self.canvas.create_rectangle(0, (h - gh) // 2,
+                                     gw, (h + gh) // 2,
                                      outline=line, width=1)
-        self.canvas.create_rectangle((w - gw) // 2, h - gh,
-                                     (w + gw) // 2, h,
+        self.canvas.create_rectangle(w - gw, (h - gh) // 2,
+                                     w, (h + gh) // 2,
                                      outline=line, width=1)
 
         # Highlight the on-pitch region this zone represents.
