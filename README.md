@@ -1,7 +1,8 @@
 # Player Manager Toolkit
 
 Cross-platform save disk editor and analytics workbench for **Player Manager**
-(Anco, 1990) on Amiga.
+(Anco, 1990) on Amiga. Available in **English and Italian** — select the
+language in Help → Preferences.
 
 Started as a cross-platform port of **PMSaveDiskTool v1.2** by
 **UltimateBinary** (http://www.ultimatebinary.com) — full credit to them
