@@ -138,28 +138,28 @@ def open_preferences(
         fill=tk.X, pady=(12, 10))
 
     # ── Updates ────────────────────────────────────────────
-    ttk.Label(body, text=”Updates”,
-              font=(“TkDefaultFont”, 10, “bold”)).pack(anchor=”w”)
+    ttk.Label(body, text="Updates",
+              font=("TkDefaultFont", 10, "bold")).pack(anchor="w")
 
-    _freq_saved = prefs.get(“update_interval”, “weekly”)
-    if _freq_saved not in (“daily”, “weekly”):
-        _freq_saved = “weekly”
-    _current_freq = “disabled” if not update_state.get(“opted_in”) else _freq_saved
+    _freq_saved = prefs.get("update_interval", "weekly")
+    if _freq_saved not in ("daily", "weekly"):
+        _freq_saved = "weekly"
+    _current_freq = "disabled" if not update_state.get("opted_in") else _freq_saved
     freq_var = tk.StringVar(value=_current_freq)
-    ttk.Label(body, text=”Automatic update checks:”).pack(anchor=”w”, pady=(4, 2))
-    for _label, _val in [(“Disabled”, “disabled”),
-                         (“Daily”, “daily”),
-                         (“Weekly”, “weekly”)]:
+    ttk.Label(body, text="Automatic update checks:").pack(anchor="w", pady=(4, 2))
+    for _label, _val in [("Disabled", "disabled"),
+                         ("Daily", "daily"),
+                         ("Weekly", "weekly")]:
         ttk.Radiobutton(body, text=_label,
                         variable=freq_var, value=_val).pack(
-            anchor=”w”, padx=(22, 0))
+            anchor="w", padx=(22, 0))
     ttk.Label(
         body,
-        text='A “New version available” banner appears next to the title\n'
+        text='A "New version available" banner appears next to the title\n'
              'when a newer release is found on GitHub. No data is sent.',
-        foreground=”#888”,
+        foreground="#888",
         justify=tk.LEFT,
-    ).pack(anchor=”w”, pady=(4, 0))
+    ).pack(anchor="w", pady=(4, 0))
 
     btns = ttk.Frame(body)
     btns.pack(fill=tk.X, pady=(14, 0))
