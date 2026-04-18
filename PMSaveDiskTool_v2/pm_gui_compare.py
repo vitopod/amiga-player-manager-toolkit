@@ -4,16 +4,24 @@ import math
 import tkinter as tk
 from tkinter import ttk
 
-from pm_core.player import SKILL_NAMES, POSITION_NAMES
+from pm_core.player import POSITION_NAMES
 
 from pm_gui_theme import PAL, _retro
 
 
 class PlayerCompareWindow(tk.Toplevel):
 
-    _SKILL_LABELS = [s.upper()[:7] for s in SKILL_NAMES]
+    # Comparison uses only the 9 skills PM labels on the in-game Player
+    # Information card. Byte 0x0F (named ``flair`` internally) is unlabelled
+    # in-game, so showing it here would imply our placeholder name is
+    # canonical — same policy as pm_core/warnings.py applies.
+    _COMPARE_SKILLS = (
+        "pace", "agility", "stamina", "resilience", "aggression",
+        "passing", "shooting", "tackling", "keeping",
+    )
+    _SKILL_LABELS = [s.upper()[:7] for s in _COMPARE_SKILLS]
     _MAX_SKILL = 99
-    _N = len(SKILL_NAMES)
+    _N = len(_COMPARE_SKILLS)
     _CX, _CY, _R = 148, 148, 108
 
     def __init__(self, parent, slot, game_disk, player_a=None):
@@ -177,12 +185,20 @@ class PlayerCompareWindow(tk.Toplevel):
                                     bg=PAL["btn_go"], fg=PAL["btn_go_fg"],
                                     font=("Courier New", 10, "bold"))
         self._status_lbl.pack(side=tk.LEFT, padx=10, pady=5)
-        tk.Button(bar, text="DONE", bg=PAL["btn_go"], fg=PAL["btn_go_fg"],
-                  highlightbackground=PAL["btn_go"], highlightthickness=0,
-                  font=("Courier New", 10, "bold"),
-                  relief="flat", bd=0, padx=18, pady=4,
-                  activebackground=PAL["selected"], activeforeground=PAL["fg_white"],
-                  command=self.destroy).pack(side=tk.RIGHT, padx=8, pady=4)
+        # Clickable tk.Label instead of tk.Button — native tk.Button on
+        # macOS Aqua ignores bg/fg and repaints in system colours, which
+        # turned DONE into an invisible-text button. Same workaround as
+        # the APPLY / REVERT footer in pm_gui.py.
+        done = tk.Label(bar, text="DONE",
+                        bg=PAL["btn_go"], fg=PAL["btn_go_fg"],
+                        font=("Courier New", 10, "bold"),
+                        padx=14, pady=5,
+                        borderwidth=0, highlightthickness=0,
+                        cursor="hand2")
+        done.bind("<Button-1>", lambda _e: self.destroy())
+        done.bind("<Enter>", lambda _e: done.configure(bg=PAL["selected"]))
+        done.bind("<Leave>", lambda _e: done.configure(bg=PAL["btn_go"]))
+        done.pack(side=tk.RIGHT, padx=8, pady=4)
 
     def _player_name(self, p) -> str:
         if self._game_disk and p.rng_seed:
@@ -336,7 +352,7 @@ class PlayerCompareWindow(tk.Toplevel):
         self._update_status()
 
     def _skill_values(self, p) -> list[int]:
-        return [getattr(p, s) for s in SKILL_NAMES]
+        return [getattr(p, s) for s in self._COMPARE_SKILLS]
 
     def _radar_point(self, i: int, val: int) -> tuple[float, float]:
         angle = (i * 2 * math.pi / self._N) - math.pi / 2
@@ -455,9 +471,9 @@ class PlayerCompareWindow(tk.Toplevel):
         name_a = self._player_name(self._player_a)
         name_b = self._player_name(self._player_b)
         if wins_a > wins_b:
-            msg = f"{name_a} leads on {wins_a}/10 skills"
+            msg = f"{name_a} leads on {wins_a}/{self._N} skills"
         elif wins_b > wins_a:
-            msg = f"{name_b} leads on {wins_b}/10 skills"
+            msg = f"{name_b} leads on {wins_b}/{self._N} skills"
         else:
             msg = "Tied — equal wins across all skills"
         self._status_lbl.config(text=msg)

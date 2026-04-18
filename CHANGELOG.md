@@ -4,6 +4,28 @@ All notable changes to Player Manager Toolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.6] — 2026-04-18
+
+### Changed
+- **Compare Players now shows only the 9 officially-labelled PM skills.**
+  The radar chart and the side-by-side skill bars used to include 10
+  axes, the tenth being `flair` — our internal placeholder for byte
+  0x0F, which PM does *not* label on the in-game Player Information
+  card. Dropped it to keep Compare Players consistent with the
+  skill-threshold warnings (2.4.4): pace, agility, stamina, resilience,
+  aggression, passing, shooting, tackling, keeping. The status footer
+  auto-scales accordingly ("leads on 6/9 skills"). The field is still
+  named `flair` in code and is unchanged in the Skills tab, the Byte
+  Workbench, and exports, where a stable identifier matters.
+
+### Fixed
+- **Compare Players "DONE" button is now readable.** The native
+  `tk.Button` on macOS Aqua repaints itself in system colours
+  regardless of the explicit `bg`/`fg` we set, which turned the DONE
+  text effectively invisible against the green footer. Replaced with a
+  clickable `tk.Label` — the same workaround already used for the
+  APPLY / REVERT footer in the main window. Hover feedback preserved.
+
 ## [2.4.5] — 2026-04-18
 
 ### Changed
