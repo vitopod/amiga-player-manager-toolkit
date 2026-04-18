@@ -94,7 +94,7 @@ def _retro(size: int, weight: str = "normal") -> tuple[str, int, str]:
     return (family, size, weight)
 
 
-PAL = {
+PAL_RETRO = {
     "bg":         "#000066",
     "bg_mid":     "#111188",
     "bg_header":  "#3355aa",
@@ -115,6 +115,38 @@ PAL = {
     "bar_trough": "#111144",   # skill bar trough fill
     "status_bar": "#000033",   # status bar frame background
 }
+
+# Accessible light theme. High-contrast (WCAG AA on all foregrounds),
+# neutral greys for chrome, and muted blue/red/green accents for the
+# player_a / player_b / free_agent markers so they stay
+# distinguishable without the retro palette's saturation.
+PAL_LIGHT = {
+    "bg":         "#f5f5f5",
+    "bg_mid":     "#e8e8e8",
+    "bg_header":  "#4a6fa5",
+    "fg_title":   "#1e3d6f",
+    "fg_data":    "#1a1a1a",
+    "fg_label":   "#555555",
+    "fg_dim":     "#888888",
+    "player_a":   "#0b61a4",
+    "player_b":   "#a93226",
+    "free_agent": "#1e7e34",
+    "btn_go":     "#1e7e34",
+    "btn_go_fg":  "#ffffff",
+    "selected":   "#cce4f7",
+    "border":     "#bdbdbd",
+    "field":      "#ffffff",
+    "fg_white":   "#1a1a1a",   # "active/selected foreground" — dark on pale selected bg
+    "radar_bg":   "#ffffff",
+    "bar_trough": "#dcdcdc",
+    "status_bar": "#d6d6d6",
+}
+
+# Active palette. ``main()`` swaps this to ``PAL_LIGHT`` when the user
+# has picked the light theme, before any widget is built — existing
+# references like ``PAL["bg"]`` then resolve to the new values
+# throughout the module.
+PAL = dict(PAL_RETRO)
 
 
 def _load_recent() -> list[str]:
@@ -1730,26 +1762,21 @@ class PMSaveDiskToolGUI:
 
         footer = tk.Frame(right, bg=PAL["btn_go"])
         footer.pack(fill=tk.X, side=tk.BOTTOM)
-        self.apply_button = tk.Button(
-            footer, text="APPLY",
+        # Clickable tk.Label instead of tk.Button — on macOS Aqua a native
+        # tk.Button silently ignores bg/fg and re-paints itself in system
+        # colours after focus returns from a modal Toplevel (e.g. after
+        # closing Preferences), turning these into unreadable amber blobs.
+        # tk.Label honours bg/fg on every platform.
+        self.apply_button = self._make_footer_button(
+            footer, "APPLY",
             bg=PAL["btn_go"], fg=PAL["btn_go_fg"],
-            # highlightbackground is what macOS Aqua actually paints; bg
-            # alone is ignored on native buttons there.
-            highlightbackground=PAL["btn_go"], highlightthickness=0,
-            font=("Courier New", 10, "bold"),
-            relief="flat", bd=0, padx=16, pady=5,
-            activebackground=PAL["selected"], activeforeground=PAL["fg_white"],
-            command=self._apply_changes,
+            hover=PAL["selected"], command=self._apply_changes,
         )
         self.apply_button.pack(side=tk.RIGHT, padx=(4, 6), pady=4)
-        tk.Button(
-            footer, text="REVERT",
+        self._make_footer_button(
+            footer, "REVERT",
             bg=PAL["bg_mid"], fg=PAL["fg_data"],
-            highlightbackground=PAL["btn_go"], highlightthickness=0,
-            font=("Courier New", 10, "bold"),
-            relief="flat", bd=0, padx=12, pady=5,
-            activebackground=PAL["selected"], activeforeground=PAL["fg_white"],
-            command=self._revert_player,
+            hover=PAL["selected"], command=self._revert_player,
         ).pack(side=tk.RIGHT, pady=4)
 
         self.fields = {}
@@ -2193,6 +2220,26 @@ class PMSaveDiskToolGUI:
         self.fields["int_years"].set(str(p.int_years))
         self.fields["contract_years"].set(str(p.contract_years))
         self._redraw_skill_bars()
+
+    @staticmethod
+    def _make_footer_button(parent, text, *, bg, fg, hover, command):
+        """Clickable ``tk.Label`` styled as a button.
+
+        Used instead of ``tk.Button`` for the APPLY / REVERT footer —
+        see the note in ``_build_*`` where this is instantiated.
+        """
+        lbl = tk.Label(
+            parent, text=text,
+            bg=bg, fg=fg,
+            font=("Courier New", 10, "bold"),
+            padx=14, pady=5,
+            borderwidth=0, highlightthickness=0,
+            cursor="hand2",
+        )
+        lbl.bind("<Button-1>", lambda _e: command())
+        lbl.bind("<Enter>", lambda _e: lbl.configure(bg=hover))
+        lbl.bind("<Leave>", lambda _e: lbl.configure(bg=bg))
+        return lbl
 
     def _apply_changes(self):
         if not self.current_player or not self.slot:
@@ -2691,12 +2738,26 @@ class PMSaveDiskToolGUI:
                      values=fmt_choices, state="readonly", width=10).pack(
             anchor="w", padx=(22, 0))
 
+        theme_choices = [
+            ("retro", "Retro (Amiga navy / amber / cyan)"),
+            ("light", "Light (accessible high-contrast)"),
+        ]
+        theme_labels = [label for _, label in theme_choices]
+        theme_lookup = dict(theme_choices)
+        reverse_theme_lookup = {label: key for key, label in theme_choices}
+        current_theme_key = prefs["theme"] if prefs["theme"] in theme_lookup else "retro"
+        theme_var = tk.StringVar(value=theme_lookup[current_theme_key])
+        ttk.Label(body, text="Colour theme:").pack(anchor="w", pady=(8, 2))
+        ttk.Combobox(body, textvariable=theme_var,
+                     values=theme_labels, state="readonly", width=34).pack(
+            anchor="w", padx=(22, 0))
+
         font_var = tk.BooleanVar(value=bool(prefs["use_system_font"]))
         ttk.Checkbutton(body,
                         text="Use system font instead of retro Topaz",
                         variable=font_var).pack(anchor="w", pady=(10, 0))
         ttk.Label(body,
-                  text="Takes effect on next launch.",
+                  text="Font and theme changes take effect on next launch.",
                   foreground="#888").pack(anchor="w", padx=(22, 0))
 
         ttk.Separator(body, orient=tk.HORIZONTAL).pack(
@@ -2734,6 +2795,7 @@ class PMSaveDiskToolGUI:
             )
             prefs["default_formation"] = fmt_var.get()
             prefs["use_system_font"] = bool(font_var.get())
+            prefs["theme"] = reverse_theme_lookup.get(theme_var.get(), "retro")
             preferences.save(prefs)
             update_state["opted_in"] = bool(update_var.get())
             updates.save_state(update_state)
@@ -2844,6 +2906,8 @@ def main():
     prefs = preferences.load()
     global _USE_SYSTEM_FONT
     _USE_SYSTEM_FONT = bool(prefs["use_system_font"])
+    if prefs.get("theme") == "light":
+        PAL.update(PAL_LIGHT)
 
     root = tk.Tk()
     root.withdraw()          # hide while splash shows

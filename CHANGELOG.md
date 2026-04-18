@@ -4,6 +4,27 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.13] — 2026-04-18
+
+### Added
+- **Accessible light theme.** New `theme` preference under
+  `Help → Preferences…` with two choices: **Retro** (default — the
+  existing Amiga navy / amber / cyan palette) and **Light** (high-
+  contrast accessible theme: off-white background, near-black text,
+  muted blue / red / green accents). Takes effect on next launch.
+  Splash and welcome dialogs keep their PM-title palette regardless.
+
+### Fixed
+- **APPLY / REVERT buttons unreadable after closing Preferences
+  (macOS).** Both were `tk.Button` widgets with
+  `highlightthickness=0`, which on macOS hands rendering to native
+  Aqua and makes the buttons re-paint in system colours after focus
+  returns from a modal Toplevel — the explicit `fg` then landed on a
+  mismatched background and turned the text invisible. Replaced with
+  clickable `tk.Label` widgets + click/hover bindings (same pattern
+  used for the Welcome dialog's OK button since 2.2.10). Labels
+  honour `bg`/`fg` on every platform.
+
 ## [2.2.12] — 2026-04-18
 
 ### Added

@@ -26,6 +26,11 @@ Schema keys with defaults — see ``default_state()``:
 - ``use_system_font`` (bool) — when True, the GUI uses a plain system
   font (Courier New) instead of the bundled Topaz pixel font. Takes
   effect on next launch. Defaults to False.
+- ``theme`` (str) — GUI colour theme. ``"retro"`` (default) is the
+  Amiga navy / amber / cyan look. ``"light"`` is a high-contrast
+  accessible light theme (off-white background, dark text, muted blue
+  accents). Takes effect on next launch. Splash / welcome dialogs are
+  unaffected — they always render in the PM-title palette.
 
 The loader silently replaces missing / wrong-type values with
 ``default_state()`` entries so an older file (or a hand-edited one)
@@ -56,6 +61,7 @@ def default_state() -> dict:
         "default_view":         "",
         "default_formation":    "4-4-2",
         "use_system_font":      False,
+        "theme":                "retro",
     }
 
 

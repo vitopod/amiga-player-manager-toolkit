@@ -41,6 +41,7 @@ class TestDefaultState:
             "default_view",
             "default_formation",
             "use_system_font",
+            "theme",
         }
 
     def test_splash_defaults_on(self):
@@ -67,6 +68,9 @@ class TestDefaultState:
 
     def test_system_font_defaults_off(self):
         assert preferences.default_state()["use_system_font"] is False
+
+    def test_theme_default_retro(self):
+        assert preferences.default_state()["theme"] == "retro"
 
 
 class TestLoad:
