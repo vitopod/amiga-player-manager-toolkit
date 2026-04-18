@@ -4,6 +4,38 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] — 2026-04-18
+
+### Changed
+- **Tactic Editor — landscape pitch.** Rendering now flips 90° CCW so
+  the 660×440 canvas is wider than tall, saving vertical space. The
+  `.tac` world coordinates stay portrait on disk; only the display
+  rotates, so edits remain byte-identical to what the engine reads.
+- **Tactic Editor — clearer description line.** The trailer parser now
+  scans for the longest printable-ASCII run (instead of hardcoding an
+  offset), quotes the result, and appends `…` when PM truncated the
+  text mid-word in its fixed ~126-char slot. Missing descriptions now
+  read `No in-game description stored` and distinguish `PM-edited`
+  from stock Anco / KO2 template tactics. Help text explains PM's
+  `<mids>-<forwards> <blurb>` convention — the leading `"2-4"` on a
+  4-2-4 file is PM's own label, not a parser bug.
+
+### Added
+- **Tactic Editor — shift-click to switch zones.** Shift-click anywhere
+  on the pitch jumps to whichever zone the click lands in. Overlapping
+  zones (corners inside `areaN`, kickoff and goalkick too) resolve to
+  the smallest match so the tighter zone wins.
+- **MANUAL.md** — Tactic Editor GUI section and `edit-tactics` CLI
+  section. The `show-tactics` section is updated to point at the new
+  editor instead of calling the format un-reversed.
+
+### Fixed
+- **Tactic Editor — hidden Save / Revert buttons.** The footer sat
+  below the visible window because the 660-pixel canvas pushed it off
+  the bottom. The footer and description labels now pack before the
+  canvas so tkinter reserves their space first; the default window
+  height was also bumped.
+
 ## [2.4.0] — 2026-04-18
 
 ### Added

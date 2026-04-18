@@ -80,7 +80,7 @@ installer, no pip package. Upgrading means replacing the folder.
 
 ```
 git pull                 # latest on main
-git checkout v2.4.0      # or any tagged release
+git checkout v2.4.1      # or any tagged release
 ```
 
 **If you downloaded a release zip:**
@@ -459,6 +459,52 @@ without closing and reopening.
 | Bars | Side-by-side horizontal bars, one row per skill. Scale 0–200 — no skill can reach the end of a full bar at the game's maximum value. The winning value for each row is highlighted brighter. |
 
 ---
+
+### Tactic Editor
+
+**Tools → Tactic Editor…** (Cmd/Ctrl+K) opens a window that edits the
+`.tac` tactic files stored on the save disk. Each `.tac` holds 20
+pitch-zone snapshots — for every zone (area1..area12, kickoff, goalkick,
+corners) it records where each shirt #2..#11 should stand. The goalkeeper
+(#1) is fixed by the engine and never stored.
+
+- **File** picker lists every `.tac` on the loaded disk (PM ships
+  `4-4-2.tac`, `4-3-3.tac`, `5-3-2.tac`, `4-2-4.tac` plus per-save
+  variants like `4-2-4a.tac`).
+- **Zone** picker cycles through the 20 zones. The shirts reposition to
+  that zone's coordinates and the on-pitch region the zone covers is
+  highlighted with a translucent yellow overlay.
+- **Shift-click** anywhere on the pitch to jump to whichever zone the
+  click lands in. Overlapping zones (corner inside `areaN`, kickoff
+  inside `areaN`, …) resolve to the smallest match so the tighter zone
+  wins — handy for dropping straight into corners or the kickoff spot.
+- **Drag** a shirt circle to move it. The new (x, y) commits in world
+  coordinates on mouse release. Shirts are clamped to the pitch.
+- **Revert zone** undoes edits to the current zone; **Revert file**
+  rolls the whole tactic back to the on-disk version.
+- **Save to ADF** writes the tactic back through the normal `.bak` path
+  (a sibling `.adf.bak` is created on first edit, just like File → Save).
+
+The pitch is rendered landscape (660×440) with a halfway line, centre
+circle and both penalty/goal boxes. World coordinates themselves stay
+portrait (1024×1536) — that's how PM stores them; only the display
+rotates 90° CCW. This keeps the edited bytes identical to what the
+engine reads.
+
+**Description line.** Below the pitch the window shows whatever
+description PM saved into the `.tac` trailer. PM stores it as
+`<midfielders>-<forwards> <blurb>` with defender count implicit — so a
+4-2-4 file reads `"2-4 an attacking…"` (2 mids + 4 forwards). That's
+PM's own label, not a parsing quirk. Descriptions live in a fixed
+~126-char slot on disk; if PM's text overflowed it was chopped
+mid-word, and a trailing `…` in the editor signals that truncation.
+Stock 980-byte Anco/KO2 template tactics have no description — the
+line reads `No in-game description stored`.
+
+**What's *not* in the `.tac` file.** It doesn't encode which 11 players
+actually start a match. That lives inside the `.sav` team record and is
+still un-reversed. So the editor reshapes the *zone geometry* a
+formation uses, not the roster that plays it.
 
 ### Find in Help
 
@@ -922,8 +968,9 @@ python3 pm_cli.py suggest-xi Save1_PM.adf --save pm1.sav \
 
 The save disk contains a `.tac` file per formation (`4-4-2.tac`, `4-3-3.tac`,
 `5-3-2.tac`, `4-2-4.tac`) plus per-save variants used by the game to store
-the player's tactical selections. Their byte layout is **not yet
-reverse-engineered**; this command is the discovery aid for that work.
+the player's tactical selections. The format is now decoded — see
+`edit-tactics` below for the editing workflow. `show-tactics` remains as
+the raw-dump diagnostic for disk inspection.
 
 Dump every tactic file on a save disk:
 ```
@@ -945,6 +992,44 @@ python3 pm_cli.py show-tactics Save1_PM.adf --file 4-4-2.tac \
 
 Add `--full` to print both hex dumps in addition to the diff summary, and
 `--limit N` to cap how many differing bytes are listed per file.
+
+---
+
+### edit-tactics — round-trip a `.tac` file through JSON
+
+Scriptable equivalent of the GUI **Tools → Tactic Editor…**. Dumps a
+`.tac` file on the loaded ADF as human-editable JSON, and writes a
+JSON file back through the ADF with a sibling `.bak` created on first
+edit.
+
+The on-disk layout is:
+
+- **800 bytes** of positional data — 20 pitch zones × 10 players ×
+  `(x, y)` as big-endian `u16`. Zones: `area1..area12`, `kickoff_own`,
+  `kickoff_def`, `goalkick_def`, `goalkick_own`, `corner1..corner4`.
+  Shirt numbers 2..11; the goalkeeper (#1) is fixed by the engine and
+  never stored.
+- **Variable trailer** preserved byte-exact: 128 bytes on PM-edited
+  tactics (holds a NUL-padded ASCII description) or 180 bytes on the
+  stock Anco/KO2 templates.
+
+Dump the current tactic as JSON:
+```
+python3 pm_cli.py edit-tactics Save1_PM.adf --file 4-2-4.tac --dump \
+    > 4-2-4.json
+```
+
+Edit the JSON by hand (or in a script), then write it back — this
+creates `Save1_PM.adf.bak` on first write:
+```
+python3 pm_cli.py edit-tactics Save1_PM.adf --file 4-2-4.tac \
+    --import 4-2-4.json
+```
+
+`--output PATH` writes the result to a new ADF instead of mutating the
+input in place. The command refuses to write if the imported tactic's
+total size doesn't match the on-disk entry, so you can't silently
+corrupt the file table.
 
 ---
 
