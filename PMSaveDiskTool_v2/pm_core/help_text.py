@@ -106,12 +106,54 @@ The View dropdown combines regular teams with several analytical "super-views". 
 
 # Detail panel (right side)
 
-- Header: PLAYER# / NAME / SEED — the player's identity, fixed while you edit other fields.
-- **Core**: age, position, team, foot, height, contract years, morale, form.
-- **Skills**: all 10 skill fields with live-updating colour bars (0..99 per field).
-- **Status**: injury / suspension / transfer-list / fatigue-related bytes.
-- **Season**: goals, matches, injuries, discipline points — both this year and last year.
-- **Career**: years in each division (1–4) plus international caps, ratings, career stats.
+Header: PLAYER# / NAME / SEED — the player's identity, fixed while you edit other fields. All field labels below match the in-game English "Player Information" screen where they appear there.
+
+## Core tab
+
+- **Age** — years (byte 0x04).
+- **Position** — 1=GK, 2=DEF (Defense), 3=MID (Midfield), 4=FWD (Forward).
+- **Division** — 1..4; which league tier the player's team plays in (0 for free agents).
+- **Team Index** — which team record in the save slot this player belongs to. 0 = the user's team, 1..43 = the other league teams, 0xFF = free agent. Internal field; no in-game equivalent.
+- **Height (cm)** — cm, as shown on the in-game card.
+- **Weight (kg)** — kg.
+
+## Skills tab (all 0..200, higher = better)
+
+- **Pace** — top speed.
+- **Agility** — turning / acceleration / balance.
+- **Stamina** — endurance over a match.
+- **Resilience** — injury resistance (higher = fewer/shorter injuries).
+- **Aggression** — tackling intensity. Low = calm, high = reckless. Stored **inverted** on disk (raw byte = 200 − displayed); the GUI always shows the in-game value.
+- **Flair** — creative / technical flair. Not separately labelled on the in-game card but part of the record.
+- **Passing** — passing accuracy (in-game Skills panel).
+- **Shooting** — finishing (in-game Skills panel).
+- **Tackling** — tackle success (in-game Skills panel).
+- **Keeping** — goalkeeping (in-game Skills panel; only meaningful for GKs).
+- Live colour bars next to each value update as you type.
+
+## Status tab (what's true *right now*)
+
+- **Injury Weeks** — weeks the player is unavailable **this moment**. 0 = fit; >0 = injured and ticks down as weeks pass.
+- **Disciplinary** — current suspension points / cards state.
+- **Morale** — numeric morale (~0..255; ~80 is neutral). The in-game card summarises this as "OK / Low / High".
+- **Value** — transfer market value scalar.
+- **Wks Since Transfer** — post-transfer cooldown counter (NOT a "listed for sale" flag). Internal field; no in-game label.
+
+## Season tab (This Yr / Last Yr pairs)
+
+- **Injuries** — how many distinct injury spells this / last season. Matches the in-game "Injuries" row in History. **Different from Status → Injury Weeks**: that is current downtime, this is the cumulative tally.
+- **Dsp.Pts.** — disciplinary points accumulated. Matches the "Dsp.Pts." row.
+- **Goals** — goals scored.
+- **Matches** — matches played.
+
+## Career tab
+
+- **Div1 / Div2 / Div3 / Div4 Years** — years played in each division (in-game columns 1st / 2nd / 3rd / 4th).
+- **Int Years** — years as an international (in-game column Int).
+- **Contract Yrs** — remaining seasons on contract (observed 1..5).
+
+## Apply / Revert / Save
+
 - **Apply** commits edits to memory; **Revert** discards them. The window title shows `•` when there are unsaved edits.
 - Saving the ADF (Cmd/Ctrl+S) writes to disk and creates a one-shot `.adf.bak` the first time.
 

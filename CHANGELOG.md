@@ -4,6 +4,25 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.11] — 2026-04-18
+
+### Changed
+- **In-game English labels honoured across the detail panel.** The
+  Season tab now shows `Dsp.Pts. This Yr` / `Dsp.Pts. Last Yr`
+  (matching the dots used on the in-game Player Information screen)
+  instead of the abbreviated `DspPts`.
+
+### Added
+- **Main-window `?` guide now explains every detail-panel field.**
+  Previous help gave one-line tab summaries; the Detail panel section
+  now walks through Core, Skills, Status, Season and Career one field
+  at a time, using the same English labels as the in-game Player
+  Information screen. Highlights include: Injury Weeks vs Injuries
+  This Yr (current downtime vs season tally), Aggression (stored
+  inverted on disk), position codes, team-index semantics, Morale
+  numeric scale vs the in-game OK/Low/High label, and the Div1..4 /
+  Int Years mapping to the in-game 1st / 2nd / 3rd / 4th / Int columns.
+
 ## [2.2.10] — 2026-04-18
 
 ### Added

@@ -1756,8 +1756,8 @@ class PMSaveDiskToolGUI:
     _SEASON_FIELDS = [
         ("Injuries This Yr:", "injuries_this_year"),
         ("Injuries Last Yr:", "injuries_last_year"),
-        ("DspPts This Yr:", "dsp_pts_this_year"),
-        ("DspPts Last Yr:", "dsp_pts_last_year"),
+        ("Dsp.Pts. This Yr:", "dsp_pts_this_year"),
+        ("Dsp.Pts. Last Yr:", "dsp_pts_last_year"),
         ("Goals This Yr:", "goals_this_year"),
         ("Goals Last Yr:", "goals_last_year"),
         ("Matches This Yr:", "matches_this_year"),
