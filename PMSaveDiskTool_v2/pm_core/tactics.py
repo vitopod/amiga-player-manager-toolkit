@@ -71,19 +71,53 @@ class Tactic:
 
     @property
     def description(self) -> str:
-        """ASCII description from the 928-byte PM variant (empty otherwise).
+        """Human-readable description text found in the trailer, or ``""``.
 
-        The convention observed in PM: first two trailer bytes are zero,
-        then a NUL-terminated ASCII blurb. Returns "" when the trailer has
-        no readable ASCII (e.g. 980-byte templates).
+        Scans the whole trailer for the longest contiguous run of printable
+        ASCII bytes (≥ 8 chars). In practice this picks up PM's NUL-padded
+        blurb starting two bytes into the 128-byte trailer (e.g. ``"2-4 an
+        attacking formation..."``) without needing to hardcode that offset.
+        Returns empty for stock Anco / KO2 980-byte templates, which carry
+        no such text.
         """
-        if len(self.trailer) < 3:
-            return ""
-        body = self.trailer[2:].split(b"\x00", 1)[0]
-        try:
-            return body.decode("ascii")
-        except UnicodeDecodeError:
-            return ""
+        best: bytes = b""
+        current = bytearray()
+        for b in self.trailer:
+            if 32 <= b < 127:
+                current.append(b)
+                continue
+            if len(current) > len(best):
+                best = bytes(current)
+            current.clear()
+        if len(current) > len(best):
+            best = bytes(current)
+        return best.decode("ascii") if len(best) >= 8 else ""
+
+    @property
+    def description_is_truncated(self) -> bool:
+        """Heuristic: did PM run out of room storing the description?
+
+        PM allocates a fixed ~126-char slot inside the 128-byte trailer and
+        writes plain text into it with no overflow handling — long blurbs
+        get chopped mid-word (e.g. ``"...wingers and mid"`` should be
+        ``"...midfielders"``). We call it truncated when the description is
+        long, ends on an alphanumeric character, and is followed by NUL
+        padding rather than proper sentence-terminating punctuation.
+        """
+        desc = self.description
+        if len(desc) < 40:
+            return False
+        last = desc[-1]
+        if not last.isalnum():
+            return False
+        encoded = desc.encode("ascii")
+        idx = self.trailer.find(encoded)
+        if idx < 0:
+            return False
+        # Anything past the description must be NUL padding — no follow-up
+        # text, no punctuation.
+        tail = self.trailer[idx + len(encoded):]
+        return len(tail) > 0 and all(b == 0 for b in tail)
 
 
 def parse_tac(buf: bytes) -> Tactic:

@@ -147,6 +147,61 @@ class TestRealDisk(unittest.TestCase):
                 return
         self.skipTest("no 980-byte tactic on disk")
 
+    def test_928_byte_description_flags_truncation(self):
+        # PM writes the blurb into a ~126-byte slot and stops mid-word.
+        # Detect that on real disk data rather than a synthetic buffer.
+        for name, buf in self.tacs:
+            if len(buf) == 928:
+                t = parse_tac(buf)
+                if t.description and t.description[-1].isalnum():
+                    self.assertTrue(t.description_is_truncated,
+                        f"{name}: description ends alnum ({t.description[-1]!r}) "
+                        f"but is_truncated=False")
+                    return
+        self.skipTest("no truncated 928-byte description on disk to check")
+
+
+class TestDescriptionParsing(unittest.TestCase):
+    """Synthetic tests pinning down the new longest-ASCII-run extractor."""
+
+    def _make(self, trailer: bytes) -> Tactic:
+        return parse_tac(b"\x00" * POSITIONS_SIZE + trailer)
+
+    def test_scans_past_leading_nul_padding(self):
+        t = self._make(b"\x00\x00hello world" + b"\x00" * 100)
+        self.assertEqual(t.description, "hello world")
+
+    def test_picks_longest_run_not_first(self):
+        t = self._make(b"abcd\x00an attacking formation\x00" + b"\x00" * 80)
+        self.assertEqual(t.description, "an attacking formation")
+
+    def test_ignores_runs_under_eight_chars(self):
+        # "1@1\\" seen in 5-3-2.tac trailer should not become the description.
+        t = self._make(b"\x00" * 50 + b"1@1\\" + b"\x00" * 30)
+        self.assertEqual(t.description, "")
+
+    def test_empty_trailer(self):
+        t = self._make(b"")
+        self.assertEqual(t.description, "")
+        self.assertFalse(t.description_is_truncated)
+
+    def test_truncation_detected_when_ends_midword(self):
+        # Text ends on alphanumeric, trailer pads with NULs → looks truncated.
+        t = self._make(b"\x00\x002-4 an attacking formation ending at mid"
+                       + b"\x00" * 50)
+        self.assertTrue(t.description_is_truncated)
+
+    def test_no_truncation_for_sentence_with_punctuation(self):
+        t = self._make(b"\x00\x00A complete sentence ending properly."
+                       + b"\x00" * 50)
+        self.assertFalse(t.description_is_truncated)
+
+    def test_short_descriptions_are_never_flagged_as_truncated(self):
+        t = self._make(b"\x00\x00short" + b"\x00" * 50)
+        # Under the 8-char floor — description is empty, so not "truncated".
+        self.assertEqual(t.description, "")
+        self.assertFalse(t.description_is_truncated)
+
 
 class TestJsonRoundtrip(unittest.TestCase):
     def test_empty_tactic_roundtrip(self):

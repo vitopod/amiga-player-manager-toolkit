@@ -287,6 +287,8 @@ Header: PLAYER# / NAME / SEED — the player's identity, fixed while you edit ot
 # Format notes
 
 - 928-byte tactics include a short ASCII description (shown below the pitch). 980-byte tactics are the stock Anco/KO2 templates — no description. The trailer is preserved byte-exact on save.
+- PM writes the description as `<midfielders>-<forwards> <blurb>` with the defender count implicit — so a 4-2-4 file reads `"2-4 an attacking…"` (2 mids + 4 forwards). That's PM's own label, not a parsing bug.
+- Descriptions are stored in a fixed ~126-char slot and get chopped mid-word. A trailing `…` in the description line means PM truncated the text on disk.
 - The `.tac` file does NOT encode which 11 players start a match — that lives inside the `.sav` team record and is still un-reversed.
 
 # See also

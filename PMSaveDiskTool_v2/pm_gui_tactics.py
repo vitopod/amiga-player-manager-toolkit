@@ -271,12 +271,14 @@ class TacticEditorWindow(tk.Toplevel):
         if self.tactic is None:
             self.desc_var.set("")
             return
-        desc = self.tactic.description
         size = self.tactic.total_size
+        shape = "PM-edited" if size == 928 else "stock KO2 template"
+        desc = self.tactic.description
         if desc:
-            self.desc_var.set(f"Description: {desc}    ({size} bytes)")
+            tail = "…" if self.tactic.description_is_truncated else ""
+            self.desc_var.set(f"In-game description: “{desc}{tail}”  ·  {size} bytes ({shape})")
         else:
-            self.desc_var.set(f"(no description — {size}-byte tactic)")
+            self.desc_var.set(f"No in-game description stored  ·  {size} bytes ({shape})")
 
     # ── Canvas drawing + drag ─────────────────────────────────
 
