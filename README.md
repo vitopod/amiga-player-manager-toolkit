@@ -16,6 +16,43 @@ stays byte-for-byte compatible with v1.2.
 
 ---
 
+## Screenshots
+
+**Main editor.** Player list on the left, tabbed detail pane on the right.
+The Skills tab shows the ten skill values with live colour-coded bars that
+update as you type. **⚠** flags players whose position-essential skills fall
+below 100; **★** marks market-available players (free agent or on the
+transfer list). Every column heading is clickable to sort.
+
+![Main editor — player list and live skill bars](docs/screenshots/main-editor.jpeg)
+
+**Compare Players.** Symmetric two-panel selector with a 10-axis radar
+chart on the left and side-by-side skill bars on the right. The bars
+highlight the leader in red per skill, and the footer summarises who wins
+how many. Right-click any player in the list → *Send to Compare…*, or
+**Tools → Compare Players…** (Cmd/Ctrl+P).
+
+![Compare Players — radar chart and skill bars](docs/screenshots/compare-players.jpeg)
+
+**Line-up Coach (BETA).** Heuristic XI suggestion on top of a 12-role
+taxonomy layered on PM's skill fields, scored by a composite of skill,
+role fit, morale, fatigue, card risk, and form. The left panel ranks every
+formation; the right panel shows the starting XI and two bench reserves.
+Scoring is a heuristic — PM's match-engine weights are not
+reverse-engineered — so treat output as *suggested*, not *optimal*.
+
+![Line-up Coach — BETA XI suggestion for Napoli](docs/screenshots/lineup-coach.jpeg)
+
+**Tactic Editor.** Opens any `.tac` file on the save disk and shows the
+shirt positions for the selected zone, overlaid on a pitch. Dashed arrows
+indicate how each shirt moves between the current zone and the previous
+one — shift-click the pitch to switch zones. Saving writes the edited zone
+back to the `.tac` file inside the ADF.
+
+![Tactic Editor — 4-2-4 zone view with movement arrows](docs/screenshots/tactic-editor.jpeg)
+
+---
+
 ## Requirements
 
 - Python 3.10+
