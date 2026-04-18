@@ -4,6 +4,21 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.15] — 2026-04-18
+
+### Added
+- **Find in Help… (cross-topic search for `?` content).** New
+  `Help → Find in Help…` entry (`Cmd/Ctrl+?`) opens a search window
+  that scans every in-app help topic (main window, Line-up Coach,
+  Byte Workbench, …) from a single box. Live filtering as you type;
+  results list shows `topic — matching line`. Enter opens the top hit,
+  double-click opens any row — and the target `HelpDialog` pre-
+  highlights every occurrence of the query and scrolls to the first.
+  With an empty query the window lists every help topic as an index
+  so users can browse without knowing which surface owns the term.
+  Search lives in `pm_core.help_text.search`, the window in
+  `pm_gui_help_search.HelpSearchWindow` — both independently testable.
+
 ## [2.2.14] — 2026-04-18
 
 ### Changed

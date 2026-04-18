@@ -273,3 +273,66 @@ def get(topic: str) -> tuple[str, str]:
     """Return (title, body) for ``topic``; raises KeyError if unknown."""
     entry = HELP[topic]
     return entry["title"], entry["body"]
+
+
+class SearchHit(tuple):
+    """One match of a query inside the help corpus.
+
+    Fields: ``topic`` (key into ``HELP``), ``title`` (of that topic),
+    ``line`` (full matching body line, stripped of markup prefixes so it
+    reads cleanly in a results list), ``line_no`` (1-based line number
+    inside the topic body — useful for ordering).
+    """
+
+    __slots__ = ()
+
+    def __new__(cls, topic: str, title: str, line: str, line_no: int):
+        return super().__new__(cls, (topic, title, line, line_no))
+
+    @property
+    def topic(self) -> str:
+        return self[0]
+
+    @property
+    def title(self) -> str:
+        return self[1]
+
+    @property
+    def line(self) -> str:
+        return self[2]
+
+    @property
+    def line_no(self) -> int:
+        return self[3]
+
+
+def _strip_markup(line: str) -> str:
+    """Remove the leading ``# ``, ``## ``, or ``- `` marker for display."""
+    for prefix in ("## ", "# ", "- "):
+        if line.startswith(prefix):
+            return line[len(prefix):]
+    return line
+
+
+def search(query: str, *, max_hits_per_topic: int = 8) -> list[SearchHit]:
+    """Case-insensitive substring search across every topic body.
+
+    Returns one ``SearchHit`` per matching line, ordered by topic
+    (insertion order of ``HELP``) then line number. Blank and empty
+    queries return ``[]`` — callers should not treat that as an error.
+    ``max_hits_per_topic`` caps the per-topic result count so one huge
+    topic can't dominate the list.
+    """
+    q = query.strip().lower()
+    if not q:
+        return []
+    hits: list[SearchHit] = []
+    for topic, entry in HELP.items():
+        per_topic = 0
+        for i, raw in enumerate(entry["body"].splitlines(), start=1):
+            if q in raw.lower():
+                hits.append(SearchHit(topic, entry["title"], _strip_markup(raw), i))
+                per_topic += 1
+                if per_topic >= max_hits_per_topic:
+                    break
+    return hits

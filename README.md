@@ -41,7 +41,7 @@ git pull
 Or to pin to a specific tag:
 
 ```
-git checkout v2.2.14
+git checkout v2.2.15
 ```
 
 **If you downloaded a release zip:**
@@ -109,6 +109,7 @@ python3 PMSaveDiskTool_v2/pm_cli.py list-players your_save.adf --save pm1.sav --
 - **Byte Workbench** — reverse-engineering tool for the player record: raw byte dump with field labels, value histogram, and bit-level diff between two player sets. GUI: **Tools → Byte Workbench...**. CLI: `pm_cli.py byte-stats`, `pm_cli.py byte-diff`.
 - **Line-up Coach (BETA)** — suggests a starting XI using a 12-role taxonomy layered on PM's skill fields; ranks formations by a composite of skill, role fit, morale, and form. Also picks two bench reserves (backup goalkeeper plus best remaining outfielder). BETA: scoring is a heuristic, not a reconstruction of PM's match engine. GUI: **Tools → Line-up Coach (BETA)...**. CLI: `pm_cli.py suggest-xi` (bench size via `--reserves N`).
 - **Compare Players** — graphical side-by-side comparison: radar chart (10-axis spider chart) + skill bars for any two players. Right-click any player in the list → **Send to Compare…**, or **Tools → Compare Players…** (Cmd/Ctrl+P).
+- **Find in Help** — cross-topic search for the in-app `?` content. **Help → Find in Help…** (Cmd/Ctrl+?) searches every help surface at once; Enter opens the top hit with matches pre-highlighted.
 - **Export** players as CSV or JSON for use in spreadsheets or external tools. GUI: **File → Export Players...**. CLI: `pm_cli.py export-players --format csv|json`.
 - View and edit all player attributes: age, position, skills, career stats
 - **Live skill bars** — the Skills tab shows a colour-coded mini-bar next to each attribute that updates in real time as you edit values.

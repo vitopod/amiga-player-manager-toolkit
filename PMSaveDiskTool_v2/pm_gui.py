@@ -31,6 +31,7 @@ from pm_gui_theme import (
     PAL, FONT_DATA, _retro, apply_theme, set_theme, set_use_system_font,
 )
 from pm_gui_help import HelpDialog, help_button
+from pm_gui_help_search import HelpSearchWindow
 from pm_gui_career import CareerTrackerWindow
 from pm_gui_workbench import ByteWorkbenchWindow
 from pm_gui_lineup import LineupCoachWindow
@@ -369,6 +370,10 @@ class PMSaveDiskToolGUI:
 
         # Help
         help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="Find in Help…",
+                              command=self._open_help_search,
+                              accelerator=f"{MOD_LABEL}+?")
+        help_menu.add_separator()
         help_menu.add_command(label="Open Manual", command=self._open_manual)
         help_menu.add_command(label="Check for Updates…",
                               command=self._check_for_updates)
@@ -393,6 +398,7 @@ class PMSaveDiskToolGUI:
         bind(f"<{MOD}-b>", lambda e: self._open_byte_workbench())
         bind(f"<{MOD}-l>", lambda e: self._open_lineup_coach())
         bind(f"<{MOD}-p>", lambda e: self._open_compare())
+        bind(f"<{MOD}-question>", lambda e: self._open_help_search())
         bind(f"<{MOD}-y>", lambda e: self._set_view("— Young Talents (≤21)"))
         bind(f"<{MOD}-Return>", lambda e: self._apply_changes())
         bind("<Escape>", lambda e: self._on_escape())
@@ -1220,6 +1226,9 @@ class PMSaveDiskToolGUI:
             messagebox.showwarning("Warning", "Open a save disk first.")
             return
         CareerTrackerWindow(self.root, self.adf, self.adf_path, self.game_disk)
+
+    def _open_help_search(self):
+        HelpSearchWindow(self.root)
 
     def _open_byte_workbench(self):
         if not self.slot:

@@ -80,7 +80,7 @@ installer, no pip package. Upgrading means replacing the folder.
 
 ```
 git pull                 # latest on main
-git checkout v2.2.14     # or any tagged release
+git checkout v2.2.15     # or any tagged release
 ```
 
 **If you downloaded a release zip:**
@@ -159,6 +159,7 @@ The GUI uses a game-inspired dark theme — deep navy background, amber data val
 | Tools | Byte Workbench… | Cmd/Ctrl+B |
 | Tools | Line-up Coach (BETA)… | Cmd/Ctrl+L |
 | Tools | Compare Players… | Cmd/Ctrl+P |
+| Help | Find in Help… | Cmd/Ctrl+? |
 | Help | Open Manual | — |
 
 On macOS **About** lives in the apple menu and **Quit** is Cmd+Q.
@@ -456,6 +457,25 @@ without closing and reopening.
 |-------|--------------|
 | Radar | Ten-spoke spider chart. Each spoke = one skill, scaled 0–200. Player A = blue; Player B = red. Both polygons are outline-only so they don't obscure each other. |
 | Bars | Side-by-side horizontal bars, one row per skill. Scale 0–200 — no skill can reach the end of a full bar at the game's maximum value. The winning value for each row is highlighted brighter. |
+
+---
+
+### Find in Help
+
+**Help → Find in Help…** (Cmd/Ctrl+?) opens a search window that scans
+every in-app help topic — the main window, Line-up Coach, Byte Workbench,
+and any future surfaces — from a single box. Live filtering as you type;
+results show **Topic** and the matching line as context.
+
+- **Enter** opens the top hit.
+- **Double-click** any row opens its topic with every match highlighted
+  and the view scrolled to the first one.
+- With an empty query the window lists every help topic as an index, so
+  you can browse even when you don't know what term to search for.
+
+This is the fastest way to re-find a feature whose name you almost
+remember — e.g. searching "transfer" lands on the Market availability (★)
+explanation without you having to open the right `?` button first.
 
 ---
 

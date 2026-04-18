@@ -22,7 +22,7 @@ class HelpDialog(tk.Toplevel):
     ``tk.Text`` widget sharing the main-window palette.
     """
 
-    def __init__(self, parent, topic: str):
+    def __init__(self, parent, topic: str, highlight: str | None = None):
         super().__init__(parent)
         title, body = help_text.get(topic)
         self.title(title)
@@ -59,6 +59,9 @@ class HelpDialog(tk.Toplevel):
         text.tag_configure("bullet", foreground=PAL["fg_data"],
                            lmargin1=16, lmargin2=32, spacing3=2)
         text.tag_configure("para", foreground=PAL["fg_data"], spacing3=4)
+        text.tag_configure("search-hit",
+                           background=PAL["fg_title"],
+                           foreground=PAL["bg"])
 
         for line in body.splitlines():
             if line.startswith("# "):
@@ -71,6 +74,9 @@ class HelpDialog(tk.Toplevel):
                 text.insert("end", "\n")
             else:
                 text.insert("end", line + "\n", "para")
+
+        if highlight and highlight.strip():
+            self._tag_matches(text, highlight.strip())
 
         text.configure(state="disabled")
 
@@ -85,6 +91,25 @@ class HelpDialog(tk.Toplevel):
         close.pack(side=tk.BOTTOM, pady=(0, 8))
 
         self.bind("<Escape>", lambda e: self.destroy())
+
+    @staticmethod
+    def _tag_matches(text: tk.Text, query: str) -> None:
+        """Tag every case-insensitive match and scroll to the first one."""
+        first: str | None = None
+        start = "1.0"
+        length = tk.IntVar()
+        while True:
+            idx = text.search(query, start, stopindex="end",
+                              nocase=True, count=length)
+            if not idx:
+                break
+            end = f"{idx}+{length.get()}c"
+            text.tag_add("search-hit", idx, end)
+            if first is None:
+                first = idx
+            start = end
+        if first is not None:
+            text.see(first)
 
 
 def help_button(parent, topic: str) -> tk.Button:
