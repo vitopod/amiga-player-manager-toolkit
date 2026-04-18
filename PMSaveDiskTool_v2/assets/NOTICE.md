@@ -1,7 +1,7 @@
 # Third-party assets
 
 This directory contains assets that are **not** covered by the MIT license
-that applies to the rest of the PMSaveDiskToolkit source code. Each asset's
+that applies to the rest of the Player Manager Toolkit source code. Each asset's
 own license is recorded below. If you redistribute or modify the toolkit,
 you must comply with these separate terms.
 

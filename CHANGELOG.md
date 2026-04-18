@@ -1,8 +1,27 @@
 # Changelog
 
-All notable changes to PMSaveDiskToolkit are recorded here.
+All notable changes to Player Manager Toolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.4.5] — 2026-04-18
+
+### Changed
+- **Renamed the project from "PMSaveDiskToolkit" to "Player Manager
+  Toolkit".** This is now the official product name, shown in the
+  window title bar, the About dialog (and its macOS app-menu entry),
+  the `--version` output, the update-check opt-in prompt, and every
+  user-facing doc (README, MANUAL, CHANGELOG header, NOTICE). The new
+  name reflects what the toolkit actually does: the save-disk editor is
+  only one of many surfaces now (Squad Analyst, Career Tracker, Byte
+  Workbench, Line-up Coach, Compare Players, Tactic Editor, …).
+- **Preserved** for clarity of attribution and code identity:
+  **PMSaveDiskTool v1.2** by UltimateBinary — still credited by name as
+  the original Windows tool we ported from; the "Windows PMSaveDiskTool
+  PE32" references in `pm_core/names.py` (naming the binary the hash
+  algorithm was reversed from); the `PMSaveDiskTool_v2/` and
+  `PMSaveDiskTool_v1.2/` folder paths; and the `PMSaveDiskToolGUI`
+  Python class name.
 
 ## [2.4.4] — 2026-04-18
 

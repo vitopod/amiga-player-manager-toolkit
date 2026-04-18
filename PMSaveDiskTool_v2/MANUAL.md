@@ -1,8 +1,8 @@
-# PMSaveDiskToolkit — User Manual
+# Player Manager Toolkit — User Manual
 
 ## What this tool does
 
-PMSaveDiskToolkit lets you open, inspect, and edit the save disk for the Amiga
+Player Manager Toolkit lets you open, inspect, and edit the save disk for the Amiga
 game **Player Manager** (Anco, 1990). The save disk is a standard ADF floppy
 image that holds up to seven independent save slots (pm1.sav–pm7.sav). Each
 slot stores 44 team rosters and a database of up to 1536 players, each
@@ -73,14 +73,14 @@ are unaffected: `PM1.nam` still wins.
 
 ## Upgrading from a previous version
 
-PMSaveDiskToolkit is distributed as a folder of Python files — no
+Player Manager Toolkit is distributed as a folder of Python files — no
 installer, no pip package. Upgrading means replacing the folder.
 
 **If you cloned with git:**
 
 ```
 git pull                 # latest on main
-git checkout v2.4.4      # or any tagged release
+git checkout v2.4.5      # or any tagged release
 ```
 
 **If you downloaded a release zip:**
@@ -1093,7 +1093,7 @@ corrupt the file table.
 1. Copy `Save1_PM.adf` (and optionally `PlayerManagerITA.adf`) from the MiSTer
    SD card to your Mac/PC.
 2. **Make a backup copy of the save disk before editing.**
-3. Open the copy in PMSaveDiskToolkit and make your changes.
+3. Open the copy in Player Manager Toolkit and make your changes.
 4. Save. The `.bak` sibling protects the pre-edit version.
 5. Copy the modified ADF back to the SD card.
 6. In the Minimig core, load the save disk as DF1 (second drive).
@@ -1156,7 +1156,7 @@ same offset but a different surname list.
 
 ### Compatibility
 
-PMSaveDiskToolkit is byte-for-byte compatible with PMSaveDiskTool v1.2 by
+Player Manager Toolkit is byte-for-byte compatible with PMSaveDiskTool v1.2 by
 UltimateBinary. A round-trip read+write with no edits produces an identical
 file. The field layout and naming conventions used here follow UltimateBinary's
 original documentation.
@@ -1299,7 +1299,7 @@ the Line-up Coach's morale weighting.
 ---
 
 > **A note on what's verified.** Player Manager's match engine and AI were
-> never reverse-engineered — PMSaveDiskToolkit can tell you what bytes a
+> never reverse-engineered — Player Manager Toolkit can tell you what bytes a
 > player record contains, but it cannot tell you exactly how the game *uses*
 > those bytes during play. The tips below that touch tool-verified mechanics
 > (free agents, transfer-list flag, save-file editing) are solid. Tips that
@@ -1367,7 +1367,7 @@ each transfer window.
 
 ---
 
-### Editor tips (PMSaveDiskToolkit)
+### Editor tips (Player Manager Toolkit)
 
 **Fix an injury instantly.** *(Verified byte; in-engine effect expected but
 untested.)* Set *Injury weeks* to 0 in the Status tab and save. The byte is

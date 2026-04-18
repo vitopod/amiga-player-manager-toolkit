@@ -38,7 +38,7 @@ class TestCLISmoke(unittest.TestCase):
     def test_version(self):
         r = _run("--version")
         self.assertSuccess(r)
-        self.assertIn("PMSaveDiskTool", r.stdout)
+        self.assertIn("Player Manager Toolkit", r.stdout)
 
     def test_list_saves(self):
         r = _run("list-saves", _ADF)

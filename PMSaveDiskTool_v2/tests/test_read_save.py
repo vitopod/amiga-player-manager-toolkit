@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests verifying PMSaveDiskToolkit against the real Save1_PM.adf file.
+"""Tests verifying Player Manager Toolkit against the real Save1_PM.adf file.
 
 Run: python -m pytest tests/ -v   (from PMSaveDiskTool_v2 directory)
   or: python tests/test_read_save.py

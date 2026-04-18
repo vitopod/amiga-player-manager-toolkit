@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Cross-platform tkinter GUI for PMSaveDiskToolkit.
+"""Cross-platform tkinter GUI for Player Manager Toolkit.
 
 Mirrors the workflow of the original Windows PMSaveDiskTool:
 Open ADF -> Select save slot -> Browse players by team -> Edit attributes -> Save.
@@ -172,7 +172,7 @@ class PMSaveDiskToolGUI:
         # macOS apple menu (holds About per platform convention).
         if is_mac:
             app_menu = tk.Menu(menubar, name="apple", tearoff=0)
-            app_menu.add_command(label="About PMSaveDiskTool",
+            app_menu.add_command(label="About Player Manager Toolkit",
                                  command=self._show_about)
             menubar.add_cascade(menu=app_menu)
 
@@ -1102,11 +1102,11 @@ class PMSaveDiskToolGUI:
 
     def _update_title(self):
         if self.adf_path:
-            base = f"PMSaveDiskToolkit — {os.path.basename(self.adf_path)}"
+            base = f"Player Manager Toolkit — {os.path.basename(self.adf_path)}"
             if self.dirty:
                 base += " •"
         else:
-            base = f"PMSaveDiskToolkit — {__version__}"
+            base = f"Player Manager Toolkit — {__version__}"
         self.root.title(base)
         self._refresh_title_band()
 
@@ -1334,7 +1334,7 @@ class PMSaveDiskToolGUI:
     def _prompt_update_optin(self, state: dict):
         answer = messagebox.askyesno(
             "Check for updates?",
-            "Should PMSaveDiskToolkit check GitHub once a day for new "
+            "Should Player Manager Toolkit check GitHub once a day for new "
             "releases?\n\n"
             "It never sends anything about you or your save files — just a "
             "single HTTPS request to the public release feed.\n\n"
@@ -1401,14 +1401,14 @@ class PMSaveDiskToolGUI:
 
     def _show_about(self):
         top = tk.Toplevel(self.root)
-        top.title("About PMSaveDiskTool")
+        top.title("About Player Manager Toolkit")
         top.resizable(False, False)
         top.transient(self.root)
 
         body = ttk.Frame(top, padding=(24, 20, 24, 16))
         body.pack()
 
-        ttk.Label(body, text="PMSaveDiskToolkit",
+        ttk.Label(body, text="Player Manager Toolkit",
                   font=("TkDefaultFont", 14, "bold")).pack(anchor="w")
         ttk.Label(body, text=f"Version {__version__}",
                   foreground=PAL["fg_label"]).pack(anchor="w", pady=(0, 12))

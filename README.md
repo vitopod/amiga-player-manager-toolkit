@@ -1,4 +1,4 @@
-# PMSaveDiskToolkit
+# Player Manager Toolkit
 
 Cross-platform save disk editor and analytics workbench for **Player Manager**
 (Anco, 1990) on Amiga.
@@ -41,7 +41,7 @@ git pull
 Or to pin to a specific tag:
 
 ```
-git checkout v2.4.4
+git checkout v2.4.5
 ```
 
 **If you downloaded a release zip:**
