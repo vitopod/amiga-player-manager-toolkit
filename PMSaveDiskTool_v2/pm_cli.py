@@ -25,6 +25,7 @@ from pm_core.player import (
 from pm_core.names import GameDisk
 from pm_core import workbench
 from pm_core import lineup
+from pm_core import tactics
 
 
 XI_FILTERS = {
@@ -698,6 +699,51 @@ def cmd_show_tactics(args):
         print()
 
 
+def cmd_edit_tactics(args):
+    """Dump a `.tac` file as JSON, or import edited JSON back into the ADF.
+
+    Two modes, picked by the flags:
+      --dump           Print the tactic as JSON to stdout.
+      --import FILE    Read JSON from FILE and write it back to the ADF entry.
+    """
+    adf = ADF.load(args.adf)
+    try:
+        entry = adf.find_file(args.file)
+    except FileNotFoundError as exc:
+        raise SystemExit(str(exc))
+    if not entry.name.lower().endswith(".tac"):
+        raise SystemExit(f"{entry.name!r} is not a .tac file")
+
+    buf = adf.read_at(entry.byte_offset, entry.size)
+    tactic = tactics.parse_tac(buf)
+
+    if args.dump:
+        json.dump(tactics.tactic_to_json(tactic), sys.stdout, indent=2)
+        sys.stdout.write("\n")
+        return
+
+    if not args.import_from:
+        raise SystemExit("specify --dump or --import PATH")
+
+    with open(args.import_from, "r", encoding="utf-8") as f:
+        new_tactic = tactics.tactic_from_json(json.load(f))
+    new_buf = tactics.serialize_tac(new_tactic)
+    if len(new_buf) != entry.size:
+        raise SystemExit(
+            f"imported tactic size {len(new_buf)} does not match on-disk "
+            f"entry size {entry.size}; keep the trailer unchanged"
+        )
+
+    adf.write_at(entry.byte_offset, new_buf)
+    dest = args.output or args.adf
+    if dest == args.adf:
+        bak = ensure_backup(dest)
+        if bak:
+            print(f"Backup created: {bak}")
+    adf.save(dest)
+    print(f"Wrote {entry.name} ({len(new_buf)} bytes) to {dest}")
+
+
 def cmd_edit_player(args):
     adf = ADF.load(args.adf)
     slot = SaveSlot(adf, args.save)
@@ -891,6 +937,21 @@ def main():
     p_st.add_argument("--limit", type=int, default=64,
                       help="Max differing bytes to list per file (default 64)")
 
+    # edit-tactics
+    p_et = sub.add_parser(
+        "edit-tactics",
+        help="Dump a .tac file as JSON or import an edited JSON back into the ADF",
+    )
+    p_et.add_argument("adf", help="Path to the save-disk ADF image")
+    p_et.add_argument("--file", metavar="NAME", required=True,
+                      help="Tactic file name (e.g. 4-2-4.tac)")
+    p_et.add_argument("--dump", action="store_true",
+                      help="Print the tactic as JSON to stdout")
+    p_et.add_argument("--import", dest="import_from", metavar="PATH",
+                      help="Read JSON from PATH and write back to the ADF entry")
+    p_et.add_argument("--output", "-o",
+                      help="Output ADF path (default: overwrite input)")
+
     # edit-player
     p_ep = sub.add_parser("edit-player", help="Edit player attributes")
     p_ep.add_argument("adf", help="Path to the ADF disk image")
@@ -939,6 +1000,7 @@ def main():
         "byte-diff": cmd_byte_diff,
         "suggest-xi": cmd_suggest_xi,
         "show-tactics": cmd_show_tactics,
+        "edit-tactics": cmd_edit_tactics,
     }
     commands[args.command](args)
 

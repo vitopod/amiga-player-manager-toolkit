@@ -266,6 +266,35 @@ Header: PLAYER# / NAME / SEED — the player's identity, fixed while you edit ot
 - CLAUDE.md → the section on FIELD_LAYOUT as the single source of truth for byte labels.
 """,
     },
+
+    "tactic_editor": {
+        "title": "Tactic Editor — Help",
+        "body": """\
+# What it does
+
+- Edits the `.tac` tactic files stored on a Player Manager save disk.
+- Each `.tac` holds 20 pitch-zone snapshots — for every zone (area1..area12, kickoff, goalkick, corners), where each shirt #2..#11 is supposed to stand. The goalkeeper (#1) is fixed by the engine and never stored.
+- Drag a shirt on the pitch to change its target position for the current zone. Switching zones shows that zone's arrangement.
+
+# How to use
+
+- File: pick a `.tac` entry on the loaded disk. PM ships 4-2-4, 4-3-3, 4-4-2, 5-3-2 plus per-save variants (e.g. `4-2-4a.tac`).
+- Zone: pick one of the 20 zones. The shirts reposition to that zone's coordinates and the area this zone covers is highlighted on the pitch.
+- Drag a circle to move a shirt. The new (x, y) is committed in world coordinates on mouse release.
+- Revert zone / Revert file: discard edits to the current zone or the whole file since the last save.
+- Save to ADF: writes the tactic back through the normal `.bak` path (a sibling `.adf.bak` is created on first edit).
+
+# Format notes
+
+- 928-byte tactics include a short ASCII description (shown below the pitch). 980-byte tactics are the stock Anco/KO2 templates — no description. The trailer is preserved byte-exact on save.
+- The `.tac` file does NOT encode which 11 players start a match — that lives inside the `.sav` team record and is still un-reversed.
+
+# See also
+
+- MANUAL.md → "show-tactics" and "edit-tactics" (CLI) for scripting.
+- reference: github.com/ssenegas/tacticaleditor (the KO2 editor the format decoding cross-checked against).
+""",
+    },
 }
 
 

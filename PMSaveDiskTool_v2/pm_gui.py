@@ -36,6 +36,7 @@ from pm_gui_career import CareerTrackerWindow
 from pm_gui_workbench import ByteWorkbenchWindow
 from pm_gui_lineup import LineupCoachWindow
 from pm_gui_compare import PlayerCompareWindow
+from pm_gui_tactics import TacticEditorWindow
 from pm_gui_welcome import WelcomeDialog
 from pm_gui_splash import show_splash
 from pm_gui_preferences import open_preferences
@@ -254,6 +255,9 @@ class PMSaveDiskToolGUI:
         tools_menu.add_command(label="Compare Players…",
                                command=self._open_compare,
                                accelerator=f"{MOD_LABEL}+P")
+        tools_menu.add_command(label="Tactic Editor…",
+                               command=self._open_tactic_editor,
+                               accelerator=f"{MOD_LABEL}+K")
         menubar.add_cascade(label="Tools", menu=tools_menu)
 
         # Help
@@ -286,6 +290,7 @@ class PMSaveDiskToolGUI:
         bind(f"<{MOD}-b>", lambda e: self._open_byte_workbench())
         bind(f"<{MOD}-l>", lambda e: self._open_lineup_coach())
         bind(f"<{MOD}-p>", lambda e: self._open_compare())
+        bind(f"<{MOD}-k>", lambda e: self._open_tactic_editor())
         bind(f"<{MOD}-question>", lambda e: self._open_help_search())
         bind(f"<{MOD}-y>", lambda e: self._set_view("— Young Talents (≤21)"))
         bind(f"<{MOD}-Return>", lambda e: self._apply_changes())
@@ -1129,6 +1134,12 @@ class PMSaveDiskToolGUI:
             messagebox.showwarning("Warning", "Open a save disk first.")
             return
         LineupCoachWindow(self.root, self.slot, self.game_disk)
+
+    def _open_tactic_editor(self):
+        if not self.adf or not self.adf_path:
+            messagebox.showwarning("Warning", "Open a save disk first.")
+            return
+        TacticEditorWindow(self.root, self.adf, self.adf_path)
 
     def _open_compare(self, player=None):
         if not self.slot:

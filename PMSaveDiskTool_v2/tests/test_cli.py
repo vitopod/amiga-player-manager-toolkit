@@ -228,6 +228,39 @@ class TestCLISmoke(unittest.TestCase):
                  "--weights", "bogus-no-equals")
         self.assertNotEqual(r.returncode, 0)
 
+    def test_edit_tactics_dump_is_valid_json(self):
+        r = _run("edit-tactics", _ADF, "--file", "4-2-4.tac", "--dump")
+        self.assertSuccess(r)
+        doc = json.loads(r.stdout)
+        self.assertIn("zones", doc)
+        self.assertIn("trailer_hex", doc)
+        self.assertEqual(len(doc["zones"]), 20)
+
+    def test_edit_tactics_import_roundtrip_preserves_bytes(self):
+        with tempfile.TemporaryDirectory() as td:
+            adf_copy = os.path.join(td, "save.adf")
+            shutil.copy(_ADF, adf_copy)
+            original = open(adf_copy, "rb").read()
+
+            dump = _run("edit-tactics", adf_copy, "--file", "4-2-4.tac", "--dump")
+            self.assertSuccess(dump)
+            json_path = os.path.join(td, "tac.json")
+            with open(json_path, "w", encoding="utf-8") as f:
+                f.write(dump.stdout)
+
+            r = _run("edit-tactics", adf_copy, "--file", "4-2-4.tac",
+                     "--import", json_path)
+            self.assertSuccess(r)
+            self.assertTrue(os.path.isfile(adf_copy + ".bak"))
+
+            after = open(adf_copy, "rb").read()
+            self.assertEqual(original, after,
+                             "noop import must be byte-identical to input")
+
+    def test_edit_tactics_rejects_non_tac_file(self):
+        r = _run("edit-tactics", _ADF, "--file", "pm1.sav", "--dump")
+        self.assertNotEqual(r.returncode, 0)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

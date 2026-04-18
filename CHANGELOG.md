@@ -4,6 +4,42 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] — 2026-04-18
+
+### Added
+- **`.tac` tactic editor.** The `.tac` file format is now decoded:
+  20 pitch-zone snapshots × 10 players × (x, y) 16-bit big-endian
+  coordinates (800 bytes), plus a variable trailer (preserved byte-exact)
+  that carries either an ASCII formation description — PM's 928-byte
+  shape — or the stock Anco / KO2 per-formation metadata of the 980-byte
+  shape. Shirt #1 (goalkeeper) is implicit and never stored. The layout
+  was cross-checked against the Java editor at
+  `github.com/ssenegas/tacticaleditor` and verified round-trip byte-exact
+  on every `.tac` entry present on Save1_PM.adf (both 928- and 980-byte
+  variants).
+- **`pm_core.tactics`** — pure library with `parse_tac`, `serialize_tac`,
+  `tactic_to_json`, `tactic_from_json`, and a `Tactic` dataclass keyed by
+  zone name → shirt number → `(x, y)`.
+- **Tools → Tactic Editor… (Cmd/Ctrl+K).** New window that lists every
+  `.tac` on the loaded disk, lets you pick one, cycle through the 20
+  pitch zones, and drag shirts #2–#11 to new target positions. The area
+  the selected zone covers is highlighted on the pitch so you can see
+  where each zone lives on the field. Save writes through the normal
+  `.bak` flow; the 128/180-byte trailer is preserved byte-for-byte.
+- **`pm_cli edit-tactics ADF --file NAME --dump | --import PATH`** —
+  CLI round-trip for scripting. `--dump` emits human-editable JSON to
+  stdout; `--import` reads JSON and writes back through the ADF with a
+  sibling `.bak` created on first edit. Refuses to write if the imported
+  tactic's total size doesn't match the on-disk entry.
+
+### Notes
+- The `.tac` file does **not** encode which 11 players are starting —
+  that lives inside the `.sav` team record and is still un-reversed.
+  The deferred "Line-up Coach → apply suggested XI to disk" work now
+  needs a `.sav` capture diff rather than a `.tac` one. Until then, the
+  Tactic Editor shipped here lets you reshape the zone geometry your
+  team plays with, which is the other half of the tactical loop.
+
 ## [2.3.1] — 2026-04-18
 
 ### Changed
