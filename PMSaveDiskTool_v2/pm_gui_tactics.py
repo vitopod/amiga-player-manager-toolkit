@@ -12,6 +12,7 @@ Position accuracy for editing is not affected: what you drag is what gets
 written byte-for-byte.
 """
 
+import math
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -31,6 +32,13 @@ _WORLD_H = 1536
 _CANVAS_W = 660
 _CANVAS_H = 440
 _SHIRT_RADIUS = 14
+
+# Movement-indicator overlay options (values stored in the compare combobox).
+_COMPARE_NONE = "(none)"
+_COMPARE_PREV = "(previous zone)"
+# Visible when movement vector is shorter than this in canvas pixels — skipped.
+_MOVEMENT_MIN_PX = 6
+_MOVEMENT_COLOR = "#9ab59d"  # muted sage grey-green — recedes on the pitch.
 
 
 def _grid_box(col: int, row: int) -> tuple[int, int, int, int]:
@@ -92,6 +100,7 @@ class TacticEditorWindow(tk.Toplevel):
         self.tac_entry = None
         self.tac_original: bytes | None = None
         self.current_zone = tactics.ZONE_NAMES[0]
+        self.previous_zone: str | None = None
         self.dirty = False
 
         # Canvas item ids for each shirt (circle, text).
@@ -131,6 +140,16 @@ class TacticEditorWindow(tk.Toplevel):
 
         ttk.Button(ctrl, text="Revert zone",
                    command=self._revert_current_zone).pack(side=tk.LEFT)
+
+        ttk.Label(ctrl, text="Compare to:").pack(side=tk.LEFT, padx=(16, 0))
+        self.compare_var = tk.StringVar(value=_COMPARE_PREV)
+        compare_values = [_COMPARE_NONE, _COMPARE_PREV, *tactics.ZONE_NAMES]
+        self.compare_cb = ttk.Combobox(ctrl, textvariable=self.compare_var,
+                                       values=compare_values,
+                                       state="readonly", width=17)
+        self.compare_cb.pack(side=tk.LEFT, padx=(4, 0))
+        self.compare_cb.bind("<<ComboboxSelected>>",
+                             lambda _e: self._draw_pitch())
 
         # Pack the footer and description BEFORE the canvas so they're always
         # visible even when the canvas's natural height pushes past the window
@@ -191,7 +210,8 @@ class TacticEditorWindow(tk.Toplevel):
 
     def _on_zone_selected(self, _event=None):
         zone = self.zone_var.get()
-        if zone in tactics.ZONE_NAMES:
+        if zone in tactics.ZONE_NAMES and zone != self.current_zone:
+            self.previous_zone = self.current_zone
             self.current_zone = zone
             self._draw_pitch()
 
@@ -204,6 +224,8 @@ class TacticEditorWindow(tk.Toplevel):
         self.tac_name = name
         self.tac_original = buf
         self.tactic = tactics.parse_tac(buf)
+        # Comparisons across files aren't meaningful — reset the reference.
+        self.previous_zone = None
         self._set_dirty(False)
         self._update_description()
         self._draw_pitch()
@@ -348,6 +370,10 @@ class TacticEditorWindow(tk.Toplevel):
         if self.tactic is None:
             return
 
+        # Movement indicators are drawn BEFORE the shirts so the arrowheads
+        # tuck under the shirt outline instead of floating on top of it.
+        self._draw_movement_overlay()
+
         positions = self.tactic.positions[self.current_zone]
         for shirt in tactics.SHIRT_NUMBERS:
             x, y = positions[shirt]
@@ -364,6 +390,62 @@ class TacticEditorWindow(tk.Toplevel):
                 tags=(f"shirt-{shirt}", "shirt"),
             )
             self.shirt_items[shirt] = (oval, text)
+
+    def _resolve_compare_zone(self) -> str | None:
+        """Which zone the overlay should draw ghosts from, or ``None``."""
+        choice = self.compare_var.get() if hasattr(self, "compare_var") else _COMPARE_PREV
+        if choice == _COMPARE_NONE:
+            return None
+        if choice == _COMPARE_PREV:
+            return self.previous_zone
+        return choice if choice in tactics.ZONE_NAMES else None
+
+    def _draw_movement_overlay(self):
+        """Draw ghost rings + dashed arrows for shirts that moved between
+        the reference zone and the current one."""
+        if self.tactic is None:
+            return
+        ref_zone = self._resolve_compare_zone()
+        if ref_zone is None or ref_zone == self.current_zone:
+            return
+        ref_pos = self.tactic.positions.get(ref_zone)
+        cur_pos = self.tactic.positions[self.current_zone]
+        if ref_pos is None:
+            return
+
+        for shirt in tactics.SHIRT_NUMBERS:
+            cx, cy = self._world_to_canvas(*cur_pos[shirt])
+            px, py = self._world_to_canvas(*ref_pos[shirt])
+            dx, dy = cx - px, cy - py
+            dist = math.hypot(dx, dy)
+            if dist < _MOVEMENT_MIN_PX:
+                continue
+            r = 5
+            self.canvas.create_oval(
+                px - r, py - r, px + r, py + r,
+                outline=_MOVEMENT_COLOR, width=1,
+            )
+            # Trim the arrow tail a touch past the ghost ring and stop it
+            # short of the shirt centre so the arrowhead lands on the shirt
+            # edge, not buried behind the number.
+            ux, uy = dx / dist, dy / dist
+            start_x = px + ux * (r + 1)
+            start_y = py + uy * (r + 1)
+            end_x = cx - ux * (_SHIRT_RADIUS + 2)
+            end_y = cy - uy * (_SHIRT_RADIUS + 2)
+            self.canvas.create_line(
+                start_x, start_y, end_x, end_y,
+                fill=_MOVEMENT_COLOR, width=1, dash=(3, 3),
+                arrow=tk.LAST, arrowshape=(9, 11, 3),
+            )
+
+        # Faint legend bottom-right so the overlay is self-explanatory.
+        self.canvas.create_text(
+            _CANVAS_W - 8, _CANVAS_H - 8, anchor=tk.SE,
+            fill=_MOVEMENT_COLOR,
+            text=f"movement from: {ref_zone}",
+            font=("TkDefaultFont", 9, "italic"),
+        )
 
     def _shirt_at(self, cx: int, cy: int) -> int | None:
         for shirt, (oval, _) in self.shirt_items.items():
@@ -405,6 +487,9 @@ class TacticEditorWindow(tk.Toplevel):
         self.tactic.positions[self.current_zone][self._drag_shirt] = world
         self._drag_shirt = None
         self._set_dirty(self._has_any_diff())
+        # Refresh the pitch so the movement overlay arrow-head follows the
+        # shirt to its new position.
+        self._draw_pitch()
 
     def _zone_at_world(self, wx: int, wy: int) -> str | None:
         """Smallest-area zone whose bounding box contains ``(wx, wy)``.
@@ -428,6 +513,7 @@ class TacticEditorWindow(tk.Toplevel):
         zone = self._zone_at_world(wx, wy)
         if zone is None or zone == self.current_zone:
             return
+        self.previous_zone = self.current_zone
         self.current_zone = zone
         self.zone_var.set(zone)
         self._draw_pitch()
