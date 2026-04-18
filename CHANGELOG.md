@@ -4,6 +4,25 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.14] — 2026-04-18
+
+### Changed
+- **GUI module split.** `pm_gui.py` grew past 2900 lines as Tools windows
+  and alternative themes piled onto the main module. Extracted the
+  standalone pieces into six sibling modules with zero behaviour change:
+  - `pm_gui_theme.py` — palette (`PAL_RETRO` / `PAL_LIGHT` / `PAL`), font
+    helpers (`_retro`, `set_use_system_font`), `set_theme`, `apply_theme`.
+  - `pm_gui_help.py` — `HelpDialog` + `help_button` (`?` trigger).
+  - `pm_gui_career.py` — `CareerTrackerWindow`.
+  - `pm_gui_workbench.py` — `ByteWorkbenchWindow` + `BYTE_PRESETS`.
+  - `pm_gui_lineup.py` — `LineupCoachWindow`.
+  - `pm_gui_compare.py` — `PlayerCompareWindow`.
+  `pm_gui.py` drops from 2936 to 1658 lines (−44%) and now contains just
+  the main `PMSaveDiskToolGUI` class, the Welcome/Splash/Preferences
+  dialogs, and `main()`. All save-disk byte handling, tests, and user-
+  facing behaviour are unchanged. A second refactor pass (2.2.15) will
+  pull the remaining dialogs and the preferences pane out too.
+
 ## [2.2.13] — 2026-04-18
 
 ### Added
