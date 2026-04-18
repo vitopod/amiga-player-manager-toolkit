@@ -80,8 +80,8 @@ class TacticEditorWindow(tk.Toplevel):
     def __init__(self, parent, adf: ADF, adf_path: str, on_saved=None):
         super().__init__(parent)
         self.title("Tactic Editor")
-        self.geometry("760x760")
-        self.minsize(640, 680)
+        self.geometry("760x820")
+        self.minsize(640, 740)
 
         self.adf = adf
         self.adf_path = adf_path
@@ -131,22 +131,9 @@ class TacticEditorWindow(tk.Toplevel):
         ttk.Button(ctrl, text="Revert zone",
                    command=self._revert_current_zone).pack(side=tk.LEFT)
 
-        self.canvas = tk.Canvas(
-            self, width=_CANVAS_W, height=_CANVAS_H,
-            bg="#2f6a38", highlightthickness=1,
-            highlightbackground=PAL["fg_label"],
-        )
-        self.canvas.pack(padx=10, pady=8)
-        self.canvas.bind("<ButtonPress-1>", self._on_mouse_down)
-        self.canvas.bind("<B1-Motion>", self._on_mouse_drag)
-        self.canvas.bind("<ButtonRelease-1>", self._on_mouse_up)
-
-        self.desc_var = tk.StringVar(value="")
-        desc = ttk.Label(self, textvariable=self.desc_var,
-                         foreground=PAL["fg_label"], wraplength=720,
-                         justify=tk.LEFT)
-        desc.pack(fill=tk.X, padx=10)
-
+        # Pack the footer and description BEFORE the canvas so they're always
+        # visible even when the canvas's natural height pushes past the window
+        # bounds — tkinter gives `side=BOTTOM` children their space first.
         footer = ttk.Frame(self, padding=(8, 6))
         footer.pack(fill=tk.X, side=tk.BOTTOM)
         self.status_var = tk.StringVar(value="")
@@ -156,6 +143,22 @@ class TacticEditorWindow(tk.Toplevel):
                    command=self._save).pack(side=tk.RIGHT, padx=(4, 0))
         ttk.Button(footer, text="Revert file",
                    command=self._revert_file).pack(side=tk.RIGHT)
+
+        self.desc_var = tk.StringVar(value="")
+        desc = ttk.Label(self, textvariable=self.desc_var,
+                         foreground=PAL["fg_label"], wraplength=720,
+                         justify=tk.LEFT)
+        desc.pack(fill=tk.X, side=tk.BOTTOM, padx=10)
+
+        self.canvas = tk.Canvas(
+            self, width=_CANVAS_W, height=_CANVAS_H,
+            bg="#2f6a38", highlightthickness=1,
+            highlightbackground=PAL["fg_label"],
+        )
+        self.canvas.pack(padx=10, pady=8)
+        self.canvas.bind("<ButtonPress-1>", self._on_mouse_down)
+        self.canvas.bind("<B1-Motion>", self._on_mouse_drag)
+        self.canvas.bind("<ButtonRelease-1>", self._on_mouse_up)
 
     # ── File / zone selection ─────────────────────────────────
 
