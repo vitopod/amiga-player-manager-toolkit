@@ -280,6 +280,7 @@ Header: PLAYER# / NAME / SEED — the player's identity, fixed while you edit ot
 
 - File: pick a `.tac` entry on the loaded disk. PM ships 4-2-4, 4-3-3, 4-4-2, 5-3-2 plus per-save variants (e.g. `4-2-4a.tac`).
 - Zone: pick one of the 20 zones. The shirts reposition to that zone's coordinates and the area this zone covers is highlighted on the pitch.
+- Shift-click on the pitch to jump to whichever zone the click lands in — picks the smallest zone under the cursor (so corners / kickoff / goalkick win over the broad `areaN` grid).
 - Drag a circle to move a shirt. The new (x, y) is committed in world coordinates on mouse release.
 - Revert zone / Revert file: discard edits to the current zone or the whole file since the last save.
 - Save to ADF: writes the tactic back through the normal `.bak` path (a sibling `.adf.bak` is created on first edit).

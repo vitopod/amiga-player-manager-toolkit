@@ -160,6 +160,7 @@ class TacticEditorWindow(tk.Toplevel):
         self.canvas.bind("<ButtonPress-1>", self._on_mouse_down)
         self.canvas.bind("<B1-Motion>", self._on_mouse_drag)
         self.canvas.bind("<ButtonRelease-1>", self._on_mouse_up)
+        self.canvas.bind("<Shift-ButtonPress-1>", self._on_shift_click)
 
     # ── File / zone selection ─────────────────────────────────
 
@@ -336,10 +337,13 @@ class TacticEditorWindow(tk.Toplevel):
                 outline="#f0e4a1", width=2,
             )
 
-        # Zone label top-left.
+        # Zone label top-left + shift-click hint.
         self.canvas.create_text(8, 8, anchor=tk.NW, fill=line,
                                 text=f"zone: {self.current_zone}",
                                 font=("TkDefaultFont", 10, "bold"))
+        self.canvas.create_text(_CANVAS_W - 8, 8, anchor=tk.NE, fill=line,
+                                text="shift-click to switch zones",
+                                font=("TkDefaultFont", 9))
 
         if self.tactic is None:
             return
@@ -401,3 +405,29 @@ class TacticEditorWindow(tk.Toplevel):
         self.tactic.positions[self.current_zone][self._drag_shirt] = world
         self._drag_shirt = None
         self._set_dirty(self._has_any_diff())
+
+    def _zone_at_world(self, wx: int, wy: int) -> str | None:
+        """Smallest-area zone whose bounding box contains ``(wx, wy)``.
+
+        Many zones overlap — corners sit inside `areaN`, kickoff/goalkick
+        sit inside `areaN` too — so we pick the tightest fit and fall back
+        to the broad `areaN` only when nothing more specific applies.
+        """
+        best_name: str | None = None
+        best_area: int | None = None
+        for name, (x0, y0, x1, y1) in _ZONE_BOXES.items():
+            if not (x0 <= wx < x1 and y0 <= wy < y1):
+                continue
+            area = (x1 - x0) * (y1 - y0)
+            if best_area is None or area < best_area:
+                best_name, best_area = name, area
+        return best_name
+
+    def _on_shift_click(self, event):
+        wx, wy = self._canvas_to_world(event.x, event.y)
+        zone = self._zone_at_world(wx, wy)
+        if zone is None or zone == self.current_zone:
+            return
+        self.current_zone = zone
+        self.zone_var.set(zone)
+        self._draw_pitch()
