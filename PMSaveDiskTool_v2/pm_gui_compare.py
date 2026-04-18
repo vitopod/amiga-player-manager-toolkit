@@ -19,8 +19,8 @@ class PlayerCompareWindow(tk.Toplevel):
     def __init__(self, parent, slot, game_disk, player_a=None):
         super().__init__(parent)
         self.title("Compare Players")
-        self.geometry("980x560")
-        self.minsize(960, 480)
+        self.geometry("980x620")
+        self.minsize(960, 540)
         self.configure(bg=PAL["bg"])
 
         self._slot = slot
@@ -28,15 +28,17 @@ class PlayerCompareWindow(tk.Toplevel):
         self._player_a = player_a
         self._player_b = None
 
+        # Per-side state so swap and lookup stay symmetric.
+        self._team_players = {"a": [], "b": []}
+
         self._build_title_band()
         self._build_selector_row()
         self._build_body()
         self._build_legend_row()
         self._build_bottom_bar()
 
-        self._populate_team_combo()
-        if player_a:
-            self._refresh_player_a_labels()
+        self._populate_team_combos()
+        self._seed_initial_selection(player_a)
 
     def _build_title_band(self):
         band = tk.Frame(self, bg=PAL["bg_header"], height=30)
@@ -47,61 +49,93 @@ class PlayerCompareWindow(tk.Toplevel):
                  font=_retro(13, "bold")).pack(side=tk.LEFT, padx=10)
 
     def _build_selector_row(self):
+        """Two symmetric panels (A left, B right) with a swap button between."""
         row = tk.Frame(self, bg=PAL["bg_mid"])
         row.pack(fill=tk.X)
         tk.Frame(row, bg=PAL["border"], height=1).pack(fill=tk.X, side=tk.BOTTOM)
 
-        a_frame = tk.Frame(row, bg=PAL["bg_mid"])
-        a_frame.pack(side=tk.LEFT, padx=10, pady=6)
-        tk.Label(a_frame, text="PLAYER A", bg=PAL["bg_mid"],
-                 fg=PAL["fg_label"], font=("Courier New", 9, "bold")).pack(anchor="w")
-        self._a_name_lbl = tk.Label(a_frame, text="—",
-                                    bg=PAL["bg_mid"], fg=PAL["player_a"],
-                                    font=("Courier New", 12, "bold"))
-        self._a_name_lbl.pack(anchor="w")
-        self._a_meta_lbl = tk.Label(a_frame, text="",
-                                    bg=PAL["bg_mid"], fg=PAL["fg_data"],
-                                    font=("Courier New", 9))
-        self._a_meta_lbl.pack(anchor="w")
+        # Side A
+        a_panel = self._build_side_panel(row, "a", PAL["player_a"])
+        a_panel.pack(side=tk.LEFT, fill=tk.Y, padx=(10, 4), pady=6)
 
-        tk.Button(row, text="⇄", bg=PAL["bg_mid"], fg=PAL["fg_data"],
-                  font=("Courier New", 16, "bold"), relief="flat", bd=0,
-                  activebackground=PAL["selected"], activeforeground=PAL["fg_white"],
-                  command=self._swap).pack(side=tk.LEFT, padx=8)
+        # Swap
+        swap_frame = tk.Frame(row, bg=PAL["bg_mid"])
+        swap_frame.pack(side=tk.LEFT, fill=tk.Y)
+        tk.Frame(swap_frame, bg=PAL["bg_mid"], height=20).pack()  # top spacer
+        tk.Button(swap_frame, text="⇄", bg=PAL["bg_mid"], fg=PAL["fg_data"],
+                  font=("Courier New", 18, "bold"), relief="flat", bd=0,
+                  activebackground=PAL["selected"],
+                  activeforeground=PAL["fg_white"],
+                  command=self._swap).pack(padx=10)
 
-        b_frame = tk.Frame(row, bg=PAL["bg_mid"])
-        b_frame.pack(side=tk.LEFT, padx=10, pady=6)
-        tk.Label(b_frame, text="PLAYER B", bg=PAL["bg_mid"],
-                 fg=PAL["fg_label"], font=("Courier New", 9, "bold")).pack(anchor="w")
-        self._b_name_lbl = tk.Label(b_frame, text="—",
-                                    bg=PAL["bg_mid"], fg=PAL["player_b"],
-                                    font=("Courier New", 12, "bold"))
-        self._b_name_lbl.pack(anchor="w")
-        self._b_meta_lbl = tk.Label(b_frame, text="",
-                                    bg=PAL["bg_mid"], fg=PAL["fg_data"],
-                                    font=("Courier New", 9))
-        self._b_meta_lbl.pack(anchor="w")
+        # Side B
+        b_panel = self._build_side_panel(row, "b", PAL["player_b"])
+        b_panel.pack(side=tk.LEFT, fill=tk.Y, padx=(4, 10), pady=6)
 
-        pick_frame = tk.Frame(row, bg=PAL["bg_mid"])
-        pick_frame.pack(side=tk.RIGHT, padx=10, pady=6)
+    def _build_side_panel(self, parent, side: str, accent: str) -> tk.Frame:
+        """Build one of the two symmetric player-selection panels.
 
-        tk.Label(pick_frame, text="TEAM", bg=PAL["bg_mid"],
-                 fg=PAL["fg_label"], font=("Courier New", 9, "bold")).grid(
-                     row=0, column=0, sticky="w", padx=(0, 4))
-        self._team_var = tk.StringVar()
-        self._team_combo = ttk.Combobox(pick_frame, textvariable=self._team_var,
-                                        state="readonly", width=18)
-        self._team_combo.grid(row=0, column=1, padx=(4, 0), pady=2)
-        self._team_combo.bind("<<ComboboxSelected>>", self._on_team_selected)
+        Stores references to the combos and labels under ``self._<name>[side]``
+        so swap / selection handlers stay side-agnostic.
+        """
+        panel = tk.Frame(parent, bg=PAL["bg_mid"])
 
-        tk.Label(pick_frame, text="PLAYER", bg=PAL["bg_mid"],
-                 fg=PAL["fg_label"], font=("Courier New", 9, "bold")).grid(
-                     row=1, column=0, sticky="w", padx=(0, 4))
-        self._player_var = tk.StringVar()
-        self._player_combo = ttk.Combobox(pick_frame, textvariable=self._player_var,
-                                          state="readonly", width=18)
-        self._player_combo.grid(row=1, column=1, padx=(4, 0), pady=2)
-        self._player_combo.bind("<<ComboboxSelected>>", self._on_player_b_selected)
+        header = f"PLAYER {side.upper()}"
+        tk.Label(panel, text=header, bg=PAL["bg_mid"],
+                 fg=PAL["fg_label"],
+                 font=("Courier New", 9, "bold")).grid(
+                     row=0, column=0, columnspan=2, sticky="w")
+
+        tk.Label(panel, text="Team", bg=PAL["bg_mid"],
+                 fg=PAL["fg_label"], font=("Courier New", 9)).grid(
+                     row=1, column=0, sticky="w", padx=(0, 6), pady=(2, 0))
+        team_var = tk.StringVar()
+        team_combo = ttk.Combobox(panel, textvariable=team_var,
+                                  state="readonly", width=22)
+        team_combo.grid(row=1, column=1, sticky="w", pady=(2, 0))
+        team_combo.bind(
+            "<<ComboboxSelected>>",
+            lambda e, s=side: self._on_team_selected(s),
+        )
+
+        tk.Label(panel, text="Player", bg=PAL["bg_mid"],
+                 fg=PAL["fg_label"], font=("Courier New", 9)).grid(
+                     row=2, column=0, sticky="w", padx=(0, 6), pady=(2, 0))
+        player_var = tk.StringVar()
+        player_combo = ttk.Combobox(panel, textvariable=player_var,
+                                    state="readonly", width=22)
+        player_combo.grid(row=2, column=1, sticky="w", pady=(2, 0))
+        player_combo.bind(
+            "<<ComboboxSelected>>",
+            lambda e, s=side: self._on_player_selected(s),
+        )
+
+        name_lbl = tk.Label(panel, text="—",
+                            bg=PAL["bg_mid"], fg=accent,
+                            font=("Courier New", 12, "bold"))
+        name_lbl.grid(row=3, column=0, columnspan=2, sticky="w", pady=(6, 0))
+
+        meta_lbl = tk.Label(panel, text="",
+                            bg=PAL["bg_mid"], fg=PAL["fg_data"],
+                            font=("Courier New", 9))
+        meta_lbl.grid(row=4, column=0, columnspan=2, sticky="w")
+
+        # Stash refs keyed by side so handlers don't branch on A/B.
+        if not hasattr(self, "_team_var"):
+            self._team_var: dict = {}
+            self._team_combo: dict = {}
+            self._player_var: dict = {}
+            self._player_combo: dict = {}
+            self._name_lbl: dict = {}
+            self._meta_lbl: dict = {}
+        self._team_var[side] = team_var
+        self._team_combo[side] = team_combo
+        self._player_var[side] = player_var
+        self._player_combo[side] = player_combo
+        self._name_lbl[side] = name_lbl
+        self._meta_lbl[side] = meta_lbl
+
+        return panel
 
     def _build_body(self):
         body = tk.Frame(self, bg=PAL["bg"])
@@ -163,70 +197,136 @@ class PlayerCompareWindow(tk.Toplevel):
         mkt = " ★" if p.is_market_available else ""
         return f"{pos} · age {p.age} · {team}{mkt} · skill {p.total_skill}"
 
-    def _populate_team_combo(self):
+    # ── Combo population / selection ──────────────────────────
+
+    def _populate_team_combos(self):
         team_names = sorted(
             self._slot.get_team_name(i)
             for i in range(1, len(self._slot.team_names))
         )
         teams = ["★ Free Agents"] + team_names
-        self._team_combo["values"] = teams
+        for side in ("a", "b"):
+            self._team_combo[side]["values"] = teams
 
-    def _on_team_selected(self, event=None):
-        team_sel = self._team_var.get()
-        if team_sel == "★ Free Agents":
-            players = [p for p in self._slot.players if p.is_free_agent
-                       and self._slot._is_real_player(p)]
+    def _players_for_team_label(self, team_label: str):
+        """Return the player list for a team-combo value (or []) for bad input."""
+        if team_label == "★ Free Agents":
+            return [p for p in self._slot.players
+                    if p.is_free_agent and self._slot._is_real_player(p)]
+        team_idx = next(
+            (i for i, n in enumerate(self._slot.team_names) if n == team_label),
+            None,
+        )
+        if team_idx is None:
+            return []
+        return self._slot.get_players_by_team(team_idx)
+
+    def _on_team_selected(self, side: str):
+        team_label = self._team_var[side].get()
+        players = self._players_for_team_label(team_label)
+        self._team_players[side] = players
+        self._player_combo[side]["values"] = [
+            self._player_name(p) for p in players
+        ]
+        self._player_var[side].set("")
+        # Team changed → that side's player selection is now stale.
+        if side == "a":
+            self._player_a = None
         else:
-            team_name = team_sel
-            team_idx = next(
-                (i for i, n in enumerate(self._slot.team_names) if n == team_name),
-                None,
-            )
-            if team_idx is None:
-                return
-            players = self._slot.get_players_by_team(team_idx)
+            self._player_b = None
+        self._refresh_side_labels(side)
 
-        entries = [self._player_name(p) for p in players]
-        self._team_players = players
-        self._player_combo["values"] = entries
-        self._player_var.set("")
-
-    def _on_player_b_selected(self, event=None):
-        idx = self._player_combo.current()
-        if idx < 0 or not hasattr(self, "_team_players"):
+    def _on_player_selected(self, side: str):
+        idx = self._player_combo[side].current()
+        if idx < 0 or idx >= len(self._team_players[side]):
             return
-        self._player_b = self._team_players[idx]
-        self._refresh_player_b_labels()
+        player = self._team_players[side][idx]
+        if side == "a":
+            self._player_a = player
+        else:
+            self._player_b = player
+        self._refresh_side_labels(side)
         self._draw()
 
-    def _refresh_player_a_labels(self):
-        if not self._player_a:
-            return
-        name = self._player_name(self._player_a)
-        self._a_name_lbl.config(text=name)
-        self._a_meta_lbl.config(text=self._player_meta(self._player_a))
-        self._leg_a.config(text=name)
+    # ── Label / combo sync helpers ────────────────────────────
 
-    def _refresh_player_b_labels(self):
-        if not self._player_b:
+    def _refresh_side_labels(self, side: str):
+        player = self._player_a if side == "a" else self._player_b
+        if player is None:
+            self._name_lbl[side].config(text="—")
+            self._meta_lbl[side].config(text="")
+            leg = self._leg_a if side == "a" else self._leg_b
+            leg.config(text=f"Player {side.upper()}")
             return
-        name = self._player_name(self._player_b)
-        self._b_name_lbl.config(text=name)
-        self._b_meta_lbl.config(text=self._player_meta(self._player_b))
-        self._leg_b.config(text=name)
+        name = self._player_name(player)
+        self._name_lbl[side].config(text=name)
+        self._meta_lbl[side].config(text=self._player_meta(player))
+        leg = self._leg_a if side == "a" else self._leg_b
+        leg.config(text=name)
+
+    def _sync_side_combos(self, side: str, player):
+        """Drive combos for ``side`` so they reflect ``player``."""
+        if player is None:
+            self._team_var[side].set("")
+            self._team_players[side] = []
+            self._player_combo[side]["values"] = []
+            self._player_var[side].set("")
+            return
+        team_label = ("★ Free Agents" if player.is_free_agent
+                      else self._slot.get_team_name(player.team_index))
+        self._team_var[side].set(team_label)
+        players = self._players_for_team_label(team_label)
+        self._team_players[side] = players
+        self._player_combo[side]["values"] = [
+            self._player_name(p) for p in players
+        ]
+        try:
+            idx = players.index(player)
+            self._player_combo[side].current(idx)
+        except ValueError:
+            self._player_var[side].set("")
+
+    # ── Entry points ──────────────────────────────────────────
 
     def set_player_a(self, player) -> None:
+        """External hook: right-click → Send to Compare sends a player here."""
         self._player_a = player
-        self._refresh_player_a_labels()
-        if self._player_b:
+        self._sync_side_combos("a", player)
+        self._refresh_side_labels("a")
+        if self._player_a and self._player_b:
             self._draw()
 
     def _swap(self):
         self._player_a, self._player_b = self._player_b, self._player_a
-        self._refresh_player_a_labels()
-        self._refresh_player_b_labels()
+        self._sync_side_combos("a", self._player_a)
+        self._sync_side_combos("b", self._player_b)
+        self._refresh_side_labels("a")
+        self._refresh_side_labels("b")
         if self._player_a and self._player_b:
             self._draw()
+
+    def _seed_initial_selection(self, player_a):
+        """Pre-fill the panels so the window is immediately useful.
+
+        - If ``player_a`` was passed in (right-click → Send to Compare),
+          A's combos follow it and B's team combo mirrors A's team so a
+          single extra click picks an opponent.
+        - With no ``player_a``, both sides stay blank and the user picks
+          from scratch; the team-name list is already populated.
+        """
+        if player_a is None:
+            return
+        self._sync_side_combos("a", player_a)
+        self._refresh_side_labels("a")
+        # Convenience: give B the same team pre-selected but no player chosen.
+        team_label = self._team_var["a"].get()
+        if team_label:
+            self._team_var["b"].set(team_label)
+            players = self._players_for_team_label(team_label)
+            self._team_players["b"] = players
+            self._player_combo["b"]["values"] = [
+                self._player_name(p) for p in players
+            ]
 
     def _draw(self):
         if not (self._player_a and self._player_b):

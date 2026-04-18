@@ -4,6 +4,22 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.1] — 2026-04-18
+
+### Changed
+- **Compare Players — symmetric two-panel selector.** The selection
+  row at the top of the Compare window is now two mirrored panels, one
+  per player, separated by a ⇄ swap button. Each panel has its own
+  Team and Player dropdowns plus a name / meta line in the player's
+  team color (amber on the left, red on the right). Previously the
+  window gave player A a passive read-only label on the left and hid
+  player B's selectors in a single right-side strip — awkward once
+  you'd opened the window, because picking the two players to compare
+  needed two different interaction paths. Now both players work the
+  same way. Right-click → **Send to Compare…** still pre-fills side A
+  and additionally mirrors that team over to side B so choosing an
+  opponent is one click away.
+
 ## [2.3.0] — 2026-04-18
 
 ### Changed
