@@ -8,6 +8,8 @@ record last-used paths).
 Schema keys with defaults — see ``default_state()``:
 
 - ``show_splash`` (bool) — show the Amiga-style splash at launch.
+- ``show_welcome`` (bool) — show the first-run welcome screen at launch.
+  Defaults to ``True`` so brand-new installs see the quick tour.
 - ``auto_open_last_save`` (bool) — re-open ``last_save_adf`` at launch.
 - ``auto_open_last_game`` (bool) — re-load ``last_game_adf`` at launch.
 - ``last_save_adf`` (str) — absolute path of the most recently opened
@@ -36,6 +38,7 @@ def default_state() -> dict:
     """Return a fresh preferences dict populated with defaults."""
     return {
         "show_splash":          True,
+        "show_welcome":         True,
         "auto_open_last_save":  False,
         "auto_open_last_game":  False,
         "last_save_adf":        "",

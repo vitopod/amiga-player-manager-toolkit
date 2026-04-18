@@ -4,6 +4,17 @@ All notable changes to PMSaveDiskToolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.10] — 2026-04-18
+
+### Added
+- **First-run welcome screen.** On first launch the GUI now shows a
+  Player-Manager-styled welcome dialog (teal / red / navy palette,
+  Topaz font) with five quick-start cards: open save disk, open game
+  disk, browse/edit/save, explore the Tools menu, and the in-app help
+  pointer. A checkbox ("Show this at every launch", unticked by
+  default) lets users keep the dialog on next launch; the toggle also
+  lives in `Help → Preferences…` under "Show welcome screen".
+
 ## [2.2.9] — 2026-04-18
 
 ### Added

@@ -33,6 +33,7 @@ class TestDefaultState:
         state = preferences.default_state()
         assert set(state) == {
             "show_splash",
+            "show_welcome",
             "auto_open_last_save",
             "auto_open_last_game",
             "last_save_adf",
@@ -41,6 +42,9 @@ class TestDefaultState:
 
     def test_splash_defaults_on(self):
         assert preferences.default_state()["show_splash"] is True
+
+    def test_welcome_defaults_on(self):
+        assert preferences.default_state()["show_welcome"] is True
 
     def test_auto_opens_default_off(self):
         state = preferences.default_state()
