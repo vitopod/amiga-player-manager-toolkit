@@ -824,6 +824,15 @@ class PMSaveDiskToolGUI:
             players = self.slot.best_xi(cfg["formation"], filter_fn=cfg["filter_fn"])
             self.tree.heading("total", text=t("col.skill"))
             score_fn = lambda p: p.total_skill
+        elif team_sel == t("view.market_scout"):
+            all_market = [p for p in self.slot.players
+                          if self.slot._is_real_player(p) and p.is_market_available]
+            players = _top_n_per_position(all_market)
+            self.tree.heading("total", text=t("col.skill"))
+            score_fn = lambda p: p.total_skill
+            self.summary_var.set(
+                f"{len(all_market)} available  \u00b7  {len(players)} shown"
+            )
         elif team_sel == t("view.free_agents"):
             players = self.slot.get_free_agents()
             self.tree.heading("total", text=t("col.skill"))
