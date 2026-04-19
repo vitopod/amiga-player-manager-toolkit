@@ -1,6 +1,7 @@
 """Line-up Coach (BETA) -- suggested XI + reassignments window."""
 
 import tkinter as tk
+from collections import Counter
 from tkinter import ttk
 
 from pm_core import lineup, preferences
@@ -208,11 +209,35 @@ class LineupCoachWindow(tk.Toplevel):
         self.breakdown_var.set("")
 
         if not ranked:
+            eligible = [p for p in pool if eligibility(p)]
+            pos_names = {1: "GK", 2: "DEF", 3: "MID", 4: "FWD"}
+            have = {pos: sum(1 for p in eligible if p.position == pos)
+                    for pos in (1, 2, 3, 4)}
+            have_str = " \u00b7 ".join(
+                f"{have[pos]} {pos_names[pos]}" for pos in (1, 2, 3, 4)
+            )
             self.summary_var.set(
                 f"No formation could be filled from {pool_label} "
-                f"({len(pool)} players). Try 'Include injured' or "
-                f"'Allow cross-position'."
+                f"({len(pool)} players, {len(eligible)} eligible)."
             )
+            lines = [f"Eligible (not injured): {len(eligible)}  ({have_str})"]
+            fmt_keys_diag = formations if formations else list(lineup.FORMATION_ROLES)
+            for f in fmt_keys_diag:
+                needed = Counter(
+                    lineup.ROLES[role]["position"]
+                    for role in lineup.FORMATION_ROLES[f]
+                )
+                need_str = " \u00b7 ".join(
+                    f"{needed[pos]} {pos_names[pos]}" for pos in (1, 2, 3, 4)
+                )
+                short = [
+                    f"{pos_names[pos]} (need {needed[pos]}, have {have[pos]})"
+                    for pos in (1, 2, 3, 4)
+                    if have[pos] < needed[pos]
+                ]
+                short_str = ", ".join(short) if short else "none"
+                lines.append(f"{f}: needs {need_str}  \u2014  short: {short_str}")
+            self.breakdown_var.set("\n".join(lines))
             return
 
         for r in ranked:
