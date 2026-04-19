@@ -105,5 +105,81 @@ class TestFormations(unittest.TestCase):
             self.assertIn(f, FORMATIONS)
 
 
+class TestTopNPerPosition(unittest.TestCase):
+    """Tests for the _top_n_per_position helper in pm_gui."""
+
+    def _make_player(self, position: int, total_skill_val: int,
+                     team_index: int = 0) -> PlayerRecord:
+        """Build a minimal PlayerRecord with the given position and skill sum."""
+        # Distribute total_skill_val evenly across the 10 skill fields.
+        # If not divisible by 10, put the remainder in keeping.
+        base = total_skill_val // 10
+        extra = total_skill_val % 10
+        return PlayerRecord(
+            position=position,
+            team_index=team_index,
+            keeping=base + extra,
+            tackling=base,
+            passing=base,
+            shooting=base,
+            stamina=base,
+            pace=base,
+            agility=base,
+            flair=base,
+            resilience=base,
+            aggression=base,
+        )
+
+    def _top_n(self, players, n=3):
+        """Inline copy of the helper — replaced by import once Task 3 is done."""
+        groups: dict[int, list] = {1: [], 2: [], 3: [], 4: []}
+        for p in players:
+            if p.position in groups:
+                groups[p.position].append(p)
+        result = []
+        for pos in (1, 2, 3, 4):
+            result.extend(
+                sorted(groups[pos], key=lambda p: p.total_skill, reverse=True)[:n]
+            )
+        return result
+
+    def test_keeps_top_n_per_position(self):
+        """Top 3 per position are returned in skill order."""
+        players = [
+            self._make_player(1, 100),  # GK best
+            self._make_player(1, 80),
+            self._make_player(1, 60),
+            self._make_player(1, 40),   # GK 4th — should be excluded
+            self._make_player(2, 90),   # DEF
+            self._make_player(2, 70),
+        ]
+        result = self._top_n(players, n=3)
+        gks = [p for p in result if p.position == 1]
+        defs = [p for p in result if p.position == 2]
+        self.assertEqual(len(gks), 3)
+        self.assertEqual(gks[0].total_skill, 100)
+        self.assertEqual(gks[2].total_skill, 60)
+        self.assertEqual(len(defs), 2)  # only 2 DEF available
+
+    def test_position_order(self):
+        """Result is GK → DEF → MID → FWD."""
+        players = [
+            self._make_player(4, 50),
+            self._make_player(3, 50),
+            self._make_player(2, 50),
+            self._make_player(1, 50),
+        ]
+        result = self._top_n(players)
+        positions = [p.position for p in result]
+        self.assertEqual(positions, [1, 2, 3, 4])
+
+    def test_fewer_than_n_in_position(self):
+        """If a position has fewer than n players, returns all of them."""
+        players = [self._make_player(1, 100)]  # only 1 GK
+        result = self._top_n(players, n=3)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0].total_skill, 100)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
