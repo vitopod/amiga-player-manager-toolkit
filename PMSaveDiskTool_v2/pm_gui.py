@@ -56,6 +56,24 @@ _XI_ENTRIES_DATA = [
 _POS_KEYS = {1: "pos.gk", 2: "pos.def", 3: "pos.mid", 4: "pos.fwd"}
 
 
+def _top_n_per_position(players: list, n: int = 3) -> list:
+    """Return up to n players per position, ranked by total_skill descending.
+
+    Positions are returned in order GK(1) → DEF(2) → MID(3) → FWD(4).
+    Positions with fewer than n available players return all of them.
+    """
+    groups: dict[int, list] = {1: [], 2: [], 3: [], 4: []}
+    for p in players:
+        if p.position in groups:
+            groups[p.position].append(p)
+    result = []
+    for pos in (1, 2, 3, 4):
+        result.extend(
+            sorted(groups[pos], key=lambda p: p.total_skill, reverse=True)[:n]
+        )
+    return result
+
+
 def _pos_display(p) -> str:
     key = _POS_KEYS.get(p.position)
     return t(key) if key else p.position_name
