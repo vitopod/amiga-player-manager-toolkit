@@ -80,7 +80,7 @@ installer, no pip package. Upgrading means replacing the folder.
 
 ```
 git pull                 # latest on main
-git checkout v2.5.1      # or any tagged release
+git checkout v2.6.0      # or any tagged release
 ```
 
 **If you downloaded a release zip:**
@@ -172,13 +172,19 @@ Use the **View** dropdown in the toolbar to switch between:
 
 - A specific team (e.g. **0: MILAN**) — shows that team's roster
 - **All Players** — every player with age > 0
-- **Free Agents** — players with no team (team index 0xFF)
+- **★ Free Agents** — players with no team (team index 0xFF)
+- **★ Transfer Market (Top 3/pos)** — top 3 market-available players (free
+  agents or transfer-listed) per position, ranked by total skill. Up to 12
+  rows; the summary line shows total available vs. shown. Useful when you
+  need a quick replacement for an injured player.
 - **— Young Talents (≤21)** — players aged 21 or under, sorted by skill
 - **— Top Scorers** — all players sorted by goals this season, grouped by division
 - **— Top 11 (4-4-2)** or **— Top 11 (4-3-3)** — best championship XI in that formation
 - **— Young XI (≤21)** — best XI drawn only from under-21s
 - **— Free-Agent XI** — best XI you could sign right now (free agents only)
 - **— Squad Analyst (all teams)** — one row per team, composition at a glance
+
+Views prefixed **★** are market-related; views prefixed **—** are analytical.
 
 The **Filter** box above the list narrows the visible rows in real time as you
 type — by player id, name, team, or position abbreviation (GK / DEF / MID / FWD).
@@ -430,6 +436,12 @@ point for your own thinking, not as a definitive answer.
    injury weeks > 0. Useful to see the "ideal" lineup even if half the squad
    is in the medical room. Off by default — teams with heavy injury lists
    will otherwise return "no formation could be filled."
+
+If no formation can be filled, the tool shows a diagnostic line: how many
+players are eligible (not injured) per position and exactly which positions
+are short. For example: *"Eligible: 8 (1 GK · 3 DEF · 3 MID · 1 FWD) —
+4-4-2 needs 1 GK · 4 DEF · 4 MID · 2 FWD — short: FWD (need 2, have 1)"*.
+Use this to decide whether to tick **Include injured** or check your squad.
 5. Click **Compute**.
 
 **Reading the results:**

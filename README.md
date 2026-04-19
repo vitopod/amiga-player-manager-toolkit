@@ -11,8 +11,9 @@ for the original save disk format research and field naming.
 From there it grew into something broader: Mac / Linux / Windows support,
 a full command-line interface, player name generation from the game disk,
 and a stack of analytical views — Young Talents, Championship Highlights,
-Top 11 of the championship, Squad Analyst, Career Tracker, Byte Workbench,
-Line-up Coach (BETA), **Compare Players** (radar chart + skill bars), and a
+Top 11 of the championship, Squad Analyst, **Transfer Market Scout**,
+Career Tracker, Byte Workbench, Line-up Coach (BETA),
+**Compare Players** (radar chart + skill bars), and a
 **Tactic Editor** for editing `.tac` formation files on the save disk. The
 editor stays byte-for-byte compatible with v1.2.
 
@@ -80,7 +81,7 @@ git pull
 Or to pin to a specific tag:
 
 ```
-git checkout v2.5.1
+git checkout v2.6.0
 ```
 
 **If you downloaded a release zip:**

@@ -4,6 +4,28 @@ All notable changes to Player Manager Toolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] — 2026-04-19
+
+### Added
+- **Transfer Market Scout view.** Select **★ Transfer Market (Top 3/pos)** from
+  the View dropdown to see the top 3 market-available players (free agents or
+  transfer-listed) per position (GK / DEF / MID / FWD), ranked by total skill.
+  Up to 12 rows; the summary line shows how many market-available players exist
+  in total versus how many are shown. File → Export Players… from this view
+  exports all market-available players.
+
+### Changed
+- **View dropdown navigation grouped by purpose.** Market views (Free Agents,
+  Transfer Market Scout) are now prefixed with **★**; analytical views (Young
+  Talents, Top Scorers, Squad Analyst, Best XI entries) keep the **—** prefix.
+  The two groups appear in that order in the dropdown.
+
+### Fixed
+- **Line-up Coach diagnostic on failure.** When a formation cannot be filled,
+  the coach now shows the number of eligible (non-injured) players per position
+  and exactly which positions are short, instead of a generic "Try Include
+  injured or Allow cross-position" message.
+
 ## [2.5.1] — 2026-04-18
 
 ### Fixed
