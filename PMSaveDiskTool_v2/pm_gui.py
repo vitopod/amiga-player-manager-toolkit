@@ -1225,6 +1225,9 @@ class PMSaveDiskToolGUI:
         team_sel = self.team_var.get()
         if team_sel == t("view.free_agents"):
             players = self.slot.get_free_agents()
+        elif team_sel == t("view.market_scout"):
+            players = [p for p in self.slot.players
+                       if self.slot._is_real_player(p) and p.is_market_available]
         elif team_sel.startswith("\u2014") or team_sel == t("view.all"):
             players = [p for p in self.slot.players if p.age > 0]
         elif ":" in team_sel:
