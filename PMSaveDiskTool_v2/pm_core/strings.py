@@ -94,7 +94,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "toolbar.view": "VIEW:",
         # View combo / View menu entries
         "view.all":         "All Players",
-        "view.free_agents": "Free Agents",
+        "view.free_agents": "★ Free Agents",
+        "view.market_scout": "★ Transfer Market (Top 3/pos)",
         "view.young":       "\u2014 Young Talents (\u226421)",
         "view.scorers":     "\u2014 Top Scorers",
         "view.squad":       "\u2014 Squad Analyst (all teams)",
@@ -125,6 +126,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         # View menu items
         "menu.view.all":         "All Players",
         "menu.view.free_agents": "Free Agents",
+        "menu.view.market_scout": "Transfer Market Scout",
         "menu.view.young":       "Young Talents (\u226421)",
         "menu.view.scorers":     "Top Scorers",
         "menu.view.squad":       "Squad Analyst (all teams)",
@@ -352,7 +354,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         "toolbar.view": "VISTA:",
         # View combo / View menu entries
         "view.all":         "Tutti i Giocatori",
-        "view.free_agents": "Svincolati",
+        "view.free_agents": "★ Svincolati",
+        "view.market_scout": "★ Mercato (Top 3/pos)",
         "view.young":       "\u2014 Giovani Talenti (\u226421)",
         "view.scorers":     "\u2014 Capocannonieri",
         "view.squad":       "\u2014 Analisi Squadre",
@@ -383,6 +386,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         # View menu items
         "menu.view.all":         "Tutti i Giocatori",
         "menu.view.free_agents": "Svincolati",
+        "menu.view.market_scout": "Scout Mercato",
         "menu.view.young":       "Giovani Talenti (\u226421)",
         "menu.view.scorers":     "Capocannonieri",
         "menu.view.squad":       "Analisi Squadre",
