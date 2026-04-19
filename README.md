@@ -19,6 +19,12 @@ editor stays byte-for-byte compatible with v1.2.
 
 ---
 
+## Why this exists
+
+Player Manager was one of my favourite games in the nineties, but one thing always bothered me: your manager starts at 28 years old, which felt like a waste. Back then I worked around it with an Action Replay Mk III on my Amiga 2000. Years later, when I no longer had an Amiga, I discovered PMSaveDiskTool v1.2 — but it ran only on Windows, and I had only Macs. So I decided to build a proper fix: one that works natively on every platform and that anyone playing Player Manager in 2026 can actually use.
+
+---
+
 ## Screenshots
 
 **Main editor.** Player list on the left, tabbed detail pane on the right.
