@@ -254,6 +254,8 @@ class PMSaveDiskToolGUI:
                               command=lambda: self._set_view(t("view.all")))
         view_menu.add_command(label=t("menu.view.free_agents"),
                               command=lambda: self._set_view(t("view.free_agents")))
+        view_menu.add_command(label=t("menu.view.market_scout"),
+                              command=lambda: self._set_view(t("view.market_scout")))
         view_menu.add_separator()
         view_menu.add_command(label=t("menu.view.young"),
                               command=lambda: self._set_view(t("view.young")),
@@ -683,7 +685,7 @@ class PMSaveDiskToolGUI:
 
     def _refresh_team_combo(self):
         """Rebuild the team filter combo from the current slot."""
-        team_options = [t("view.all"), t("view.free_agents")]
+        team_options = [t("view.all"), t("view.free_agents"), t("view.market_scout")]
         for i, name in enumerate(self.slot.team_names):
             team_options.append(f"{i}: {name}")
         team_options.append(t("view.young"))
@@ -712,7 +714,7 @@ class PMSaveDiskToolGUI:
             self.slot.apply_team_name_fallback(self.game_disk.team_names)
 
         # Populate team filter
-        team_options = [t("view.all"), t("view.free_agents")]
+        team_options = [t("view.all"), t("view.free_agents"), t("view.market_scout")]
         for i, name in enumerate(self.slot.team_names):
             team_options.append(f"{i}: {name}")
         team_options.append(t("view.young"))
