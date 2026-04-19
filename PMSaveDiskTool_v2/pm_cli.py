@@ -500,8 +500,6 @@ def cmd_suggest_xi(args):
 
     formations = [args.formation] if args.formation else None
     eligibility = lineup._is_eligible
-    if args.include_injured:
-        eligibility = lambda p: (p.position in (1, 2, 3, 4) and p.age > 0)
     pool_list = list(pool)
 
     if formations:
@@ -909,8 +907,6 @@ def main():
                       help="Force a specific formation (default: rank all)")
     p_sx.add_argument("--allow-cross-position", action="store_true",
                       help="Let players fill slots outside their nominal position")
-    p_sx.add_argument("--include-injured", action="store_true",
-                      help="Include currently-injured players (shows the 'ideal' XI)")
     p_sx.add_argument("--weights", nargs="*", metavar="KEY=VAL",
                       help="Override composite weights (e.g. morale=40 fatigue=10)")
     p_sx.add_argument("--reserves", type=int, default=2,

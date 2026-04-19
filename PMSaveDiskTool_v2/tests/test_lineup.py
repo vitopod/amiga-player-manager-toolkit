@@ -191,12 +191,6 @@ class TestAssembleXI(unittest.TestCase):
         xi = assemble_xi(squad, "4-4-2", allow_cross_position=True)
         self.assertEqual(len(xi), 11)
 
-    def test_injured_players_excluded(self):
-        squad = _squad()
-        squad[0].injury_weeks = 2  # the lone GK is injured
-        with self.assertRaises(ValueError):
-            assemble_xi(squad, "4-4-2")
-
     def test_sentinel_records_excluded(self):
         squad = _squad()
         # add a garbage record — position=0, age=0
@@ -345,18 +339,6 @@ class TestAssembleMatchdaySquad(unittest.TestCase):
         md = assemble_matchday_squad(squad, "4-4-2", n_reserves=2)
         self.assertEqual(len(md.xi), 11)
         self.assertEqual(md.reserves, [])
-
-    def test_injured_excluded_from_reserves(self):
-        # 1 GK + 6 DEF + 6 MID + 4 FWD = 17 eligible. After the XI (1/4/4/2)
-        # that leaves 6 spares. Injure half; the remaining 3 must pass.
-        squad = _squad(n_per_pos=(1, 6, 6, 4))
-        injured = [squad[6], squad[12], squad[16]]  # spares across positions
-        for p in injured:
-            p.injury_weeks = 3
-        md = assemble_matchday_squad(squad, "4-4-2", n_reserves=2)
-        self.assertEqual(len(md.reserves), 2)
-        for a in md.reserves:
-            self.assertEqual(a.player.injury_weeks, 0)
 
     def test_zero_reserves_returns_empty_bench(self):
         squad = _squad(n_per_pos=(1, 5, 5, 3))

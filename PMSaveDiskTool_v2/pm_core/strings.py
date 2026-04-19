@@ -64,7 +64,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "field.height":     "Height (cm):",
         "field.weight":     "Weight (kg):",
         # Status tab field labels
-        "field.injury_weeks":         "Injury Weeks:",
+        "field.injury_weeks":         "Byte 0x15:",
         "field.disciplinary":         "Disciplinary:",
         "field.morale":               "Morale:",
         "field.value":                "Value:",
@@ -188,7 +188,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "lineup.formation":     "Formation:",
         "lineup.rank_all":      "\u2014 Rank all",
         "lineup.cross_pos":     "Allow cross-position",
-        "lineup.include_inj":   "Include injured",
         "lineup.compute":       "Compute",
         "lineup.form_ranking":  "Formation ranking",
         "lineup.reassign":      "Reassignment suggestions",
@@ -324,7 +323,7 @@ _STRINGS: dict[str, dict[str, str]] = {
         "field.height":     "Altezza (cm):",
         "field.weight":     "Peso (kg):",
         # Status tab field labels
-        "field.injury_weeks":         "Sett. Infortuni:",
+        "field.injury_weeks":         "Byte 0x15:",
         "field.disciplinary":         "Disciplinare:",
         "field.morale":               "Morale:",
         "field.value":                "Valore:",
@@ -448,7 +447,6 @@ _STRINGS: dict[str, dict[str, str]] = {
         "lineup.formation":     "Formazione:",
         "lineup.rank_all":      "\u2014 Classifica tutte",
         "lineup.cross_pos":     "Permetti fuori ruolo",
-        "lineup.include_inj":   "Includi infortunati",
         "lineup.compute":       "Calcola",
         "lineup.form_ranking":  "Classifica formazioni",
         "lineup.reassign":      "Suggerimenti cambio ruolo",

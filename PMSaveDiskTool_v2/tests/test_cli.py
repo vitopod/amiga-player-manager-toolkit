@@ -197,19 +197,6 @@ class TestCLISmoke(unittest.TestCase):
         self.assertIn("Recommended XI", r.stdout)
         self.assertIn("Formation ranking", r.stdout)
 
-    def test_suggest_xi_team_needs_include_injured(self):
-        # MILAN in Save1 has too many injuries to field a default XI.
-        r = _run("suggest-xi", _ADF, "--save", "pm1.sav", "--team", "0")
-        self.assertEqual(r.returncode, 0)
-        self.assertIn("No formation could be filled", r.stdout)
-
-    def test_suggest_xi_with_include_injured(self):
-        r = _run("suggest-xi", _ADF, "--save", "pm1.sav",
-                 "--team", "0", "--include-injured")
-        self.assertSuccess(r)
-        self.assertIn("MILAN", r.stdout)
-        self.assertIn("Recommended XI", r.stdout)
-
     def test_suggest_xi_explicit_formation(self):
         r = _run("suggest-xi", _ADF, "--save", "pm1.sav",
                  "--formation", "3-5-2")

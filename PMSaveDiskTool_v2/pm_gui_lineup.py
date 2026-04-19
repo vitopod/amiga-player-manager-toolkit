@@ -79,10 +79,6 @@ class LineupCoachWindow(tk.Toplevel):
         ttk.Checkbutton(ctrl, text=t("lineup.cross_pos"),
                         variable=self.cross_pos_var).pack(side=tk.LEFT, padx=6)
 
-        self.include_injured_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(ctrl, text=t("lineup.include_inj"),
-                        variable=self.include_injured_var).pack(side=tk.LEFT, padx=6)
-
         ttk.Button(ctrl, text=t("lineup.compute"),
                    command=self._compute).pack(side=tk.LEFT, padx=(16, 4))
 
@@ -177,12 +173,8 @@ class LineupCoachWindow(tk.Toplevel):
         formation_choice = self.formation_var.get()
         formations = (None if formation_choice.startswith("\u2014")
                       else [formation_choice])
-        include_injured = self.include_injured_var.get()
         allow_cross = self.cross_pos_var.get()
-
         eligibility = lineup._is_eligible
-        if include_injured:
-            eligibility = lambda p: (p.position in (1, 2, 3, 4) and p.age > 0)
 
         ranked: list[lineup.LineupResult] = []
         fmt_keys = formations if formations else list(lineup.FORMATION_ROLES)

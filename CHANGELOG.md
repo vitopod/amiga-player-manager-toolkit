@@ -4,6 +4,11 @@ All notable changes to Player Manager Toolkit are recorded here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] — 2026-04-19
+
+### Fixed
+- **Line-up Coach no longer excludes healthy players.** Byte 0x15 (previously labelled "Injury Weeks") was found to carry an unknown value unrelated to injury status — healthy players had non-zero values while injured ones had zero. The eligibility filter and fatigue score now ignore this byte. The "Include Injured" checkbox and `--include-injured` CLI flag have been removed as they were based on the same incorrect field. The Status tab label for byte 0x15 now reads "Byte 0x15" to reflect that its meaning is still unconfirmed.
+
 ## [2.6.0] — 2026-04-19
 
 ### Added

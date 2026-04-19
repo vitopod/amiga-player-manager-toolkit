@@ -44,7 +44,7 @@ FIELD_LAYOUT: list[tuple[int, int, str, str]] = [
     (0x12, 1, "tackling", ""),
     (0x13, 1, "keeping", ""),
     (0x14, 1, "reserved", "Always 0 in observed data"),
-    (0x15, 1, "injury_weeks", ""),
+    (0x15, 1, "injury_weeks", "Meaning unconfirmed; not used as injury indicator"),
     (0x16, 1, "disciplinary", ""),
     (0x17, 1, "morale", ""),
     (0x18, 1, "value", ""),

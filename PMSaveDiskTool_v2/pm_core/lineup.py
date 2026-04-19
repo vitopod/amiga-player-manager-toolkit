@@ -293,12 +293,10 @@ def best_role_in_position(player: PlayerRecord) -> tuple[str, float]:
 # ────────────────────────────────────────────────────────────────────────
 
 def _is_eligible(p: PlayerRecord) -> bool:
-    """Selection filter: real player, fit, and on the team's bench."""
+    """Selection filter: real player with a valid position and age."""
     if p.position not in (1, 2, 3, 4):
         return False
     if p.age <= 0:
-        return False
-    if p.injury_weeks and p.injury_weeks > 0:
         return False
     return True
 
@@ -428,15 +426,14 @@ def assemble_matchday_squad(pool: Iterable[PlayerRecord],
 def _fatigue_index(p: PlayerRecord, squad_mean_matches: float) -> float:
     """0..1 fatigue indicator: over-played relative to squad mean.
 
-    Blends recent match load, current injury weeks, and inverse stamina.
+    Blends recent match load and inverse stamina.
     """
     overload = 0.0
     if squad_mean_matches > 0:
         overload = max(0.0, (p.matches_this_year - squad_mean_matches)
                        / max(1.0, squad_mean_matches))
     stamina_gap = max(0.0, (_MAX_SKILL - p.stamina) / _MAX_SKILL)
-    injury = 1.0 if (p.injury_weeks and p.injury_weeks > 0) else 0.0
-    return min(1.0, 0.5 * overload + 0.3 * stamina_gap + 0.2 * injury)
+    return min(1.0, 0.5 * overload + 0.5 * stamina_gap)
 
 
 def _card_risk(p: PlayerRecord) -> float:
